@@ -1,0 +1,34 @@
+# Node
+node_modules/
+.npm/
+dist/
+dist-ssr/
+*.local
+
+# Rust
+target/
+Cargo.lock
+
+# Expo & React Native
+.expo/
+*.jks
+*.p8
+*.keystore
+*.alias
+android/
+ios/
+
+# Environment Variables
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Other
+.DS_Store
+.idea/
+.vscode/
