@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api } from '../../../services/api';
 
 export default function DoctorProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [reason, setReason] = useState('');
   const [mode, setMode] = useState('video');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const modes = [
     { id: 'video', name: 'Video', icon: 'videocam' },
@@ -17,10 +20,29 @@ export default function DoctorProfileScreen() {
     { id: 'in_person', name: 'In-person', icon: 'people' },
   ];
 
-  const handleBook = () => {
+  const handleBook = async () => {
     if (!reason) return;
-    // In a real app, send API request
-    router.replace('/(tabs)/explore'); // Redirect to consultations list
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const scheduledAt = new Date();
+      scheduledAt.setHours(9, 0, 0, 0);
+      
+      await api.bookConsultation({
+        doctor_id: id as string,
+        scheduled_at: scheduledAt.toISOString(),
+        mode: mode,
+        reason: reason,
+        symptoms: reason,
+      });
+      router.replace('/(tabs)/explore');
+    } catch (err: any) {
+      setError(err.message || 'Failed to book consultation');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,6 +106,9 @@ export default function DoctorProfileScreen() {
               value={reason}
               onChangeText={setReason}
             />
+            {error && (
+              <Text style={styles.errorText}>{error}</Text>
+            )}
           </View>
         </ScrollView>
 
@@ -93,11 +118,15 @@ export default function DoctorProfileScreen() {
             <Text style={styles.price}>₦15,000</Text>
           </View>
           <TouchableOpacity 
-            style={[styles.bookButton, !reason && styles.bookButtonDisabled]} 
+            style={[styles.bookButton, (!reason || loading) && styles.bookButtonDisabled]} 
             onPress={handleBook}
-            disabled={!reason}
+            disabled={!reason || loading}
           >
-            <Text style={styles.bookButtonText}>Book Appointment</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.bookButtonText}>Book Appointment</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -206,6 +235,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     height: 100,
     textAlignVertical: 'top',
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    marginTop: 8,
   },
   footer: {
     padding: 20,

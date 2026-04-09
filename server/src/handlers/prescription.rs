@@ -6,17 +6,19 @@ use axum::{
 use crate::{
     error::AppError,
     models::{
-        prescription::{Prescription, CreatePrescriptionRequest, FullPrescriptionResponse, PrescriptionItem, Drug, PrescriptionItemWithDrug},
+        prescription::{Prescription, CreatePrescriptionRequest, FullPrescriptionResponse, PrescriptionItem, Drug, PrescriptionItemWithDrug, SharePrescriptionRequest, ReorderPrescriptionRequest},
         user::UserRole,
     },
     state::AppState,
     auth_utils::Claims,
+    handlers::notification::create_notification,
 };
 use chrono::{Utc, Duration};
 
+// From UserJourney.md Prescription Workflow: Drug Selection
 pub async fn search_drugs(
     State(state): State<AppState>,
-    Query(params): Query<serde_json::Value>, // Generic query for now
+    Query(params): Query<serde_json::Value>,
 ) -> Result<Json<Vec<Drug>>, AppError> {
     let name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
     
@@ -30,6 +32,7 @@ pub async fn search_drugs(
     Ok(Json(drugs))
 }
 
+// From UserJourney.md Prescription Workflow: Create Prescription
 pub async fn create_prescription(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -47,8 +50,8 @@ pub async fn create_prescription(
         .date_naive();
 
     let prescription = sqlx::query_as::<_, Prescription>(
-        "INSERT INTO prescriptions (consultation_id, patient_id, doctor_id, expiry_date) 
-         VALUES ($1, $2, $3, $4) 
+        "INSERT INTO prescriptions (consultation_id, patient_id, doctor_id, expiry_date, is_verified) 
+         VALUES ($1, $2, $3, $4, true) 
          RETURNING *"
     )
     .bind(payload.consultation_id)
@@ -76,6 +79,15 @@ pub async fn create_prescription(
 
     tx.commit().await?;
 
+    // From UserJourney.md: Send notification to patient
+    let _ = create_notification(
+        &state,
+        prescription.patient_id,
+        "New Prescription",
+        "You have received a new prescription",
+        "prescription"
+    ).await;
+
     Ok(Json(prescription))
 }
 
@@ -88,7 +100,6 @@ pub async fn get_prescription_details(
         .fetch_one(&state.db)
         .await?;
 
-    // In a real app, I'd use a single join query. For MVP, I'll do it separately for clarity if needed.
     let items = sqlx::query(
         "SELECT pi.*, d.name as drug_name, d.category as drug_category, d.brand as drug_brand, d.strength as drug_strength
          FROM prescription_items pi
@@ -126,4 +137,89 @@ pub async fn get_prescription_details(
         prescription,
         items: detailed_items,
     }))
+}
+
+// From UserJourney.md Prescription Sharing Workflow: Share Prescription
+pub async fn share_prescription(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<uuid::Uuid>,
+    Json(payload): Json<SharePrescriptionRequest>,
+) -> Result<Json<Prescription>, AppError> {
+    let prescription = sqlx::query_as::<_, Prescription>(
+        "UPDATE prescriptions SET is_shared = true, shared_with = $1 
+         WHERE id = $2 AND (doctor_id = $3 OR patient_id = $3) 
+         RETURNING *"
+    )
+    .bind(&payload.share_with)
+    .bind(id)
+    .bind(claims.sub)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(prescription))
+}
+
+// From UserJourney.md Prescription Workflow: Reorder Prescription (Buy Again)
+pub async fn reorder_prescription(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<ReorderPrescriptionRequest>,
+) -> Result<Json<Prescription>, AppError> {
+    if claims.role != UserRole::Patient {
+        return Err(AppError::Forbidden("Only patients can reorder prescriptions".to_string()));
+    }
+
+    // Verify the prescription belongs to the patient
+    let original = sqlx::query_as::<_, Prescription>(
+        "SELECT * FROM prescriptions WHERE id = $1 AND patient_id = $2"
+    )
+    .bind(payload.prescription_id)
+    .bind(claims.sub)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Prescription not found".to_string()))?;
+
+    // Create a new prescription based on the original
+    let new_expiry = Utc::now()
+        .checked_add_signed(Duration::days(30))
+        .unwrap()
+        .date_naive();
+
+    let new_prescription = sqlx::query_as::<_, Prescription>(
+        "INSERT INTO prescriptions (patient_id, doctor_id, expiry_date, is_verified) 
+         VALUES ($1, $2, $3, true) 
+         RETURNING *"
+    )
+    .bind(claims.sub)
+    .bind(original.doctor_id)
+    .bind(new_expiry)
+    .fetch_one(&state.db)
+    .await?;
+
+    // Copy all items from the original prescription
+    let items = sqlx::query_as::<_, PrescriptionItem>(
+        "SELECT * FROM prescription_items WHERE prescription_id = $1"
+    )
+    .bind(payload.prescription_id)
+    .fetch_all(&state.db)
+    .await?;
+
+    for item in items {
+        sqlx::query(
+            "INSERT INTO prescription_items (prescription_id, drug_id, dosage, frequency, duration_days, quantity, instructions) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        )
+        .bind(new_prescription.id)
+        .bind(item.drug_id)
+        .bind(item.dosage)
+        .bind(item.frequency)
+        .bind(item.duration_days)
+        .bind(item.quantity)
+        .bind(item.instructions)
+        .execute(&state.db)
+        .await?;
+    }
+
+    Ok(Json(new_prescription))
 }

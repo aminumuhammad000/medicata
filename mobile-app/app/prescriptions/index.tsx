@@ -1,16 +1,30 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { api } from '../../services/api';
 
 export default function PrescriptionsScreen() {
   const router = useRouter();
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const prescriptions = [
-    { id: '1', doctor: 'Dr. Sarah Connor', date: 'June 15, 2026', drug: 'Amoxicillin', status: 'Active' },
-    { id: '2', doctor: 'Dr. John Doe', date: 'May 10, 2026', drug: 'Paracetamol', status: 'Expired' },
-  ];
+  useEffect(() => {
+    loadPrescriptions();
+  }, []);
+
+  const loadPrescriptions = async () => {
+    try {
+      const data = await api.getMyPrescriptions();
+      setPrescriptions(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load prescriptions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
@@ -18,18 +32,20 @@ export default function PrescriptionsScreen() {
       onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: item.id } })}
     >
       <View style={styles.cardLeft}>
-        <View style={[styles.iconContainer, item.status === 'Expired' && styles.iconContainerExpired]}>
-          <Ionicons name="medical" size={24} color={item.status === 'Active' ? '#4caf50' : '#f44336'} />
+        <View style={[styles.iconContainer, item.is_verified === false && styles.iconContainerExpired]}>
+          <Ionicons name="medical" size={24} color={item.is_verified ? '#4caf50' : '#f44336'} />
         </View>
         <View style={styles.details}>
-          <Text style={styles.drugName}>{item.drug}</Text>
-          <Text style={styles.doctorName}>Prescribed by {item.doctor}</Text>
-          <Text style={styles.date}>{item.date}</Text>
+          <Text style={styles.drugName}>{item.drug_name || 'Prescription'}</Text>
+          <Text style={styles.doctorName}>ID: {item.id}</Text>
+          <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
         </View>
       </View>
       <View style={styles.cardRight}>
-        <View style={[styles.badge, item.status === 'Expired' && styles.badgeExpired]}>
-          <Text style={[styles.badgeText, item.status === 'Expired' && styles.badgeTextExpired]}>{item.status}</Text>
+        <View style={[styles.badge, item.is_shared && styles.badgeShared]}>
+          <Text style={[styles.badgeText, item.is_shared && styles.badgeTextShared]}>
+            {item.is_shared ? 'Shared' : 'Private'}
+          </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#ccc" />
       </View>
@@ -42,12 +58,27 @@ export default function PrescriptionsScreen() {
         <Text style={styles.title}>My Prescriptions</Text>
       </View>
 
-      <FlatList
-        data={prescriptions}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-      />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4a90e2" />
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={prescriptions}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.centerContainer}>
+              <Text style={styles.emptyText}>No prescriptions found</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -133,5 +164,26 @@ const styles = StyleSheet.create({
   },
   badgeTextExpired: {
     color: '#999',
+  },
+  badgeShared: {
+    backgroundColor: '#e3f2fd',
+  },
+  badgeTextShared: {
+    color: '#2196f3',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 16,
   },
 });

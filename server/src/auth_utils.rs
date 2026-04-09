@@ -7,12 +7,34 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{Utc, Duration};
 use crate::models::user::UserRole;
+use axum::{
+    async_trait,
+    extract::FromRequestParts,
+    http::request::Parts,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
+    pub user_id: Uuid,
     pub sub: Uuid,
     pub role: UserRole,
     pub exp: i64,
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for Claims
+where
+    S: Send + Sync,
+{
+    type Rejection = crate::error::AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        parts
+            .extensions
+            .get::<Claims>()
+            .cloned()
+            .ok_or_else(|| crate::error::AppError::Unauthorized("Claims not found".to_string()))
+    }
 }
 
 pub fn hash_password(password: &str) -> anyhow::Result<String> {
@@ -39,6 +61,7 @@ pub fn generate_jwt(user_id: Uuid, role: UserRole, secret: &str) -> anyhow::Resu
         .timestamp();
 
     let claims = Claims {
+        user_id,
         sub: user_id,
         role,
         exp: expiration,

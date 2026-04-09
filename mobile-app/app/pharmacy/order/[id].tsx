@@ -1,21 +1,47 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api } from '../../../services/api';
 
 export default function PharmacyOrderDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [status, setStatus] = useState('Processing');
+  const [order, setOrder] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updating, setUpdating] = useState(false);
 
-  const updateStatus = (newStatus: string) => {
-    setStatus(newStatus);
-    // In a real app, send API request
-    Alert.alert("Success", `Order status updated to ${newStatus}`);
+  useEffect(() => {
+    loadOrder();
+  }, [id]);
+
+  const loadOrder = async () => {
+    try {
+      const data = await api.getOrderDetails(id as string);
+      setOrder(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load order');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const statuses = ['Pending', 'Processing', 'Ready', 'Delivered'];
+  const updateStatus = async (newStatus: string) => {
+    setUpdating(true);
+    try {
+      await api.updateOrderStatus(id as string, newStatus);
+      setOrder({ ...order, status: newStatus });
+      Alert.alert("Success", `Order status updated to ${newStatus}`);
+    } catch (err: any) {
+      Alert.alert("Error", err.message || 'Failed to update order status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const statuses = ['Pending', 'Processing', 'Ready', 'PickedUp'];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,50 +54,69 @@ export default function PharmacyOrderDetail() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.patientCard}>
-          <Text style={styles.label}>Patient</Text>
-          <Text style={styles.patientName}>John Doe</Text>
-          <Text style={styles.patientMeta}>Address: 12 Main St, Ikeja, Lagos</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Prescription Details</Text>
-          <View style={styles.prescriptionBox}>
-            <Text style={styles.medication}>Amoxicillin 500mg</Text>
-            <Text style={styles.dosage}>Dosage: 1 capsule, 3 times daily</Text>
-            <Text style={styles.duration}>Duration: 7 days</Text>
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#4a90e2" />
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Status</Text>
-          <View style={styles.statusTimeline}>
-            {statuses.map((s, i) => {
-              const currentIndex = statuses.indexOf(status);
-              const isDone = i <= currentIndex;
-              return (
-                <TouchableOpacity 
-                  key={s} 
-                  style={styles.statusStep}
-                  onPress={() => updateStatus(s)}
-                >
-                  <View style={[styles.statusCircle, isDone && styles.statusCircleActive]}>
-                    {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
-                  </View>
-                  <Text style={[styles.statusLabel, isDone && styles.statusLabelActive]}>{s}</Text>
-                </TouchableOpacity>
-              );
-            })}
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        </View>
+        ) : order ? (
+          <>
+            <View style={styles.patientCard}>
+              <Text style={styles.label}>Patient</Text>
+              <Text style={styles.patientName}>{order.patient_name || 'Patient'}</Text>
+              <Text style={styles.patientMeta}>Address: {order.delivery_address || 'N/A'}</Text>
+            </View>
 
-        <TouchableOpacity 
-          style={[styles.fulfillBtn, status === 'Delivered' && styles.fulfillBtnDisabled]}
-          onPress={() => updateStatus('Delivered')}
-          disabled={status === 'Delivered'}
-        >
-          <Text style={styles.fulfillBtnText}>Mark as Delivered</Text>
-        </TouchableOpacity>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Prescription Details</Text>
+              <View style={styles.prescriptionBox}>
+                <Text style={styles.medication}>Prescription ID: {order.prescription_id}</Text>
+                <Text style={styles.dosage}>Delivery: {order.is_delivery ? 'Yes' : 'No'}</Text>
+                {order.preferred_time && (
+                  <Text style={styles.duration}>Preferred Time: {order.preferred_time}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Order Status</Text>
+              <View style={styles.statusTimeline}>
+                {statuses.map((s, i) => {
+                  const currentIndex = statuses.indexOf(order.status);
+                  const isDone = i <= currentIndex;
+                  return (
+                    <TouchableOpacity 
+                      key={s} 
+                      style={styles.statusStep}
+                      onPress={() => !updating && updateStatus(s)}
+                      disabled={updating}
+                    >
+                      <View style={[styles.statusCircle, isDone && styles.statusCircleActive]}>
+                        {isDone && <Ionicons name="checkmark" size={14} color="#fff" />}
+                      </View>
+                      <Text style={[styles.statusLabel, isDone && styles.statusLabelActive]}>{s}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.fulfillBtn, order.status === 'PickedUp' && styles.fulfillBtnDisabled]}
+              onPress={() => updateStatus('PickedUp')}
+              disabled={order.status === 'PickedUp' || updating}
+            >
+              {updating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.fulfillBtnText}>Mark as Picked Up</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -195,5 +240,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

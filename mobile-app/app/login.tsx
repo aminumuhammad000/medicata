@@ -1,16 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { api } from '../services/api';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    // In a real app, authenticate here
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    if (!email || !password) return;
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await api.login(email, password);
+      
+      if (response.error) {
+        setError(response.error);
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (err) {
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,17 +67,28 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.forgotButton}>
+          <TouchableOpacity 
+            style={styles.forgotButton}
+            onPress={() => router.push('/forgot-password')}
+          >
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
+
+          {error && (
+            <Text style={styles.errorText}>{error}</Text>
+          )}
         </View>
 
         <TouchableOpacity 
           style={[styles.button, (!email || !password) && styles.buttonDisabled]} 
           onPress={handleLogin}
-          disabled={!email || !password}
+          disabled={!email || !password || loading}
         >
-          <Text style={styles.buttonText}>Login</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Login</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -120,6 +150,12 @@ const styles = StyleSheet.create({
     color: '#4a90e2',
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: 'center',
   },
   button: {
     backgroundColor: '#4a90e2',

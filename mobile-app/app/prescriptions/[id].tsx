@@ -1,12 +1,58 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api } from '../../services/api';
 
 export default function PrescriptionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [prescription, setPrescription] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [sharing, setSharing] = useState(false);
+  const [reordering, setReordering] = useState(false);
+
+  useEffect(() => {
+    loadPrescription();
+  }, [id]);
+
+  const loadPrescription = async () => {
+    try {
+      const data = await api.getPrescriptionDetails(id as string);
+      setPrescription(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load prescription');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      await api.sharePrescription(id as string, 'pharmacy');
+      Alert.alert('Success', 'Prescription shared successfully');
+      loadPrescription();
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to share prescription');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleReorder = async () => {
+    setReordering(true);
+    try {
+      await api.reorderPrescription(id as string);
+      Alert.alert('Success', 'Prescription reordered successfully');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to reorder prescription');
+    } finally {
+      setReordering(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -19,59 +65,111 @@ export default function PrescriptionDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.qrCard}>
-          <Text style={styles.qrTitle}>Digital Prescription</Text>
-          <View style={styles.qrPlaceholder}>
-            <Ionicons name="qr-code" size={150} color="#1a1a1a" />
+        {loading ? (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color="#4a90e2" />
           </View>
-          <Text style={styles.qrId}>ID: MED-9922-X82</Text>
-          <Text style={styles.qrNote}>Present this QR code at the pharmacy</Text>
-        </View>
+        ) : error ? (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : prescription ? (
+          <>
+            <View style={styles.qrCard}>
+              <Text style={styles.qrTitle}>Digital Prescription</Text>
+              <View style={styles.qrPlaceholder}>
+                <Ionicons name="qr-code" size={150} color="#1a1a1a" />
+              </View>
+              <Text style={styles.qrId}>ID: {prescription.id}</Text>
+              <Text style={styles.qrNote}>Present this QR code at the pharmacy</Text>
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Medication</Text>
-          <View style={styles.drugCard}>
-            <Text style={styles.drugName}>Amoxicillin 500mg</Text>
-            <View style={styles.dosageRow}>
-              <View style={styles.dosageItem}>
-                <Text style={styles.dosageLabel}>Dosage</Text>
-                <Text style={styles.dosageValue}>1 Capsule</Text>
+            {prescription.items && prescription.items.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Medication</Text>
+                {prescription.items.map((item: any, index: number) => {
+                  return (
+                    <View key={index} style={styles.drugCard}>
+                      <Text style={styles.drugName}>{item.drug_name || 'Medication'}</Text>
+                      <View style={styles.dosageRow}>
+                        <View style={styles.dosageItem}>
+                          <Text style={styles.dosageLabel}>Dosage</Text>
+                          <Text style={styles.dosageValue}>{item.dosage}</Text>
+                        </View>
+                        <View style={styles.dosageItem}>
+                          <Text style={styles.dosageLabel}>Frequency</Text>
+                          <Text style={styles.dosageValue}>{item.frequency}</Text>
+                        </View>
+                        <View style={styles.dosageItem}>
+                          <Text style={styles.dosageLabel}>Duration</Text>
+                          <Text style={styles.dosageValue}>{item.duration_days} Days</Text>
+                        </View>
+                      </View>
+                      {item.instructions && (
+                        <Text style={styles.instructions}>{item.instructions}</Text>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
-              <View style={styles.dosageItem}>
-                <Text style={styles.dosageLabel}>Frequency</Text>
-                <Text style={styles.dosageValue}>3x Daily</Text>
+            )}
+
+            <View style={styles.infoSection}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Status</Text>
+                <Text style={styles.infoValue}>{prescription.is_verified ? 'Verified' : 'Pending'}</Text>
               </View>
-              <View style={styles.dosageItem}>
-                <Text style={styles.dosageLabel}>Duration</Text>
-                <Text style={styles.dosageValue}>7 Days</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Shared</Text>
+                <Text style={styles.infoValue}>{prescription.is_shared ? 'Yes' : 'No'}</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Date</Text>
+                <Text style={styles.infoValue}>{new Date(prescription.created_at).toLocaleDateString()}</Text>
               </View>
             </View>
-            <Text style={styles.instructions}>Take after meals. Finish the entire course.</Text>
-          </View>
-        </View>
 
-        <View style={styles.infoSection}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Prescribed by</Text>
-            <Text style={styles.infoValue}>Dr. Sarah Connor</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date</Text>
-            <Text style={styles.infoValue}>June 15, 2026</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Expiry Date</Text>
-            <Text style={styles.infoValue}>Sept 15, 2026</Text>
-          </View>
-        </View>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={[styles.actionButton, prescription.is_shared && styles.actionButtonDisabled]}
+                onPress={handleShare}
+                disabled={prescription.is_shared || sharing}
+              >
+                {sharing ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="share-social" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Share</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.orderButton}
-          onPress={() => router.push('/pharmacy/search')}
-        >
-          <Ionicons name="cart" size={20} color="#fff" />
-          <Text style={styles.orderButtonText}>Order from Pharmacy</Text>
-        </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={handleReorder}
+                disabled={reordering}
+              >
+                {reordering ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="refresh" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Reorder</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.orderButton}
+              onPress={() => router.push('/pharmacy/search')}
+            >
+              <Ionicons name="cart" size={20} color="#fff" />
+              <Text style={styles.orderButtonText}>Order from Pharmacy</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -210,6 +308,40 @@ const styles = StyleSheet.create({
   orderButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#4a90e2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  actionButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

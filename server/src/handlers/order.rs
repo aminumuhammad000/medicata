@@ -14,6 +14,7 @@ use crate::{
     handlers::notification::create_notification,
 };
 
+// From UserJourney.md Pharmacy Interaction Flow: Order Medicines
 pub async fn create_order(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -24,20 +25,21 @@ pub async fn create_order(
     }
 
     let order = sqlx::query_as::<_, PharmacyOrder>(
-        "INSERT INTO pharmacy_orders (patient_id, pharmacy_id, prescription_id, delivery_address, is_delivery, preferred_time) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
+        "INSERT INTO pharmacy_orders (patient_id, pharmacy_id, prescription_id, delivery_address, contact_info, is_delivery, preferred_time) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING *"
     )
     .bind(claims.sub)
     .bind(payload.pharmacy_id)
     .bind(payload.prescription_id)
     .bind(payload.delivery_address)
+    .bind(payload.contact_info) // From UserJourney.md: Contact Info
     .bind(payload.is_delivery)
     .bind(payload.preferred_time)
     .fetch_one(&state.db)
     .await?;
 
-    // Notify pharmacy of new order
+    // From UserJourney.md: Notify pharmacy of new order
     let _ = create_notification(
         &state,
         order.pharmacy_id,
@@ -67,6 +69,7 @@ pub async fn get_my_orders(
     Ok(Json(orders))
 }
 
+// From UserJourney.md Pharmacy Interaction Flow: Update Order Status
 pub async fn update_order_status(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
@@ -88,7 +91,7 @@ pub async fn update_order_status(
     .fetch_one(&state.db)
     .await?;
 
-    // Notify patient of order update
+    // From UserJourney.md: Notify patient of order update
     let _ = create_notification(
         &state,
         order.patient_id,

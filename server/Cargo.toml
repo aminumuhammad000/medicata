@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.7.5", features = ["macros"] }
+axum = { version = "0.7.5", features = ["macros", "ws"] }
 tokio = { version = "1.37.0", features = ["full"] }
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["cors", "auth", "trace"] }
@@ -21,3 +21,7 @@ validator = { version = "0.18.1", features = ["derive"] }
 dotenvy = "0.15.7"
 anyhow = "1.0.86"
 futures = "0.3.30"
+tokio-tungstenite = "0.21.0"
+futures-util = "0.3.30"
+lettre = "0.11.7"
+rand = "0.8.5"

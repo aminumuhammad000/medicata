@@ -1,30 +1,130 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+// import WebSocket from 'react-native-websocket';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MediChatScreen() {
   const router = useRouter();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState([
-    { id: '1', text: 'Hello! I am Medi, your AI health assistant. How can I help you today?', sender: 'ai' },
-  ]);
-
-  const handleSend = () => {
-    if (!message) return;
-    const newMessages = [...messages, { id: Date.now().toString(), text: message, sender: 'user' }];
+  const [messages, setMessages] = useState<any[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  
+  // const ws = useRef<WebSocket | null>(null);
+  // const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    // Initialize WebSocket connection
+    connectWebSocket();
+    
+    // Load message history from local storage
+    loadMessageHistory();
+    
+    return () => {
+      cleanup();
+    };
+  }, []);
+  
+  const connectWebSocket = async () => {
+    try {
+      // TODO: Implement WebSocket connection
+      // 1. Get auth token from AsyncStorage
+      // 2. Connect to WebSocket server (ws://localhost:8080/ws)
+      // 3. Handle connection events (open, message, error, close)
+      // 4. Implement reconnection logic
+      
+      console.log('Connecting to WebSocket server...');
+      // Placeholder for actual WebSocket implementation
+      
+      // Simulate connection for demo
+      setTimeout(() => {
+        setIsConnected(true);
+        setMessages([
+          { id: '1', text: 'Hello! I am Medi, your AI health assistant. How can I help you today?', sender: 'ai', timestamp: new Date() },
+        ]);
+      }, 500);
+    } catch (error) {
+      console.error('Failed to connect to WebSocket:', error);
+      // Retry connection after delay
+      // reconnectTimeout.current = setTimeout(connectWebSocket, 5000);
+    }
+  };
+  
+  const loadMessageHistory = async () => {
+    try {
+      // TODO: Load message history from AsyncStorage or API
+      // const history = await AsyncStorage.getItem('chat_history');
+      // if (history) {
+      //   setMessages(JSON.parse(history));
+      // }
+    } catch (error) {
+      console.error('Failed to load message history:', error);
+    }
+  };
+  
+  const saveMessageHistory = async (msgs: any[]) => {
+    try {
+      // TODO: Save message history to AsyncStorage
+      // await AsyncStorage.setItem('chat_history', JSON.stringify(msgs));
+    } catch (error) {
+      console.error('Failed to save message history:', error);
+    }
+  };
+  
+  const cleanup = () => {
+    // if (reconnectTimeout.current) {
+    //   clearTimeout(reconnectTimeout.current);
+    // }
+    // if (ws.current) {
+    //   ws.current.close();
+    // }
+  };
+  
+  const handleSend = async () => {
+    if (!message || !isConnected) return;
+    
+    const newMessage = {
+      id: Date.now().toString(),
+      text: message,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+    
+    const newMessages = [...messages, newMessage];
     setMessages(newMessages);
     setMessage('');
+    saveMessageHistory(newMessages);
     
-    // Fake AI response
-    setTimeout(() => {
-      setMessages([...newMessages, { 
-        id: (Date.now() + 1).toString(), 
-        text: 'I understand. Based on your symptoms, I recommend booking a consultation with a General Practitioner. Would you like me to find one for you?', 
-        sender: 'ai' 
-      }]);
-    }, 1000);
+    try {
+      // TODO: Send message via WebSocket
+      // ws.current?.send(JSON.stringify({
+      //   type: 'message',
+      //   content: message,
+      //   timestamp: new Date().toISOString(),
+      // }));
+      
+      // Placeholder for actual WebSocket send
+      console.log('Sending message:', message);
+      
+      // Simulate AI response for demo
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        const aiResponse = {
+          id: (Date.now() + 1).toString(),
+          text: 'I understand. Based on your symptoms, I recommend booking a consultation with a General Practitioner. Would you like me to find one for you?',
+          sender: 'ai',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, aiResponse]);
+        saveMessageHistory([...newMessages, aiResponse]);
+      }, 1500);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   const renderMessage = ({ item }: { item: any }) => (
@@ -40,10 +140,15 @@ export default function MediChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <View style={styles.aiAvatar}>
+          <View style={[styles.aiAvatar, isConnected && styles.aiAvatarConnected]}>
             <Ionicons name="sparkles" size={20} color="#fff" />
           </View>
-          <Text style={styles.headerTitle}>Medi AI Assistant</Text>
+          <View>
+            <Text style={styles.headerTitle}>Medi AI Assistant</Text>
+            <Text style={styles.connectionStatus}>
+              {isConnected ? 'Online' : 'Connecting...'}
+            </Text>
+          </View>
         </View>
         <View style={{ width: 24 }} />
       </View>
@@ -53,6 +158,15 @@ export default function MediChatScreen() {
         renderItem={renderMessage}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.chatList}
+        ListFooterComponent={
+          isTyping ? (
+            <View style={styles.typingIndicator}>
+              <View style={styles.typingDot} />
+              <View style={[styles.typingDot, styles.typingDotDelayed]} />
+              <View style={[styles.typingDot, styles.typingDotDelayed2]} />
+            </View>
+          ) : null
+        }
       />
 
       <KeyboardAvoidingView 
@@ -61,13 +175,18 @@ export default function MediChatScreen() {
       >
         <View style={styles.inputContainer}>
           <TextInput 
-            style={styles.input} 
-            placeholder="Ask me anything about your health..." 
+            style={[styles.input, !isConnected && styles.inputDisabled]} 
+            placeholder={isConnected ? "Ask me anything about your health..." : "Connecting..."}
             value={message}
             onChangeText={setMessage}
             multiline
+            editable={isConnected}
           />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+          <TouchableOpacity 
+            style={[styles.sendButton, (!isConnected || !message) && styles.sendButtonDisabled]} 
+            onPress={handleSend}
+            disabled={!isConnected || !message}
+          >
             <Ionicons name="send" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -99,14 +218,39 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#ff9800',
+    backgroundColor: '#ccc',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  aiAvatarConnected: {
+    backgroundColor: '#ff9800',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1a1a1a',
+  },
+  connectionStatus: {
+    fontSize: 12,
+    color: '#666',
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 12,
+    alignItems: 'center',
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ccc',
+  },
+  typingDotDelayed: {
+    opacity: 0.7,
+  },
+  typingDotDelayed2: {
+    opacity: 0.4,
   },
   chatList: {
     padding: 20,
@@ -155,6 +299,9 @@ const styles = StyleSheet.create({
     maxHeight: 100,
     marginRight: 10,
   },
+  inputDisabled: {
+    backgroundColor: '#f0f0f0',
+  },
   sendButton: {
     width: 44,
     height: 44,
@@ -162,5 +309,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#4a90e2',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#ccc',
   },
 });
