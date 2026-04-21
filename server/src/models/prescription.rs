@@ -22,6 +22,8 @@ pub struct Prescription {
     pub is_verified: bool, // From UserJourney.md: Verification status
     pub is_shared: bool, // From UserJourney.md: Sharing functionality
     pub shared_with: Option<String>, // From UserJourney.md: Share with other users
+    pub is_dispensed: bool, // From UserJourney.md: Track if prescription was filled
+    pub dispensed_at: Option<DateTime<Utc>>, // Timestamp when prescription was dispensed
     pub created_at: DateTime<Utc>,
 
     // Add these fields for UI convenience

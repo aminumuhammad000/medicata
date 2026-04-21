@@ -14,9 +14,11 @@ export default function HomeScreen() {
   const [userData, setUserData] = useState<any>(null);
   const [recentConsultation, setRecentConsultation] = useState<any>(null);
   const [recentOrder, setRecentOrder] = useState<any>(null);
+  const [recentPrescription, setRecentPrescription] = useState<any>(null);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     loadDashboardData();
@@ -113,10 +115,46 @@ export default function HomeScreen() {
             }));
             
             setRecentOrder(orders[0]);
+          } else {
+            // For patients - get most recent order
+            const pendingOrders = orders.filter((o: any) => ['pending', 'processing', 'ready_for_pickup'].includes(o.status?.toLowerCase()));
+            setStats((prev: any) => ({
+              ...prev,
+              pendingOrders: pendingOrders.length,
+              totalOrders: orders.length
+            }));
+            setRecentOrder(orders[0]);
           }
         } catch (e) {
           console.error('Failed to fetch orders:', e);
         }
+      }
+
+      // Fetch prescriptions for patients
+      if (role === 'Patient' || !role) {
+        try {
+          const prescriptionsRes = await api.getMyPrescriptions();
+          const prescriptions = prescriptionsRes.data || [];
+          const activePrescriptions = prescriptions.filter((p: any) => !p.is_dispensed && new Date(p.expiry_date) > new Date());
+          setStats((prev: any) => ({
+            ...prev,
+            activePrescriptions: activePrescriptions.length
+          }));
+          setRecentPrescription(prescriptions[0]);
+        } catch (e) {
+          console.error('Failed to fetch prescriptions:', e);
+        }
+      }
+
+      // Fetch notifications
+      try {
+        const notifRes = await api.getMyNotifications();
+        if (notifRes.data) {
+          const unread = notifRes.data.filter((n: any) => !n.is_read).length;
+          setUnreadNotifications(unread);
+        }
+      } catch (e) {
+        console.error('Failed to fetch notifications:', e);
       }
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -132,6 +170,19 @@ export default function HomeScreen() {
       { id: 4, name: 'Neurology', icon: 'flash' },
     ];
 
+    const getStatusStyle = (status: string) => {
+      const normalized = status?.toLowerCase().replace(/_/g, '');
+      switch (normalized) {
+        case 'pending': return { bg: '#FFFBEB', text: '#F59E0B' };
+        case 'processing': return { bg: '#EFF6FF', text: '#3B82F6' };
+        case 'readyforpickup': return { bg: '#ECFDF5', text: '#10B981' };
+        case 'pickedup':
+        case 'delivered':
+        case 'completed': return { bg: '#F1F5F9', text: '#64748B' };
+        default: return { bg: '#FFFBEB', text: '#F59E0B' };
+      }
+    };
+
     return (
       <>
         <View style={styles.header}>
@@ -139,17 +190,48 @@ export default function HomeScreen() {
             <Text style={styles.subGreeting}>Welcome back,</Text>
             <Text style={styles.greeting}>{userData?.full_name?.split(' ')[0] || 'Patient'}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.profilePic}
-            onPress={() => router.push('/profile' as any)}
-          >
-            <LinearGradient
-              colors={['#e3f2fd', '#f8f9fa']}
-              style={styles.profilePicGradient}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={styles.notifBtn}
+              onPress={() => router.push('/notifications' as any)}
             >
-              <Ionicons name="person" size={24} color="#4a90e2" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.profilePic}
+              onPress={() => router.push('/profile' as any)}
+            >
+              <LinearGradient
+                colors={['#e3f2fd', '#f8f9fa']}
+                style={styles.profilePicGradient}
+              >
+                <Ionicons name="person" size={24} color="#4a90e2" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Patient Stats */}
+        <View style={styles.patientStatsRow}>
+          <View style={styles.patientStatCard}>
+            <View style={[styles.statIconBg, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="calendar" size={20} color="#4F46E5" />
+            </View>
+            <Text style={styles.patientStatValue}>{stats.pendingOrders || 0}</Text>
+            <Text style={styles.patientStatLabel}>Pending Orders</Text>
+          </View>
+          <View style={styles.patientStatCard}>
+            <View style={[styles.statIconBg, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="document-text" size={20} color="#10B981" />
+            </View>
+            <Text style={styles.patientStatValue}>{stats.activePrescriptions || 0}</Text>
+            <Text style={styles.patientStatLabel}>Active Scripts</Text>
+          </View>
         </View>
  
         <View style={styles.searchContainer}>
@@ -253,6 +335,224 @@ export default function HomeScreen() {
             </View>
           )}
         </View>
+
+        {/* My Consultations Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Consultations</Text>
+            <TouchableOpacity onPress={() => router.push('/explore' as any)}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentConsultation ? (
+            <TouchableOpacity 
+              style={styles.consultationCard}
+              onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
+            >
+              <View style={styles.consultationHeader}>
+                <View style={[styles.consultationIconBg, { backgroundColor: '#EEF2FF' }]}>
+                  <Ionicons name="medical" size={20} color="#4F46E5" />
+                </View>
+                <View style={styles.consultationInfo}>
+                  <Text style={styles.consultationDoctor}>{recentConsultation.doctor_name || 'Doctor'}</Text>
+                  <Text style={styles.consultationSpecialty}>{recentConsultation.specialty || 'General'}</Text>
+                </View>
+                <View style={[styles.consultationStatusBadge, { backgroundColor: recentConsultation.status === 'completed' ? '#ECFDF5' : '#FFFBEB' }]}>
+                  <Text style={[styles.consultationStatusText, { color: recentConsultation.status === 'completed' ? '#10B981' : '#F59E0B' }]}>
+                    {recentConsultation.status?.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.consultationFooter}>
+                <View style={styles.consultationDetail}>
+                  <Ionicons name="calendar" size={14} color="#64748B" />
+                  <Text style={styles.consultationDetailText}>
+                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}
+                  </Text>
+                </View>
+                <View style={styles.consultationDetail}>
+                  <Ionicons name="time" size={14} color="#64748B" />
+                  <Text style={styles.consultationDetailText}>
+                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyActivityCard}>
+              <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
+              <Text style={styles.emptyActivityText}>No consultations yet</Text>
+              <TouchableOpacity 
+                style={styles.orderNowBtn}
+                onPress={() => router.push('/bookings/search')}
+              >
+                <Text style={styles.orderNowBtnText}>Book a Doctor</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* My Prescriptions Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Prescriptions</Text>
+            <TouchableOpacity onPress={() => router.push('/prescriptions/index' as any)}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentPrescription ? (
+            <TouchableOpacity 
+              style={styles.prescriptionCard}
+              onPress={() => router.push({ pathname: '/prescriptions/index', params: { id: recentPrescription.id } } as any)}
+            >
+              <View style={styles.prescriptionHeader}>
+                <View style={[styles.prescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="document-text" size={20} color="#10B981" />
+                </View>
+                <View style={styles.prescriptionInfo}>
+                  <Text style={styles.prescriptionDoctor}>{recentPrescription.doctor_name || 'Dr. Unknown'}</Text>
+                  <Text style={styles.prescriptionDate}>
+                    Issued: {new Date(recentPrescription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+                {new Date(recentPrescription.expiry_date) < new Date() ? (
+                  <View style={[styles.prescriptionBadge, { backgroundColor: '#FEF2F2' }]}>
+                    <Text style={[styles.prescriptionBadgeText, { color: '#EF4444' }]}>EXPIRED</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.prescriptionBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.prescriptionBadgeText, { color: '#10B981' }]}>ACTIVE</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.prescriptionFooter}>
+                <Text style={styles.prescriptionExpiry}>
+                  {new Date(recentPrescription.expiry_date) < new Date() 
+                    ? 'Expired on: ' 
+                    : 'Expires: '}
+                  {new Date(recentPrescription.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </Text>
+                {new Date(recentPrescription.expiry_date) < new Date() && (
+                  <TouchableOpacity style={styles.buyAgainBtn}>
+                    <Text style={styles.buyAgainBtnText}>Buy Again</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyActivityCard}>
+              <Ionicons name="document-text-outline" size={32} color="#E2E8F0" />
+              <Text style={styles.emptyActivityText}>No prescriptions yet</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Upcoming Reminders */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Upcoming Reminders</Text>
+            <TouchableOpacity onPress={() => router.push('/notifications' as any)}>
+              <Text style={styles.seeAll}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.remindersCard}>
+            {recentConsultation && (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') && (
+              <View style={styles.reminderItem}>
+                <View style={[styles.reminderIcon, { backgroundColor: '#EEF2FF' }]}>
+                  <Ionicons name="calendar" size={18} color="#4F46E5" />
+                </View>
+                <View style={styles.reminderInfo}>
+                  <Text style={styles.reminderTitle}>Upcoming Appointment</Text>
+                  <Text style={styles.reminderText}>
+                    {recentConsultation.doctor_name || 'Doctor'} at {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {recentPrescription && new Date(recentPrescription.expiry_date) > new Date() && new Date(recentPrescription.expiry_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && (
+              <View style={styles.reminderItem}>
+                <View style={[styles.reminderIcon, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="alert-circle" size={18} color="#D97706" />
+                </View>
+                <View style={styles.reminderInfo}>
+                  <Text style={styles.reminderTitle}>Prescription Expiring Soon</Text>
+                  <Text style={styles.reminderText}>
+                    Expires in {Math.ceil((new Date(recentPrescription.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+                  </Text>
+                </View>
+              </View>
+            )}
+            {recentOrder && ['pending', 'processing', 'ready_for_pickup'].includes(recentOrder.status?.toLowerCase()) && (
+              <View style={styles.reminderItem}>
+                <View style={[styles.reminderIcon, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="cube" size={18} color="#10B981" />
+                </View>
+                <View style={styles.reminderInfo}>
+                  <Text style={styles.reminderTitle}>Order Update</Text>
+                  <Text style={styles.reminderText}>
+                    Order status: {recentOrder.status?.replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              </View>
+            )}
+            {(!recentConsultation || recentConsultation.status === 'completed') && (!recentPrescription || new Date(recentPrescription.expiry_date) > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) && (!recentOrder || !['pending', 'processing', 'ready_for_pickup'].includes(recentOrder.status?.toLowerCase())) && (
+              <View style={styles.emptyReminder}>
+                <Ionicons name="notifications-off-outline" size={24} color="#CBD5E1" />
+                <Text style={styles.emptyReminderText}>No upcoming reminders</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* My Orders Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Orders</Text>
+            <TouchableOpacity onPress={() => router.push('/orders' as any)}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentOrder ? (
+            <TouchableOpacity 
+              style={styles.orderCard}
+              onPress={() => router.push({ pathname: '/pharmacy/order/[id]', params: { id: recentOrder.id } } as any)}
+            >
+              <View style={styles.orderCardHeader}>
+                <View style={styles.orderPharmacyInfo}>
+                  <View style={[styles.orderIconBg, { backgroundColor: '#EEF2FF' }]}>
+                    <Ionicons name="medical" size={20} color="#4F46E5" />
+                  </View>
+                  <View>
+                    <Text style={styles.orderPharmacyName}>{recentOrder.pharmacy_name || 'Pharmacy'}</Text>
+                    <Text style={styles.orderDate}>
+                      {new Date(recentOrder.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[styles.orderStatusBadge, { backgroundColor: getStatusStyle(recentOrder.status).bg }]}>
+                  <Text style={[styles.orderStatusText, { color: getStatusStyle(recentOrder.status).text }]}>
+                    {recentOrder.status?.replace(/_/g, ' ')}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.orderCardFooter}>
+                <Text style={styles.orderTotalLabel}>Total</Text>
+                <Text style={styles.orderTotalValue}>₦{(recentOrder.total_amount || 0).toLocaleString()}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyActivityCard}>
+              <Ionicons name="cart-outline" size={32} color="#E2E8F0" />
+              <Text style={styles.emptyActivityText}>No orders yet</Text>
+              <TouchableOpacity 
+                style={styles.orderNowBtn}
+                onPress={() => router.push('/pharmacy/search')}
+              >
+                <Text style={styles.orderNowBtnText}>Order Medications</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </>
     );
   };
@@ -260,62 +560,196 @@ export default function HomeScreen() {
   // Doctor Dashboard
   const DoctorDashboard = () => {
     const doctorStats = [
-      { label: 'Total', value: stats.total_appointments || '0', icon: 'calendar', color: '#4a90e2' },
-      { label: 'Today', value: stats.today || '0', icon: 'today', color: '#2196f3' },
-      { label: 'Pending', value: stats.pending || '0', icon: 'time', color: '#ff9800' },
-      { label: 'Earnings', value: `₦${(stats.earnings || 0).toLocaleString()}`, icon: 'wallet', color: '#4caf50' },
+      { label: 'Today', value: stats.today || '0', icon: 'today', color: '#2196f3', bg: '#EEF2FF' },
+      { label: 'Pending', value: stats.pending || '0', icon: 'time', color: '#F59E0B', bg: '#FFFBEB' },
+      { label: 'Total', value: stats.total_appointments || '0', icon: 'calendar', color: '#4F46E5', bg: '#F5F3FF' },
+      { label: 'Earnings', value: `₦${(stats.earnings || 0).toLocaleString()}`, icon: 'wallet', color: '#10B981', bg: '#ECFDF5' },
     ];
 
     return (
       <>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Welcome, Dr. {userData?.full_name?.split(' ')[1] || 'Doctor'}</Text>
-            <Text style={styles.subGreeting}>You have {stats.today || 0} appointments today</Text>
+            <Text style={styles.subGreeting}>Welcome back,</Text>
+            <Text style={styles.greeting}>Dr. {userData?.full_name?.split(' ')[0] || 'Doctor'}</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.profilePic}
-            onPress={() => router.push('/profile' as any)}
-          >
-            <Ionicons name="person-circle" size={40} color="#4a90e2" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={styles.notifBtn}
+              onPress={() => router.push('/notifications' as any)}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.profilePic}
+              onPress={() => router.push('/profile' as any)}
+            >
+              <LinearGradient
+                colors={['#e3f2fd', '#f8f9fa']}
+                style={styles.profilePicGradient}
+              >
+                <Ionicons name="person" size={24} color="#4a90e2" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.statsRow}>
+        {/* Doctor Stats */}
+        <View style={styles.doctorStatsRow}>
           {doctorStats.map((s, i) => (
-            <View key={i} style={styles.statCard}>
-              <Ionicons name={s.icon as any} size={20} color={s.color} />
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
+            <View key={i} style={styles.doctorStatCard}>
+              <View style={[styles.doctorStatIconBg, { backgroundColor: s.bg }]}>
+                <Ionicons name={s.icon as any} size={20} color={s.color} />
+              </View>
+              <Text style={styles.doctorStatValue}>{s.value}</Text>
+              <Text style={styles.doctorStatLabel}>{s.label}</Text>
             </View>
           ))}
         </View>
 
+        {/* Today's Schedule */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Next Appointment</Text>
-            <TouchableOpacity onPress={() => router.push('/explore')}><Text style={styles.seeAll}>See All</Text></TouchableOpacity>
+            <Text style={styles.sectionTitle}>Today's Schedule</Text>
+            <TouchableOpacity onPress={() => router.push('/explore')}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
           </View>
-          {recentConsultation ? (
+          {recentConsultation && recentConsultation.status !== 'completed' ? (
             <TouchableOpacity 
-              style={styles.activityCard}
+              style={styles.appointmentCard}
               onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
             >
-              <View style={styles.activityInfo}>
-                <Text style={styles.activityType}>{recentConsultation.patient_name || 'Patient'} - {recentConsultation.reason}</Text>
-                <Text style={styles.activityDetail}>
-                  {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'} - {recentConsultation.mode}
-                </Text>
+              <View style={styles.appointmentHeader}>
+                <View style={[styles.appointmentAvatar, { backgroundColor: '#EEF2FF' }]}>
+                  <Text style={styles.appointmentAvatarText}>
+                    {(recentConsultation.patient_name || 'P').charAt(0)}
+                  </Text>
+                </View>
+                <View style={styles.appointmentInfo}>
+                  <Text style={styles.appointmentPatientName}>{recentConsultation.patient_name || 'Patient'}</Text>
+                  <Text style={styles.appointmentReason}>{recentConsultation.reason || 'Consultation'}</Text>
+                </View>
+                <View style={[styles.appointmentStatusBadge, { 
+                  backgroundColor: recentConsultation.status === 'scheduled' ? '#ECFDF5' : '#FFFBEB' 
+                }]}>
+                  <Text style={[styles.appointmentStatusText, { 
+                    color: recentConsultation.status === 'scheduled' ? '#10B981' : '#F59E0B' 
+                  }]}>
+                    {recentConsultation.status?.toUpperCase()}
+                  </Text>
+                </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              <View style={styles.appointmentFooter}>
+                <View style={styles.appointmentDetail}>
+                  <Ionicons name="time" size={14} color="#64748B" />
+                  <Text style={styles.appointmentDetailText}>
+                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
+                  </Text>
+                </View>
+                <View style={styles.appointmentDetail}>
+                  <Ionicons name="videocam" size={14} color="#64748B" />
+                  <Text style={styles.appointmentDetailText}>
+                    {recentConsultation.mode || 'Video'}
+                  </Text>
+                </View>
+              </View>
+              {recentConsultation.status === 'pending' && (
+                <View style={styles.appointmentActions}>
+                  <TouchableOpacity style={styles.acceptBtn}>
+                    <Text style={styles.acceptBtnText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.declineBtn}>
+                    <Text style={styles.declineBtnText}>Decline</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {recentConsultation.status === 'scheduled' && (
+                <TouchableOpacity style={styles.startConsultationBtn}>
+                  <Text style={styles.startConsultationBtnText}>Start Consultation</Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyActivityCard}>
-              <Text style={styles.emptyActivityText}>No appointments scheduled</Text>
+              <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
+              <Text style={styles.emptyActivityText}>No appointments for today</Text>
             </View>
           )}
         </View>
 
+        {/* Recent Prescriptions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Prescriptions</Text>
+            <TouchableOpacity onPress={() => router.push('/prescriptions/index' as any)}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentPrescription ? (
+            <TouchableOpacity 
+              style={styles.docPrescriptionCard}
+              onPress={() => router.push({ pathname: '/prescriptions/index', params: { id: recentPrescription.id } } as any)}
+            >
+              <View style={styles.docPrescriptionHeader}>
+                <View style={[styles.docPrescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="document-text" size={20} color="#10B981" />
+                </View>
+                <View style={styles.docPrescriptionInfo}>
+                  <Text style={styles.docPrescriptionPatient}>{recentPrescription.patient_name || 'Patient'}</Text>
+                  <Text style={styles.docPrescriptionDate}>
+                    Issued: {new Date(recentPrescription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+                <View style={[styles.docPrescriptionBadge, { 
+                  backgroundColor: recentPrescription.is_dispensed ? '#ECFDF5' : '#FFFBEB' 
+                }]}>
+                  <Text style={[styles.docPrescriptionBadgeText, { 
+                    color: recentPrescription.is_dispensed ? '#10B981' : '#F59E0B' 
+                  }]}>
+                    {recentPrescription.is_dispensed ? 'FILLED' : 'PENDING'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.emptyActivityCard}>
+              <Ionicons name="document-text-outline" size={32} color="#E2E8F0" />
+              <Text style={styles.emptyActivityText}>No prescriptions issued yet</Text>
+            </View>
+          )}
+        </View>
+
+        {/* New Patient Bookings Notifications */}
+        {stats.pending > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>New Booking Requests</Text>
+              <View style={styles.newBadge}>
+                <Text style={styles.newBadgeText}>{stats.pending} NEW</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.newBookingCard}>
+              <View style={[styles.newBookingIconBg, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="person-add" size={24} color="#D97706" />
+              </View>
+              <View style={styles.newBookingInfo}>
+                <Text style={styles.newBookingTitle}>Pending Appointments</Text>
+                <Text style={styles.newBookingText}>
+                  You have {stats.pending} appointment request(s) awaiting your response
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
@@ -327,6 +761,7 @@ export default function HomeScreen() {
                 <Ionicons name="document-text" size={24} color="#4caf50" />
               </View>
               <Text style={styles.actionLabel}>Prescribe</Text>
+              <Text style={styles.actionSubLabel}>Create prescription</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.actionCard}
@@ -335,7 +770,28 @@ export default function HomeScreen() {
               <View style={[styles.iconBg, { backgroundColor: '#e3f2fd' }]}>
                 <Ionicons name="calendar" size={24} color="#4a90e2" />
               </View>
-              <Text style={styles.actionLabel}>Visits</Text>
+              <Text style={styles.actionLabel}>Appointments</Text>
+              <Text style={styles.actionSubLabel}>View schedule</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/bookings/search')}
+            >
+              <View style={[styles.iconBg, { backgroundColor: '#F5F3FF' }]}>
+                <Ionicons name="people" size={24} color="#7C3AED" />
+              </View>
+              <Text style={styles.actionLabel}>My Patients</Text>
+              <Text style={styles.actionSubLabel}>Patient history</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/doctor/analytics')}
+            >
+              <View style={[styles.iconBg, { backgroundColor: '#FFFBEB' }]}>
+                <Ionicons name="stats-chart" size={24} color="#F59E0B" />
+              </View>
+              <Text style={styles.actionLabel}>Analytics</Text>
+              <Text style={styles.actionSubLabel}>Track progress</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -946,5 +1402,544 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
     lineHeight: 16,
+  },
+  // Patient Dashboard Styles
+  notifBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  notifBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  notifBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingHorizontal: 4,
+  },
+  patientStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  patientStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  patientStatValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  patientStatLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  // Order Card Styles
+  orderCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  orderCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  orderPharmacyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  orderIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  orderPharmacyName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  orderDate: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  orderStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  orderStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+  orderCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  orderTotalLabel: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  orderTotalValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0D1B3A',
+  },
+  orderNowBtn: {
+    marginTop: 16,
+    backgroundColor: '#0D1B3A',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  orderNowBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  // Consultation Card Styles
+  consultationCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  consultationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  consultationIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  consultationInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  consultationDoctor: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  consultationSpecialty: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  consultationStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  consultationStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  consultationFooter: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  consultationDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  consultationDetailText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  // Prescription Card Styles
+  prescriptionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  prescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  prescriptionIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  prescriptionInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  prescriptionDoctor: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  prescriptionDate: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  prescriptionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  prescriptionBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  prescriptionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  prescriptionExpiry: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  buyAgainBtn: {
+    backgroundColor: '#0D1B3A',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  buyAgainBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  // Reminders Styles
+  remindersCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  reminderItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  reminderIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  reminderInfo: {
+    flex: 1,
+  },
+  reminderTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  reminderText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  emptyReminder: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyReminderText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  // Doctor Dashboard Styles
+  doctorStatsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  doctorStatCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  doctorStatIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  doctorStatValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  doctorStatLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  // Appointment Card Styles
+  appointmentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  appointmentAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  appointmentAvatarText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#4F46E5',
+  },
+  appointmentInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  appointmentPatientName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  appointmentReason: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  appointmentStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  appointmentStatusText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  appointmentFooter: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  appointmentDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  appointmentDetailText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  appointmentActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  acceptBtn: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  acceptBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  declineBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  declineBtnText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  startConsultationBtn: {
+    backgroundColor: '#4F46E5',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  startConsultationBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  // Doctor Prescription Card
+  docPrescriptionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  docPrescriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  docPrescriptionIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  docPrescriptionInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  docPrescriptionPatient: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  docPrescriptionDate: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  docPrescriptionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  docPrescriptionBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  // New Booking Styles
+  newBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  newBookingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  newBookingIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  newBookingInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  newBookingTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  newBookingText: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

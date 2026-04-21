@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     is_verified BOOLEAN DEFAULT FALSE, -- From UserJourney.md: Verification status
     is_shared BOOLEAN DEFAULT FALSE, -- From UserJourney.md: Sharing functionality
     shared_with TEXT, -- From UserJourney.md: Share with other users
+    is_dispensed BOOLEAN DEFAULT FALSE, -- From UserJourney.md: Track if prescription was filled
+    dispensed_at TIMESTAMPTZ, -- Timestamp when prescription was dispensed
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
