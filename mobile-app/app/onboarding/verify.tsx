@@ -18,7 +18,13 @@ export default function VerifyScreen() {
     
     const success = await verify(code);
     if (success) {
-      router.replace('/onboarding/complete');
+      if (data.userType === 'pharmacy') {
+        router.push('/onboarding/pharmacy-info');
+      } else if (data.userType === 'doctor') {
+        router.push('/onboarding/info');
+      } else {
+        router.push('/onboarding/profile');
+      }
     }
   };
 
@@ -63,8 +69,6 @@ export default function VerifyScreen() {
               maxLength={4}
               value={code}
               onChangeText={setCode}
-              letterSpacing={20}
-              textAlign="center"
               autoFocus
             />
           </View>
@@ -194,11 +198,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
     opacity: 0.5,

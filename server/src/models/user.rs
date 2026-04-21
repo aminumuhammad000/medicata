@@ -5,10 +5,15 @@ use chrono::{DateTime, Utc, NaiveDate};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum UserRole {
+    #[serde(alias = "Patient")]
     Patient,
+    #[serde(alias = "Doctor")]
     Doctor,
+    #[serde(alias = "Pharmacy")]
     Pharmacy,
+    #[serde(alias = "Admin")]
     Admin,
 }
 
@@ -19,7 +24,7 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing)]
     pub password_hash: String,
-    pub phone_number: String,
+    pub phone_number: Option<String>,
     pub whatsapp_number: Option<String>,
     pub role: UserRole,
     pub is_verified: bool,
@@ -57,6 +62,18 @@ pub struct User {
     pub pharmacy_license: Option<String>,
     pub pharmacy_contact_info: Option<String>,
     pub opening_hours: Option<String>,
+    
+    // Auth fields
+    #[serde(skip_serializing)]
+    pub reset_code: Option<String>,
+    #[serde(skip_serializing)]
+    pub reset_code_expires_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing)]
+    pub verification_code: Option<String>,
+
+    pub consultation_fee: Option<i64>,
+    pub rating: Option<f32>,
+    pub review_count: i32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -64,8 +81,12 @@ pub struct RegisterRequest {
     pub full_name: String,
     pub email: String,
     pub password: String,
-    pub phone_number: String,
+    #[serde(default)]
+    pub phone_number: Option<String>,
+    #[serde(default)]
     pub whatsapp_number: Option<String>,
+    #[serde(default)]
+    pub address: Option<String>,
     pub role: UserRole,
 }
 

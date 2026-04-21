@@ -126,6 +126,16 @@ CREATE TABLE IF NOT EXISTS pharmacy_orders (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Order Items Table (Items within a pharmacy order)
+CREATE TABLE IF NOT EXISTS order_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES pharmacy_orders(id) ON DELETE CASCADE,
+    drug_id UUID NOT NULL REFERENCES drugs(id),
+    quantity INT NOT NULL DEFAULT 1,
+    price BIGINT NOT NULL DEFAULT 0, -- Price per unit in kobo (Naira * 100)
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Feedback / Ratings Table
 CREATE TABLE IF NOT EXISTS reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

@@ -4,19 +4,29 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "consultation_mode", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ConsultationMode {
+    #[serde(alias = "Chat")]
     Chat,
+    #[serde(alias = "Video")]
     Video,
+    #[serde(alias = "Audio")]
     Audio,
+    #[serde(alias = "InPerson")]
     InPerson,
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "consultation_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum ConsultationStatus {
+    #[serde(alias = "Pending")]
     Pending,
+    #[serde(alias = "Accepted")]
     Accepted,
+    #[serde(alias = "Completed")]
     Completed,
+    #[serde(alias = "Cancelled")]
     Cancelled,
 }
 
@@ -37,6 +47,12 @@ pub struct Consultation {
     pub is_follow_up: Option<bool>, // From UserJourney.md: Optionally flag follow-up consultations
     pub patient_rating: Option<i32>, // From UserJourney.md: Provide feedback / rating for doctor
     pub created_at: DateTime<Utc>,
+    
+    // Add these fields for UI convenience
+    #[sqlx(default)]
+    pub doctor_name: Option<String>,
+    #[sqlx(default)]
+    pub patient_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,4 +81,13 @@ pub struct AddConsultationNotesRequest {
 #[derive(Debug, Deserialize)]
 pub struct AddPatientFeedbackRequest {
     pub rating: i32, // From UserJourney.md: Provide feedback / rating for doctor
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DoctorAnalytics {
+    pub today_appointments: i64,
+    pub pending_appointments: i64,
+    pub total_appointments: i64,
+    pub total_earnings: i64,
+    pub completed_this_month: i64,
 }

@@ -54,3 +54,25 @@ impl From<sqlx::Error> for AppError {
         }
     }
 }
+
+impl AppError {
+    #[allow(dead_code)]
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        AppError::NotFound(msg.into())
+    }
+
+    #[allow(dead_code)]
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        AppError::BadRequest(msg.into())
+    }
+
+    #[allow(dead_code)]
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        AppError::Forbidden(msg.into())
+    }
+
+    #[allow(dead_code)]
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        AppError::Unauthorized(msg.into())
+    }
+}

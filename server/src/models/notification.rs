@@ -14,6 +14,7 @@ pub struct Notification {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct CreateNotificationRequest {
     pub user_id: Uuid,
     pub title: String,

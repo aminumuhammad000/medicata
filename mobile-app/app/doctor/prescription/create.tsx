@@ -1,28 +1,98 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { api } from '../../../services/api';
 
 export default function CreatePrescription() {
   const router = useRouter();
+  const { consultationId, patientId } = useLocalSearchParams<{ consultationId: string, patientId: string }>();
+  
   const [items, setItems] = useState<any[]>([]);
-  const [drug, setDrug] = useState('');
+  const [drugQuery, setDrugQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedDrug, setSelectedDrug] = useState<any>(null);
+  
   const [dosage, setDosage] = useState('');
   const [frequency, setFrequency] = useState('');
   const [duration, setDuration] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [instructions, setInstructions] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (drugQuery.length > 2) {
+        searchDrugs(drugQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [drugQuery]);
+
+  const searchDrugs = async (name: string) => {
+    setIsSearching(true);
+    try {
+      const res = await api.searchDrugs(name);
+      if (res.data) {
+        setSearchResults(res.data);
+      }
+    } catch (error) {
+      console.error('Drug search failed:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const addItem = () => {
-    if (!drug || !dosage) return;
-    setItems([...items, { drug, dosage, frequency, duration }]);
-    setDrug('');
+    if (!selectedDrug || !dosage || !quantity) return;
+    
+    setItems([...items, { 
+      drug: selectedDrug, 
+      drug_id: selectedDrug.id,
+      dosage, 
+      frequency, 
+      duration_days: parseInt(duration) || 0,
+      quantity: parseInt(quantity) || 0,
+      instructions 
+    }]);
+    
+    setDrugQuery('');
+    setSelectedDrug(null);
     setDosage('');
     setFrequency('');
     setDuration('');
+    setQuantity('');
+    setInstructions('');
   };
 
-  const handleFinish = () => {
-    router.back(); // Go back to consultation desk
+  const handleFinish = async () => {
+    if (!patientId) return;
+    setIsFinishing(true);
+    try {
+      await api.createPrescription({
+        consultation_id: consultationId || undefined,
+        patient_id: patientId,
+        expiry_days: 30, // Default 30 days
+        items: items.map(item => ({
+          drug_id: item.drug_id,
+          dosage: item.dosage,
+          frequency: item.frequency,
+          duration_days: item.duration_days,
+          quantity: item.quantity,
+          instructions: item.instructions
+        }))
+      });
+      alert('Prescription created successfully!');
+      router.back();
+    } catch (error) {
+      alert('Failed to create prescription');
+    } finally {
+      setIsFinishing(false);
+    }
   };
 
   return (
@@ -38,15 +108,41 @@ export default function CreatePrescription() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.formCard}>
           <Text style={styles.cardTitle}>Add Medication</Text>
+          
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Drug Name</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="e.g. Amoxicillin" 
-              value={drug}
-              onChangeText={setDrug}
-            />
+            <Text style={styles.label}>Search Drug</Text>
+            <View style={styles.searchRow}>
+              <TextInput 
+                style={[styles.input, { flex: 1 }]} 
+                placeholder="e.g. Amoxicillin" 
+                value={selectedDrug ? selectedDrug.name : drugQuery}
+                onChangeText={(text) => {
+                  setDrugQuery(text);
+                  if (selectedDrug) setSelectedDrug(null);
+                }}
+              />
+              {isSearching && <ActivityIndicator style={{ marginLeft: -40 }} color="#4a90e2" />}
+            </View>
+            
+            {searchResults.length > 0 && !selectedDrug && (
+              <View style={styles.suggestions}>
+                {searchResults.map((d) => (
+                  <TouchableOpacity 
+                    key={d.id} 
+                    style={styles.suggestionItem}
+                    onPress={() => {
+                      setSelectedDrug(d);
+                      setSearchResults([]);
+                    }}
+                  >
+                    <Text style={styles.suggestionText}>{d.name}</Text>
+                    <Text style={styles.suggestionMeta}>{d.brand} • {d.strength}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
+
           <View style={styles.row}>
             <View style={[styles.inputGroup, { flex: 1 }]}>
               <Text style={styles.label}>Dosage</Text>
@@ -67,17 +163,45 @@ export default function CreatePrescription() {
               />
             </View>
           </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Text style={styles.label}>Duration (days)</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="7" 
+                value={duration}
+                onChangeText={setDuration}
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={[styles.inputGroup, { flex: 1, marginLeft: 12 }]}>
+              <Text style={styles.label}>Quantity</Text>
+              <TextInput 
+                style={styles.input} 
+                placeholder="21" 
+                value={quantity}
+                onChangeText={setQuantity}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Duration (days)</Text>
+            <Text style={styles.label}>Instructions (Optional)</Text>
             <TextInput 
               style={styles.input} 
-              placeholder="7" 
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="numeric"
+              placeholder="Take after meals" 
+              value={instructions}
+              onChangeText={setInstructions}
             />
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={addItem}>
+
+          <TouchableOpacity 
+            style={[styles.addButton, !selectedDrug && styles.addButtonDisabled]} 
+            onPress={addItem}
+            disabled={!selectedDrug}
+          >
             <Ionicons name="add" size={20} color="#fff" />
             <Text style={styles.addButtonText}>Add to List</Text>
           </TouchableOpacity>
@@ -86,16 +210,22 @@ export default function CreatePrescription() {
         <View style={styles.listSection}>
           <Text style={styles.sectionTitle}>Prescription Items</Text>
           {items.length === 0 ? (
-            <Text style={styles.emptyText}>No items added yet</Text>
+            <View style={styles.emptyContainer}>
+              <Ionicons name="medical-outline" size={48} color="#ddd" />
+              <Text style={styles.emptyText}>No medications added</Text>
+            </View>
           ) : (
             items.map((item, index) => (
               <View key={index} style={styles.itemCard}>
-                <View>
-                  <Text style={styles.itemDrug}>{item.drug}</Text>
-                  <Text style={styles.itemMeta}>{item.dosage} • {item.frequency} for {item.duration} days</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemDrug}>{item.drug.name}</Text>
+                  <Text style={styles.itemMeta}>{item.dosage} • {item.frequency} for {item.duration_days} days</Text>
+                  {item.instructions ? (
+                    <Text style={styles.itemInst}>Note: {item.instructions}</Text>
+                  ) : null}
                 </View>
                 <TouchableOpacity onPress={() => setItems(items.filter((_, i) => i !== index))}>
-                  <Ionicons name="trash" size={20} color="#f44336" />
+                  <Ionicons name="trash-outline" size={20} color="#ff3b30" />
                 </TouchableOpacity>
               </View>
             ))
@@ -105,11 +235,15 @@ export default function CreatePrescription() {
 
       <View style={styles.footer}>
         <TouchableOpacity 
-          style={[styles.finishButton, items.length === 0 && styles.finishButtonDisabled]} 
+          style={[styles.finishButton, (items.length === 0 || isFinishing) && styles.finishButtonDisabled]} 
           onPress={handleFinish}
-          disabled={items.length === 0}
+          disabled={items.length === 0 || isFinishing}
         >
-          <Text style={styles.finishButtonText}>Finalize Prescription</Text>
+          {isFinishing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.finishButtonText}>Finalize & Send Prescription</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -239,5 +373,62 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  suggestions: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+    maxHeight: 200,
+    ...(Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+      }
+    }) as any),
+  },
+  suggestionItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f8f9fa',
+  },
+  suggestionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  suggestionMeta: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  addButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  itemInst: {
+    fontSize: 12,
+    color: '#4a90e2',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct DoctorSearchQuery {
     pub specialty: Option<String>,
     pub min_rating: Option<f32>,

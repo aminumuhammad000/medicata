@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,27 @@ import { api } from '../../../services/api';
 export default function DoctorProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [doctor, setDoctor] = useState<any>(null);
   const [reason, setReason] = useState('');
   const [mode, setMode] = useState('video');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pageLoading, setPageLoading] = useState(true);
+
+  useEffect(() => {
+    loadDoctor();
+  }, [id]);
+
+  const loadDoctor = async () => {
+    try {
+      const response = await api.getDoctorById(id as string);
+      setDoctor(response.data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load doctor');
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   const modes = [
     { id: 'video', name: 'Video', icon: 'videocam' },
@@ -30,13 +47,20 @@ export default function DoctorProfileScreen() {
       const scheduledAt = new Date();
       scheduledAt.setHours(9, 0, 0, 0);
       
-      await api.bookConsultation({
+      const response = await api.bookConsultation({
         doctor_id: id as string,
         scheduled_at: scheduledAt.toISOString(),
         mode: mode,
         reason: reason,
         symptoms: reason,
       });
+
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
+
+      alert('Booking request sent successfully!');
       router.replace('/(tabs)/explore');
     } catch (err: any) {
       setError(err.message || 'Failed to book consultation');
@@ -44,6 +68,16 @@ export default function DoctorProfileScreen() {
       setLoading(false);
     }
   };
+
+  if (pageLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4a90e2" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -64,19 +98,18 @@ export default function DoctorProfileScreen() {
             <View style={styles.avatarPlaceholder}>
               <Ionicons name="person" size={60} color="#ccc" />
             </View>
-            <Text style={styles.name}>Dr. Sarah Connor</Text>
-            <Text style={styles.specialty}>Cardiologist • 12 years exp.</Text>
+            <Text style={styles.name}>{doctor?.full_name || 'Doctor'}</Text>
+            <Text style={styles.specialty}>{doctor?.specialty || 'General'} • {doctor?.years_of_experience || 'N/A'} years exp.</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={16} color="#ff9800" />
-              <Text style={styles.ratingText}>4.8 (120 reviews)</Text>
+              <Text style={styles.ratingText}>{doctor?.rating || '4.5'} ({doctor?.review_count || '0'} reviews)</Text>
             </View>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>About</Text>
             <Text style={styles.aboutText}>
-              Passionate cardiologist with over 12 years of experience in treating complex heart conditions. 
-              Focused on preventative care and non-invasive procedures.
+              {doctor?.bio || 'No bio available.'}
             </Text>
           </View>
 
@@ -278,5 +311,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

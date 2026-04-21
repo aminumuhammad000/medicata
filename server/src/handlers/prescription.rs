@@ -14,8 +14,10 @@ use crate::{
     handlers::notification::create_notification,
 };
 use chrono::{Utc, Duration};
+use uuid::Uuid;
 
 // From UserJourney.md Prescription Workflow: Drug Selection
+#[allow(dead_code)]
 pub async fn search_drugs(
     State(state): State<AppState>,
     Query(params): Query<serde_json::Value>,
@@ -222,4 +224,115 @@ pub async fn reorder_prescription(
     }
 
     Ok(Json(new_prescription))
+}
+
+pub async fn get_my_prescriptions(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Vec<Prescription>>, AppError> {
+    let query = match claims.role {
+        UserRole::Patient => 
+            "SELECT p.*, u.full_name as doctor_name 
+             FROM prescriptions p
+             JOIN users u ON p.doctor_id = u.id
+             WHERE p.patient_id = $1 
+             ORDER BY p.created_at DESC",
+        UserRole::Doctor => 
+            "SELECT p.*, u.full_name as patient_name 
+             FROM prescriptions p
+             JOIN users u ON p.patient_id = u.id
+             WHERE p.doctor_id = $1 
+             ORDER BY p.created_at DESC",
+        UserRole::Pharmacy =>
+            "SELECT p.*, u.full_name as patient_name 
+             FROM prescriptions p
+             JOIN users u ON p.patient_id = u.id
+             WHERE p.is_shared = true AND p.shared_with = (SELECT full_name FROM users WHERE id = $1)
+             ORDER BY p.created_at DESC",
+        _ => return Err(AppError::Forbidden("Unauthorized role for prescriptions".to_string())),
+    };
+
+    let prescriptions = sqlx::query_as::<_, Prescription>(query)
+        .bind(claims.sub)
+        .fetch_all(&state.db)
+        .await?;
+
+    Ok(Json(prescriptions))
+}
+
+pub async fn verify_prescription_by_token(
+    State(state): State<AppState>,
+    Path(token): Path<uuid::Uuid>,
+) -> Result<Json<FullPrescriptionResponse>, AppError> {
+    println!("[DEBUG] Verifying prescription with token: {}", token);
+
+    // 1. Fetch prescription by qr_code_token
+    let prescription = sqlx::query_as::<_, Prescription>(
+        "SELECT p.*, u_doc.full_name as doctor_name, u_pat.full_name as patient_name 
+         FROM prescriptions p
+         JOIN users u_doc ON p.doctor_id = u_doc.id
+         JOIN users u_pat ON p.patient_id = u_pat.id
+         WHERE p.qr_code_token = $1"
+    )
+    .bind(token)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Invalid prescription token".to_string()))?;
+
+    // 2. Fetch items with drugs
+    let items = sqlx::query(
+        "SELECT pi.*, d.name as drug_name, d.category as drug_category, d.brand as drug_brand, d.strength as drug_strength
+         FROM prescription_items pi
+         JOIN drugs d ON pi.drug_id = d.id
+         WHERE pi.prescription_id = $1"
+    )
+    .bind(prescription.id)
+    .fetch_all(&state.db)
+    .await?;
+
+    let detailed_items = items.into_iter().map(|i| {
+        use sqlx::Row;
+        PrescriptionItemWithDrug {
+            item: PrescriptionItem {
+                id: i.get("id"),
+                prescription_id: i.get("prescription_id"),
+                drug_id: i.get("drug_id"),
+                dosage: i.get("dosage"),
+                frequency: i.get("frequency"),
+                duration_days: i.get("duration_days"),
+                quantity: i.get("quantity"),
+                instructions: i.get("instructions"),
+            },
+            drug: Drug {
+                id: i.get("drug_id"),
+                name: i.get("drug_name"),
+                category: i.get("drug_category"),
+                brand: i.get("drug_brand"),
+                strength: i.get("drug_strength"),
+            },
+        }
+    }).collect();
+
+    Ok(Json(FullPrescriptionResponse {
+        prescription,
+        items: detailed_items,
+    }))
+}
+
+pub async fn dispense_prescription(
+    State(state): State<AppState>,
+    Extension(_claims): Extension<Claims>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<Prescription>, AppError> {
+    let prescription = sqlx::query_as::<_, Prescription>(
+        "UPDATE prescriptions 
+         SET is_dispensed = true, dispensed_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND is_dispensed = false
+         RETURNING *"
+    )
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(prescription))
 }

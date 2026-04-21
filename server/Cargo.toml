@@ -12,7 +12,7 @@ serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-sqlx = { version = "0.7.4", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "macros"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "macros"] }
 jsonwebtoken = "9.3.0"
 argon2 = "0.5.3"
 uuid = { version = "1.8.0", features = ["v4", "serde"] }
@@ -23,5 +23,7 @@ anyhow = "1.0.86"
 futures = "0.3.30"
 tokio-tungstenite = "0.21.0"
 futures-util = "0.3.30"
-lettre = "0.11.7"
+lettre = { version = "0.11.7", features = ["native-tls"] }
 rand = "0.8.5"
+cloudinary = "0.8.2"
+reqwest = { version = "0.13.2", features = ["json", "multipart"] }

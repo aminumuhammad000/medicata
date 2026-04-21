@@ -23,6 +23,12 @@ pub struct Prescription {
     pub is_shared: bool, // From UserJourney.md: Sharing functionality
     pub shared_with: Option<String>, // From UserJourney.md: Share with other users
     pub created_at: DateTime<Utc>,
+
+    // Add these fields for UI convenience
+    #[sqlx(default)]
+    pub doctor_name: Option<String>,
+    #[sqlx(default)]
+    pub patient_name: Option<String>,
 }
 
 #[derive(Debug, sqlx::FromRow, Serialize, Deserialize)]
@@ -58,6 +64,7 @@ pub struct CreatePrescriptionItemRequest {
 #[derive(Debug, Deserialize)]
 pub struct SharePrescriptionRequest {
     pub share_with: String, // From UserJourney.md: Share with another Medicata user
+    #[allow(dead_code)]
     pub export_format: Option<String>, // From UserJourney.md: Export as Prescription Card (PDF/image)
 }
 

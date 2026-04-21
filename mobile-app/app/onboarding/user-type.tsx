@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding, UserType } from '../../context/OnboardingContext';
@@ -63,13 +63,6 @@ export default function UserTypeScreen() {
           icon="💊"
           color="#22c55e"
         />
-        <UserOption 
-          type="admin"
-          title="Admin"
-          description="Verify medical licenses and manage the platform"
-          icon="🏢"
-          color="#8B5CF6"
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -110,11 +103,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+      }
+    }),
   },
   iconContainer: {
     width: 56,

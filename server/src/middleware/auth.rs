@@ -32,7 +32,10 @@ pub async fn auth_middleware(
         &DecodingKey::from_secret(state.config.jwt_secret.as_bytes()),
         &Validation::default(),
     )
-    .map_err(|_| AppError::Unauthorized("Invalid or expired token".to_string()))?;
+    .map_err(|e| {
+        println!("[DEBUG] JWT Decode Error: {:?}", e);
+        AppError::Unauthorized("Invalid or expired token".to_string())
+    })?;
 
     req.extensions_mut().insert(token_data.claims);
 

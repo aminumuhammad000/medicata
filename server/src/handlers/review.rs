@@ -37,36 +37,17 @@ pub async fn create_review(
     .fetch_one(&mut *tx)
     .await?;
 
-    // Update target rating and count (Doctor or Pharmacy)
-    // We'll check the target's role
-    let target_role = sqlx::query_scalar::<_, String>("SELECT role::text FROM users WHERE id = $1")
-        .bind(payload.target_id)
-        .fetch_one(&mut *tx)
-        .await?;
-
-    if target_role == "doctor" {
-        sqlx::query(
-            "UPDATE doctor_profiles 
-             SET rating = (rating * review_count + $1) / (review_count + 1), 
-                 review_count = review_count + 1 
-             WHERE user_id = $2"
-        )
-        .bind(payload.rating as f64)
-        .bind(payload.target_id)
-        .execute(&mut *tx)
-        .await?;
-    } else if target_role == "pharmacy" {
-        sqlx::query(
-            "UPDATE pharmacy_profiles 
-             SET rating = (rating * (SELECT count(*) FROM reviews WHERE target_id = $2) + $1) / 
-                          ((SELECT count(*) FROM reviews WHERE target_id = $2) + 1)
-             WHERE user_id = $2"
-        )
-        .bind(payload.rating as f64)
-        .bind(payload.target_id)
-        .execute(&mut *tx)
-        .await?;
-    }
+    // Update target rating and count in the flattened users table
+    sqlx::query(
+        "UPDATE users 
+         SET rating = (COALESCE(rating, 0) * review_count + $1) / (review_count + 1), 
+             review_count = review_count + 1 
+         WHERE id = $2"
+    )
+    .bind(payload.rating as f64)
+    .bind(payload.target_id)
+    .execute(&mut *tx)
+    .await?;
 
     tx.commit().await?;
 

@@ -23,7 +23,12 @@ export default function InfoScreen() {
   const handleNext = async () => {
     if (data.userType === 'patient') {
       updateData({ dob, gender, allergies, conditions });
-      const success = await submitPatientHealthInfo();
+      const success = await submitPatientHealthInfo({
+        date_of_birth: dob,
+        gender,
+        allergies,
+        existing_conditions: conditions,
+      });
       if (success) {
         router.push('/onboarding/profile');
       }
@@ -268,11 +273,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
     opacity: 0.5,

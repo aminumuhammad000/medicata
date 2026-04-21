@@ -2,7 +2,8 @@ use axum::{
     extract::State,
     Json,
 };
-use uuid::Uuid;
+use chrono::Utc;
+use serde::Deserialize;
 use crate::{
     error::AppError,
     models::user::{RegisterRequest, LoginRequest, AuthResponse, User, PatientHealthInfoRequest, PatientProfileRequest, DoctorProfessionalInfoRequest, DoctorBioRequest, PharmacyInfoRequest},
@@ -18,15 +19,16 @@ pub async fn register(
     let password_hash = hash_password(&payload.password)?;
 
     let user = sqlx::query_as::<_, User>(
-        "INSERT INTO users (full_name, email, password_hash, phone_number, whatsapp_number, role) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
+        "INSERT INTO users (full_name, email, password_hash, phone_number, whatsapp_number, address, role) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING *"
     )
     .bind(&payload.full_name)
     .bind(&payload.email)
     .bind(password_hash)
-    .bind(&payload.phone_number)
-    .bind(&payload.whatsapp_number)
+    .bind(payload.phone_number.as_ref())
+    .bind(payload.whatsapp_number.as_ref())
+    .bind(payload.address.as_ref())
     .bind(payload.role)
     .fetch_one(&state.db)
     .await?;
@@ -66,14 +68,30 @@ pub async fn verify(
     claims: Claims,
     Json(payload): Json<VerifyRequest>,
 ) -> Result<Json<User>, AppError> {
-    // For MVP, we'll accept any 4-digit code and mark as verified
-    // In production, you would verify against a stored code
-    if payload.code.len() != 4 {
+    // Fetch user with verification code info
+    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+        .bind(claims.user_id)
+        .fetch_optional(&state.db)
+        .await?;
+
+    let user = match user {
+        Some(u) => u,
+        None => return Err(AppError::NotFound("User not found".to_string())),
+    };
+
+    // Verify code
+    let stored_code = match user.verification_code {
+        Some(c) => c,
+        None => return Err(AppError::BadRequest("No verification code sent".to_string())),
+    };
+
+    if stored_code != payload.code {
         return Err(AppError::BadRequest("Invalid verification code".to_string()));
     }
 
+    // Mark as verified and clear code
     let user = sqlx::query_as::<_, User>(
-        "UPDATE users SET is_verified = TRUE WHERE id = $1 RETURNING *"
+        "UPDATE users SET is_verified = TRUE, verification_code = NULL WHERE id = $1 RETURNING *"
     )
     .bind(claims.user_id)
     .fetch_one(&state.db)
@@ -94,13 +112,28 @@ pub async fn send_verification(
     // Generate a random 4-digit verification code
     let code = format!("{:04}", rand::random::<u16>() % 10000);
     
-    // Send verification email
-    state.email_service.send_verification_email(&payload.email, &code).await
-        .map_err(|e| AppError::BadRequest(format!("Failed to send email: {}", e)))?;
+    // Save verification code to database
+    sqlx::query("UPDATE users SET verification_code = $1 WHERE email = $2")
+        .bind(&code)
+        .bind(&payload.email)
+        .execute(&state.db)
+        .await?;
+
+    // Send verification email in background (non-blocking)
+    let email_service = state.email_service.clone();
+    let email = payload.email.clone();
+    let code_clone = code.clone();
+    tokio::spawn(async move {
+        println!("Background process: Preparing to send verification email to {}", email);
+        if let Err(e) = email_service.send_verification_email(&email, &code_clone).await {
+            eprintln!("ERROR: Failed to send verification email to {}: {:?}", email, e);
+        } else {
+            println!("Background process: Successfully completed verification email task for {}", email);
+        }
+    });
 
     Ok(Json(serde_json::json!({
-        "message": "Verification code sent successfully",
-        "code": code // For MVP, return the code. In production, don't return it.
+        "message": "Verification code sent successfully"
     })))
 }
 
@@ -128,14 +161,31 @@ pub async fn forgot_password(
 
     // Generate a random 6-digit reset code
     let reset_code = format!("{:06}", rand::random::<u32>() % 1000000);
+    let expires_at = Utc::now() + chrono::Duration::minutes(10);
     
-    // Send password reset email
-    state.email_service.send_password_reset_email(&payload.email, &reset_code).await
-        .map_err(|e| AppError::BadRequest(format!("Failed to send email: {}", e)))?;
+    // Save reset code to database
+    sqlx::query("UPDATE users SET reset_code = $1, reset_code_expires_at = $2 WHERE email = $3")
+        .bind(&reset_code)
+        .bind(expires_at)
+        .bind(&payload.email)
+        .execute(&state.db)
+        .await?;
+
+    // Send password reset email in background (non-blocking)
+    let email_service = state.email_service.clone();
+    let email = payload.email.clone();
+    let code_clone = reset_code.clone();
+    tokio::spawn(async move {
+        println!("Background process: Preparing to send password reset email to {}", email);
+        if let Err(e) = email_service.send_password_reset_email(&email, &code_clone).await {
+            eprintln!("ERROR: Failed to send password reset email to {}: {:?}", email, e);
+        } else {
+            println!("Background process: Successfully completed email task for {}", email);
+        }
+    });
 
     Ok(Json(serde_json::json!({
-        "message": "Password reset code sent to your email",
-        "reset_code": reset_code // For MVP, return the code. In production, don't return it.
+        "message": "Password reset code sent to your email"
     })))
 }
 
@@ -150,26 +200,47 @@ pub async fn reset_password(
     State(state): State<AppState>,
     Json(payload): Json<ResetPasswordRequest>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    // For MVP, accept any 6-digit code and reset password
-    // In production, verify against stored code
-    if payload.code.len() != 6 {
+    // Fetch user with reset code info
+    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
+        .bind(&payload.email)
+        .fetch_optional(&state.db)
+        .await?;
+
+    let user = match user {
+        Some(u) => u,
+        None => return Err(AppError::NotFound("User not found".to_string())),
+    };
+
+    // Verify reset code
+    let stored_code = match user.reset_code {
+        Some(c) => c,
+        None => return Err(AppError::BadRequest("No reset code requested".to_string())),
+    };
+
+    if stored_code != payload.code {
         return Err(AppError::BadRequest("Invalid reset code".to_string()));
     }
 
+    // Verify expiry
+    let expires_at = match user.reset_code_expires_at {
+        Some(e) => e,
+        None => return Err(AppError::BadRequest("Reset code has no expiration".to_string())),
+    };
+
+    if Utc::now() > expires_at {
+        return Err(AppError::BadRequest("Reset code has expired".to_string()));
+    }
+
+    // Reset password and clear code
     let password_hash = hash_password(&payload.new_password)?;
 
-    let rows_affected = sqlx::query(
-        "UPDATE users SET password_hash = $1 WHERE email = $2"
+    sqlx::query(
+        "UPDATE users SET password_hash = $1, reset_code = NULL, reset_code_expires_at = NULL WHERE id = $2"
     )
     .bind(&password_hash)
-    .bind(&payload.email)
+    .bind(user.id)
     .execute(&state.db)
-    .await?
-    .rows_affected();
-
-    if rows_affected == 0 {
-        return Err(AppError::NotFound("User not found".to_string()));
-    }
+    .await?;
 
     Ok(Json(serde_json::json!({
         "message": "Password reset successfully"
@@ -204,6 +275,7 @@ pub async fn update_patient_profile(
     claims: Claims,
     Json(payload): Json<PatientProfileRequest>,
 ) -> Result<Json<User>, AppError> {
+    tracing::debug!("Updating patient profile for user: {} with payload: {:?}", claims.user_id, payload);
     let user = sqlx::query_as::<_, User>(
         "UPDATE users 
          SET bio = $2, height_cm = $3, weight_kg = $4, body_type = $5, address = $6, city = $7, state = $8, updated_at = NOW()
@@ -275,6 +347,8 @@ pub async fn update_pharmacy_info(
     claims: Claims,
     Json(payload): Json<PharmacyInfoRequest>,
 ) -> Result<Json<User>, AppError> {
+    tracing::debug!("Updating pharmacy info for user: {} with payload: {:?}", claims.user_id, payload);
+    
     let user = sqlx::query_as::<_, User>(
         "UPDATE users 
          SET pharmacy_name = $2, pharmacy_address = $3, pharmacy_license = $4, 
@@ -287,8 +361,42 @@ pub async fn update_pharmacy_info(
     .bind(&payload.pharmacy_license)
     .bind(&payload.pharmacy_contact_info)
     .bind(&payload.opening_hours)
-    .fetch_one(&state.db)
+    .fetch_optional(&state.db)
     .await?;
 
-    Ok(Json(user))
+    match user {
+        Some(u) => {
+            tracing::debug!("Successfully updated pharmacy info for user: {}", u.id);
+            Ok(Json(u))
+        },
+        None => {
+            tracing::error!("Failed to update pharmacy info: User {} not found in database", claims.user_id);
+            Err(AppError::NotFound("User not found".to_string()))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PayoutInfoRequest {
+    pub bank_name: String,
+    pub account_number: String,
+    pub account_name: String,
+}
+
+pub async fn update_payout_info(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<PayoutInfoRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    sqlx::query(
+        "UPDATE users SET bank_name = $1, account_number = $2, account_name = $3, updated_at = NOW() WHERE id = $4"
+    )
+    .bind(&payload.bank_name)
+    .bind(&payload.account_number)
+    .bind(&payload.account_name)
+    .bind(claims.user_id)
+    .execute(&state.db)
+    .await?;
+
+    Ok(Json(serde_json::json!({ "status": "success", "message": "Payout info updated" })))
 }

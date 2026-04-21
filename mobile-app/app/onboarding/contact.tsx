@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Switch } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Switch, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -14,21 +14,24 @@ export default function ContactScreen() {
   const [sameAsPhone, setSameAsPhone] = useState(false);
 
   const handleNext = async () => {
-    if (!phone || !address) return;
-    updateData({ 
+    const updatedData = { 
+      ...data,
       phone, 
       whatsapp: sameAsPhone ? phone : whatsapp, 
       address 
-    });
-
+    };
+    
+    updateData(updatedData);
+    
     // Register after collecting phone number
-    const success = await register();
+    const success = await register(updatedData);
     if (success) {
-      // From UserJourney.md: Pharmacy goes to pharmacy-info, others go to info
       if (data.userType === 'pharmacy') {
         router.push('/onboarding/pharmacy-info');
-      } else {
+      } else if (data.userType === 'doctor') {
         router.push('/onboarding/info');
+      } else {
+        router.push('/onboarding/verify');
       }
     }
   };
@@ -204,11 +207,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
     opacity: 0.5,

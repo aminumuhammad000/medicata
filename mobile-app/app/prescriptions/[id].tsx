@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../services/api';
 
 export default function PrescriptionDetailScreen() {
@@ -20,8 +21,12 @@ export default function PrescriptionDetailScreen() {
 
   const loadPrescription = async () => {
     try {
-      const data = await api.getPrescriptionDetails(id as string);
-      setPrescription(data);
+      const response = await api.getPrescriptionDetails(id as string);
+      if (response.data) {
+        setPrescription(response.data);
+      } else if (response.error) {
+        setError(response.error);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load prescription');
     } finally {
@@ -78,19 +83,25 @@ export default function PrescriptionDetailScreen() {
             <View style={styles.qrCard}>
               <Text style={styles.qrTitle}>Digital Prescription</Text>
               <View style={styles.qrPlaceholder}>
-                <Ionicons name="qr-code" size={150} color="#1a1a1a" />
+                <QRCode
+                  value={prescription?.prescription?.qr_code_token || prescription?.prescription?.id}
+                  size={150}
+                  color="#1a1a1a"
+                  backgroundColor="#fff"
+                />
               </View>
-              <Text style={styles.qrId}>ID: {prescription.id}</Text>
+              <Text style={styles.qrId}>ID: {prescription?.prescription?.id}</Text>
               <Text style={styles.qrNote}>Present this QR code at the pharmacy</Text>
             </View>
 
             {prescription.items && prescription.items.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Medication</Text>
-                {prescription.items.map((item: any, index: number) => {
+                {prescription.items.map((wrapper: any, index: number) => {
+                  const { item, drug } = wrapper;
                   return (
                     <View key={index} style={styles.drugCard}>
-                      <Text style={styles.drugName}>{item.drug_name || 'Medication'}</Text>
+                      <Text style={styles.drugName}>{drug?.name || 'Medication'}</Text>
                       <View style={styles.dosageRow}>
                         <View style={styles.dosageItem}>
                           <Text style={styles.dosageLabel}>Dosage</Text>
@@ -117,23 +128,23 @@ export default function PrescriptionDetailScreen() {
             <View style={styles.infoSection}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Status</Text>
-                <Text style={styles.infoValue}>{prescription.is_verified ? 'Verified' : 'Pending'}</Text>
+                <Text style={styles.infoValue}>{prescription?.prescription?.is_verified ? 'Verified' : 'Pending'}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Shared</Text>
-                <Text style={styles.infoValue}>{prescription.is_shared ? 'Yes' : 'No'}</Text>
+                <Text style={styles.infoValue}>{prescription?.prescription?.is_shared ? 'Yes' : 'No'}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Date</Text>
-                <Text style={styles.infoValue}>{new Date(prescription.created_at).toLocaleDateString()}</Text>
+                <Text style={styles.infoValue}>{prescription?.prescription?.created_at ? new Date(prescription.prescription.created_at).toLocaleDateString() : 'N/A'}</Text>
               </View>
             </View>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity 
-                style={[styles.actionButton, prescription.is_shared && styles.actionButtonDisabled]}
+                style={[styles.actionButton, prescription?.prescription?.is_shared && styles.actionButtonDisabled]}
                 onPress={handleShare}
-                disabled={prescription.is_shared || sharing}
+                disabled={prescription?.prescription?.is_shared || sharing}
               >
                 {sharing ? (
                   <ActivityIndicator color="#fff" />

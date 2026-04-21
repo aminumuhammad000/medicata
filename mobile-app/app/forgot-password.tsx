@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -63,91 +64,119 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          <Text style={styles.title}>Reset Password</Text>
-          <Text style={styles.subtitle}>Enter your email to receive a reset code</Text>
-
-          <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: john@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.button, !email && styles.buttonDisabled]} 
-              onPress={handleSendCode}
-              disabled={!email || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>Send Reset Code</Text>
-              )}
-            </TouchableOpacity>
-
-            {message && (
-              <Text style={styles.successText}>{message}</Text>
-            )}
-
-            {message && (
-              <>
-                <View style={styles.divider} />
-                <Text style={styles.resetTitle}>Reset Password</Text>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Reset Code</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter 6-digit code"
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    value={code}
-                    onChangeText={setCode}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>New Password</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Enter new password"
-                    secureTextEntry
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                  />
-                </View>
-
-                <TouchableOpacity 
-                  style={[styles.button, (!email || !code || !newPassword) && styles.buttonDisabled]} 
-                  onPress={handleResetPassword}
-                  disabled={!email || !code || !newPassword || resetting}
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
+            <Text style={styles.title}>Reset Password</Text>
+            <Text style={styles.subtitle}>Enter your email to receive a reset code</Text>
+ 
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex: john@example.com"
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+ 
+              <TouchableOpacity 
+                style={[styles.button, (!email || loading) && styles.buttonDisabled]} 
+                onPress={handleSendCode}
+                disabled={!email || loading}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#2572D9', '#4A90E2']}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
                 >
-                  {resetting ? (
+                  {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.buttonText}>Reset Password</Text>
+                    <Text style={styles.buttonText}>Send Reset Code</Text>
                   )}
-                </TouchableOpacity>
-              </>
-            )}
-
-            {error && (
-              <Text style={styles.errorText}>{error}</Text>
-            )}
+                </LinearGradient>
+              </TouchableOpacity>
+ 
+              {message && (
+                <Text style={styles.successText}>{message}</Text>
+              )}
+ 
+              {message && (
+                <>
+                  <View style={styles.divider} />
+                  <Text style={styles.resetTitle}>Create New Password</Text>
+ 
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Reset Code</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter 6-digit code"
+                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      value={code}
+                      onChangeText={setCode}
+                    />
+                  </View>
+ 
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>New Password</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter new password"
+                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      secureTextEntry
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                    />
+                  </View>
+ 
+                  <TouchableOpacity 
+                    style={[styles.button, (!email || !code || !newPassword || resetting) && styles.buttonDisabled]} 
+                    onPress={handleResetPassword}
+                    disabled={!email || !code || !newPassword || resetting}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#2572D9', '#4A90E2']}
+                      style={styles.buttonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      {resetting ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.buttonText}>Reset Password</Text>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
+ 
+              {error && (
+                <Text style={styles.errorText}>{error}</Text>
+              )}
+            </View>
           </View>
-        </View>
-
+        </ScrollView>
+ 
         <TouchableOpacity 
           onPress={() => router.back()}
           style={styles.backButton}
@@ -162,89 +191,121 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 24,
+    backgroundColor: '#0D1B3A',
+  },
+  gradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 32,
+    paddingTop: 48,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
     marginTop: 8,
     marginBottom: 40,
+    lineHeight: 24,
   },
   form: {
-    gap: 20,
+    gap: 24,
   },
   inputGroup: {
     gap: 8,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    padding: 18,
     fontSize: 16,
+    color: '#FFFFFF',
   },
   button: {
-    backgroundColor: '#4a90e2',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
+    borderRadius: 16,
+    overflow: 'hidden',
     marginTop: 10,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.5,
+  },
+  buttonGradient: {
+    padding: 18,
+    alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   divider: {
     height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: 16,
   },
   resetTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 10,
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   successText: {
-    color: '#4CAF50',
+    color: '#22C55E',
     fontSize: 14,
-    marginTop: 12,
+    marginTop: 16,
     textAlign: 'center',
+    fontWeight: '700',
   },
   errorText: {
-    color: '#ff4444',
+    color: '#FF6B6B',
     fontSize: 14,
-    marginTop: 12,
+    marginTop: 16,
     textAlign: 'center',
   },
   backButton: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
+    paddingVertical: 24,
   },
   backText: {
     fontSize: 16,
-    color: '#4a90e2',
-    fontWeight: '600',
+    color: '#4A90E2',
+    fontWeight: '700',
   },
 });

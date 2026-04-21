@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Image, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../../services/api';
 
 export default function DoctorSearchScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [search, setSearch] = useState('');
-  const [specialty, setSpecialty] = useState('');
+  const [specialty, setSpecialty] = useState((params.specialty as string) || '');
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     loadDoctors();
-  }, []);
+  }, [params.specialty]);
 
   const loadDoctors = async () => {
     setLoading(true);
@@ -60,9 +61,9 @@ export default function DoctorSearchScreen() {
           </View>
         </View>
       </View>
-      <TouchableOpacity style={styles.bookButton}>
+      <View style={styles.bookButton}>
         <Text style={styles.bookText}>Book</Text>
-      </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   );
 
@@ -164,11 +165,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      }
+    }),
   },
   doctorInfo: {
     flexDirection: 'row',

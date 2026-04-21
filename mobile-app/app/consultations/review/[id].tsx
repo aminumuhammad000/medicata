@@ -1,19 +1,29 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api } from '../../../services/api';
 
 export default function ReviewScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) return;
-    // In a real app, send API request
-    router.replace('/(tabs)/explore');
+    setLoading(true);
+    try {
+      await api.submitReview(id as string, rating, comment || undefined);
+      Alert.alert('Success', 'Review submitted successfully');
+      router.replace('/(tabs)/explore');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to submit review');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -61,11 +71,15 @@ export default function ReviewScreen() {
         </View>
 
         <TouchableOpacity 
-          style={[styles.submitBtn, rating === 0 && styles.submitBtnDisabled]} 
+          style={[styles.submitBtn, (rating === 0 || loading) && styles.submitBtnDisabled]} 
           onPress={handleSubmit}
-          disabled={rating === 0}
+          disabled={rating === 0 || loading}
         >
-          <Text style={styles.submitBtnText}>Submit Review</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitBtnText}>Submit Review</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

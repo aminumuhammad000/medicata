@@ -17,8 +17,8 @@ export default function PrescriptionsScreen() {
 
   const loadPrescriptions = async () => {
     try {
-      const data = await api.getMyPrescriptions();
-      setPrescriptions(data);
+      const response = await api.getMyPrescriptions();
+      setPrescriptions(response.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load prescriptions');
     } finally {

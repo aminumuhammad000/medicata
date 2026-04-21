@@ -45,14 +45,14 @@ interface OnboardingContextType {
   error: string | null;
   updateData: (updates: Partial<OnboardingData>) => void;
   resetData: () => void;
-  register: () => Promise<boolean>;
+  register: (registerData?: any) => Promise<boolean>;
   login: () => Promise<boolean>;
   verify: (code: string) => Promise<boolean>;
-  submitPatientHealthInfo: () => Promise<boolean>;
-  submitPatientProfile: () => Promise<boolean>;
+  submitPatientHealthInfo: (data?: any) => Promise<boolean>;
+  submitPatientProfile: (data?: any) => Promise<boolean>;
   submitDoctorProfessionalInfo: () => Promise<boolean>;
   submitDoctorBio: () => Promise<boolean>;
-  submitPharmacyInfo: () => Promise<boolean>;
+  submitPharmacyInfo: (pharmacyData?: any) => Promise<boolean>;
 }
 
 const initialData: OnboardingData = {
@@ -70,7 +70,10 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [error, setError] = useState<string | null>(null);
 
   const updateData = (updates: Partial<OnboardingData>) => {
-    setData((prev) => ({ ...prev, ...updates }));
+    setData((prev) => {
+      const newData = { ...prev, ...updates };
+      return newData;
+    });
     setError(null);
   };
 
@@ -79,8 +82,10 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setError(null);
   };
 
-  const register = async (): Promise<boolean> => {
-    if (!data.password) {
+  const register = async (registerData?: any): Promise<boolean> => {
+    const finalData = registerData || data;
+
+    if (!finalData.password) {
       setError('Password is required');
       return false;
     }
@@ -89,24 +94,33 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setError(null);
 
     // Convert userType to proper UserRole format (capitalize first letter)
-    const role = data.userType.charAt(0).toUpperCase() + data.userType.slice(1);
+    const role = finalData.userType.charAt(0).toUpperCase() + finalData.userType.slice(1);
 
     const response = await api.register({
-      full_name: data.fullName,
-      email: data.email,
-      password: data.password,
-      phone_number: data.phone,
-      whatsapp_number: data.whatsapp,
+      full_name: finalData.fullName,
+      email: finalData.email,
+      password: finalData.password,
+      phone_number: finalData.phone || null,
+      whatsapp_number: finalData.whatsapp || null,
+      address: finalData.address || null,
       role: role as any,
     });
 
-    setLoading(false);
-
     if (response.error) {
       setError(response.error);
+      setLoading(false);
       return false;
     }
 
+    // Send verification email after successful registration
+    try {
+      await api.sendVerification(finalData.email);
+    } catch (err) {
+      console.error('Failed to send verification email:', err);
+      // Don't fail registration if email fails
+    }
+
+    setLoading(false);
     return true;
   };
 
@@ -147,16 +161,18 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
-  const submitPatientHealthInfo = async (): Promise<boolean> => {
+  const submitPatientHealthInfo = async (healthData?: any): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
-    const response = await api.updatePatientHealthInfo({
+    const info = healthData || {
       date_of_birth: data.dob,
       gender: data.gender,
       allergies: data.allergies,
       existing_conditions: data.conditions,
-    });
+    };
+
+    const response = await api.updatePatientHealthInfo(info);
 
     setLoading(false);
 
@@ -165,14 +181,18 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return false;
     }
 
+    if (response.data) {
+      await api.saveUserData(response.data);
+    }
+
     return true;
   };
 
-  const submitPatientProfile = async (): Promise<boolean> => {
+  const submitPatientProfile = async (profileData?: any): Promise<boolean> => {
     setLoading(true);
     setError(null);
 
-    const response = await api.updatePatientProfile({
+    const profile = profileData || {
       bio: data.bio,
       height: data.height ? parseFloat(data.height) : undefined,
       weight: data.weight ? parseFloat(data.weight) : undefined,
@@ -180,13 +200,23 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       address: data.address,
       city: data.city,
       state: data.state,
-    });
+    };
+
+    console.log('Submitting patient profile with data:', profile);
+
+    const response = await api.updatePatientProfile(profile);
 
     setLoading(false);
 
     if (response.error) {
+      console.error('Failed to submit patient profile:', response.error);
       setError(response.error);
       return false;
+    }
+
+    if (response.data) {
+      console.log('Patient profile updated successfully');
+      await api.saveUserData(response.data);
     }
 
     return true;
@@ -240,31 +270,58 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
-  const submitPharmacyInfo = async (): Promise<boolean> => {
-    if (!data.pharmacyName || !data.pharmacyAddress || !data.pharmacyLicense || !data.pharmacyContactInfo || !data.openingHours) {
-      setError('All pharmacy fields are required');
+  const submitPharmacyInfo = async (pharmacyData?: any): Promise<boolean> => {
+    const finalData = pharmacyData ? { ...data, ...pharmacyData } : data;
+    
+    if (!finalData.pharmacyName || !finalData.pharmacyAddress || !finalData.pharmacyLicense || !finalData.pharmacyContactInfo || !finalData.openingHours) {
+      const missingFields = [];
+      if (!finalData.pharmacyName) missingFields.push('pharmacyName');
+      if (!finalData.pharmacyAddress) missingFields.push('pharmacyAddress');
+      if (!finalData.pharmacyLicense) missingFields.push('pharmacyLicense');
+      if (!finalData.pharmacyContactInfo) missingFields.push('pharmacyContactInfo');
+      if (!finalData.openingHours) missingFields.push('openingHours');
+      
+      const errorMsg = `All pharmacy fields are required. Missing: ${missingFields.join(', ')}`;
+      console.error(errorMsg);
+      setError(errorMsg);
       return false;
     }
 
     setLoading(true);
     setError(null);
 
-    const response = await api.updatePharmacyInfo({
-      pharmacy_name: data.pharmacyName,
-      pharmacy_address: data.pharmacyAddress,
-      pharmacy_license: data.pharmacyLicense,
-      pharmacy_contact_info: data.pharmacyContactInfo,
-      opening_hours: data.openingHours,
-    });
+    const payload = {
+      pharmacy_name: finalData.pharmacyName,
+      pharmacy_address: finalData.pharmacyAddress,
+      pharmacy_license: finalData.pharmacyLicense,
+      pharmacy_contact_info: finalData.pharmacyContactInfo,
+      opening_hours: finalData.openingHours,
+    };
 
-    setLoading(false);
+    console.log('Sending pharmacy info payload:', payload);
 
-    if (response.error) {
-      setError(response.error);
+    try {
+      const response = await api.updatePharmacyInfo(payload);
+
+      setLoading(false);
+
+      if (response.error) {
+        console.error('API Error in submitPharmacyInfo:', response.error);
+        setError(response.error);
+        return false;
+      }
+
+      if (response.data) {
+        console.log('Pharmacy info submitted successfully:', response.data);
+        await api.saveUserData(response.data);
+      }
+      return true;
+    } catch (err) {
+      console.error('Network or unexpected error in submitPharmacyInfo:', err);
+      setError('An unexpected error occurred. Please check your connection.');
+      setLoading(false);
       return false;
     }
-
-    return true;
   };
 
   return (

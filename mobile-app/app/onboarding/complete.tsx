@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
@@ -45,7 +45,9 @@ export default function CompleteScreen() {
           <Text style={styles.tutorial}>
             {data.userType === 'patient' 
               ? 'Tip: You can now search for doctors by specialty and book your first consultation.'
-              : 'Tip: Complete your profile settings to start receiving patient consultations.'}
+              : data.userType === 'doctor'
+              ? 'Tip: Set your availability and start receiving patient consultations.'
+              : 'Tip: Manage your inventory and start fulfilling prescription orders.'}
           </Text>
         </View>
       </View>
@@ -96,11 +98,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
-    shadowColor: '#22c55e',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(34, 197, 94, 0.4)',
+      },
+      default: {
+        shadowColor: '#22c55e',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   icon: {
     fontSize: 56,
@@ -147,11 +156,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonGradient: {
     padding: 18,

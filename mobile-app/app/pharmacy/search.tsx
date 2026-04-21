@@ -1,18 +1,40 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { api } from '../../services/api';
 
 export default function PharmacySearchScreen() {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const [city, setCity] = useState('');
+  const [pharmacies, setPharmacies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const pharmacies = [
-    { id: '1', name: 'Medicare Pharmacy', address: '12 Main St, Lagos', distance: '1.2 km', rating: 4.5, open: true },
-    { id: '2', name: 'HealthFirst Drugs', address: '45 Broad Way, Ikeja', distance: '2.5 km', rating: 4.2, open: true },
-    { id: '3', name: 'QuickCure Pharmacy', address: '88 Allen Avenue, Ikeja', distance: '3.0 km', rating: 4.8, open: false },
-  ];
+  useEffect(() => {
+    loadPharmacies();
+  }, []);
+
+  const loadPharmacies = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const params: any = {};
+      if (city) params.city = city;
+      const response = await api.searchPharmacies(params);
+      setPharmacies(response.data || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load pharmacies');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    loadPharmacies();
+  };
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
@@ -21,21 +43,21 @@ export default function PharmacySearchScreen() {
     >
       <View style={styles.cardHeader}>
         <View style={styles.info}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.address}>{item.address}</Text>
+          <Text style={styles.name}>{item.pharmacy_name || item.name}</Text>
+          <Text style={styles.address}>{item.pharmacy_address || item.address}</Text>
         </View>
-        <View style={[styles.statusBadge, !item.open && styles.statusBadgeClosed]}>
-          <Text style={[styles.statusText, !item.open && styles.statusTextClosed]}>{item.open ? 'Open' : 'Closed'}</Text>
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusText}>Open</Text>
         </View>
       </View>
       <View style={styles.footer}>
         <View style={styles.footerItem}>
           <Ionicons name="location" size={14} color="#666" />
-          <Text style={styles.footerText}>{item.distance}</Text>
+          <Text style={styles.footerText}>{item.city || 'Location'}</Text>
         </View>
         <View style={styles.footerItem}>
-          <Ionicons name="star" size={14} color="#ff9800" />
-          <Text style={styles.footerText}>{item.rating}</Text>
+          <Ionicons name="time" size={14} color="#666" />
+          <Text style={styles.footerText}>{item.opening_hours || 'Hours'}</Text>
         </View>
         <TouchableOpacity style={styles.viewButton}>
           <Text style={styles.viewButtonText}>View & Order</Text>
@@ -58,18 +80,38 @@ export default function PharmacySearchScreen() {
         <Ionicons name="search" size={20} color="#666" />
         <TextInput 
           style={styles.input}
-          placeholder="Search by name or location"
-          value={search}
-          onChangeText={setSearch}
+          placeholder="Search by city"
+          value={city}
+          onChangeText={setCity}
+          onSubmitEditing={handleSearch}
+          returnKeyType="search"
         />
+        <TouchableOpacity onPress={handleSearch} style={styles.searchButton}>
+          <Ionicons name="search" size={20} color="#4a90e2" />
+        </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={pharmacies}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-      />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4a90e2" />
+        </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={pharmacies}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.centerContainer}>
+              <Text style={styles.emptyText}>No pharmacies found</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -106,6 +148,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     flex: 1,
   },
+  searchButton: {
+    padding: 8,
+  },
   list: {
     padding: 20,
   },
@@ -116,11 +161,18 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     padding: 16,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      }
+    }) as any),
   },
   cardHeader: {
     flexDirection: 'row',
@@ -181,4 +233,19 @@ const styles = StyleSheet.create({
     color: '#4a90e2',
   },
   viewButton: {},
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: '#999',
+    fontSize: 16,
+  },
 });

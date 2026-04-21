@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AccountScreen() {
   const router = useRouter();
-  const { updateData, register, loading, error } = useOnboarding();
+  const { data, updateData, register, loading, error } = useOnboarding();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,10 +15,27 @@ export default function AccountScreen() {
   const handleNext = async () => {
     if (!fullName || !email || !password) return;
     
-    updateData({ fullName, email, password });
+    // Validate email format to prevent backend Lettre parse "Invalid input" errors
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
     
-    // Move to contact screen to collect phone number before registering
-    router.push('/onboarding/contact');
+    if (data.userType === 'pharmacy') {
+      const success = await register({ 
+        fullName, 
+        email, 
+        password, 
+        userType: 'pharmacy' 
+      });
+      if (success) {
+        router.push('/onboarding/verify');
+      }
+    } else {
+      updateData({ fullName, email, password });
+      router.push('/onboarding/contact');
+    }
   };
 
   const isComplete = fullName && email && password;
@@ -168,11 +185,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
     opacity: 0.5,

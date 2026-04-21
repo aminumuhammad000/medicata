@@ -6,3 +6,4 @@ pub mod prescription;
 pub mod order;
 pub mod review;
 pub mod notification;
+pub mod message;

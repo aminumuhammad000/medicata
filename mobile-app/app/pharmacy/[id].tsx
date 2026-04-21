@@ -1,19 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { api } from '../../services/api';
 
 export default function PharmacyOrderScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
+  const [pharmacy, setPharmacy] = useState<any>(null);
   const [delivery, setDelivery] = useState(true);
-  const [address, setAddress] = useState('12 Main St, Lagos');
+  const [address, setAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleOrder = () => {
-    // In a real app, send API request
-    router.replace('/(tabs)'); // Redirect to dashboard
+  useEffect(() => {
+    loadPharmacy();
+  }, [id]);
+
+  const loadPharmacy = async () => {
+    try {
+      const response = await api.getPharmacyById(id as string);
+      setPharmacy(response.data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load pharmacy');
+    } finally {
+      setPageLoading(false);
+    }
   };
+
+  const handleOrder = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      await api.createOrder({
+        pharmacy_id: id as string,
+        delivery_address: delivery ? address : undefined,
+        is_delivery: delivery,
+      });
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      setError(err.message || 'Failed to place order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (pageLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#4a90e2" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,8 +70,8 @@ export default function PharmacyOrderScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.pharmacyCard}>
-          <Text style={styles.pharmacyName}>Medicare Pharmacy</Text>
-          <Text style={styles.pharmacyAddress}>12 Main St, Lagos • 1.2 km away</Text>
+          <Text style={styles.pharmacyName}>{pharmacy?.pharmacy_name || 'Pharmacy'}</Text>
+          <Text style={styles.pharmacyAddress}>{pharmacy?.pharmacy_address || 'Address'} • {pharmacy?.city || 'City'}</Text>
         </View>
 
         <View style={styles.section}>
@@ -36,8 +79,8 @@ export default function PharmacyOrderScreen() {
           <View style={styles.prescriptionBox}>
             <Ionicons name="document-text" size={24} color="#4a90e2" />
             <View style={styles.prescriptionInfo}>
-              <Text style={styles.prescriptionName}>Prescription #MED-9922</Text>
-              <Text style={styles.prescriptionDetail}>Amoxicillin 500mg • Dr. Connor</Text>
+              <Text style={styles.prescriptionName}>Select a prescription from your list</Text>
+              <Text style={styles.prescriptionDetail}>Go to prescriptions to select one</Text>
             </View>
           </View>
         </View>
@@ -85,11 +128,23 @@ export default function PharmacyOrderScreen() {
             <Text style={styles.totalValue}>₦{delivery ? '5,000' : '4,500'}</Text>
           </View>
         </View>
+
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.confirmButton} onPress={handleOrder}>
-          <Text style={styles.confirmButtonText}>Confirm & Place Order</Text>
+        <TouchableOpacity 
+          style={[styles.confirmButton, loading && styles.confirmButtonDisabled]} 
+          onPress={handleOrder}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.confirmButtonText}>Confirm & Place Order</Text>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -253,5 +308,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  confirmButtonDisabled: {
+    opacity: 0.5,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: '#f44336',
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: 'center',
   },
 });

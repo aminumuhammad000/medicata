@@ -24,7 +24,13 @@ export default function ProfileScreen() {
   const handleNext = async () => {
     if (data.userType === 'patient') {
       updateData({ bio, height, weight, bodyType });
-      const success = await submitPatientProfile();
+      const success = await submitPatientProfile({
+        bio,
+        height: height ? parseFloat(height) : undefined,
+        weight: weight ? parseFloat(weight) : undefined,
+        body_type: bodyType,
+        address: data.address, // Include existing address from state
+      });
       if (success) {
         router.push('/onboarding/terms');
       }
@@ -241,11 +247,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 32,
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 8,
+      }
+    }),
   },
   buttonDisabled: {
     opacity: 0.5,
