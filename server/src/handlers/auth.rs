@@ -18,7 +18,7 @@ pub async fn register(
 ) -> Result<Json<AuthResponse>, AppError> {
     let password_hash = hash_password(&payload.password)?;
 
-    let user = sqlx::query_as::<_, User>(
+    let user_result = sqlx::query_as::<_, User>(
         "INSERT INTO users (full_name, email, password_hash, phone_number, whatsapp_number, address, role) 
          VALUES ($1, $2, $3, $4, $5, $6, $7) 
          RETURNING *"
@@ -31,7 +31,19 @@ pub async fn register(
     .bind(payload.address.as_ref())
     .bind(payload.role)
     .fetch_one(&state.db)
-    .await?;
+    .await;
+
+    let user = match user_result {
+        Ok(u) => u,
+        Err(e) => {
+            if let Some(db_err) = e.as_database_error() {
+                if db_err.is_unique_violation() {
+                    return Err(AppError::BadRequest("A user with this email or phone number already exists".to_string()));
+                }
+            }
+            return Err(e.into());
+        }
+    };
 
     let token = generate_jwt(user.id, user.role, &state.config.jwt_secret)?;
 
