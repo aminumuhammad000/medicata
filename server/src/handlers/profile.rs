@@ -212,8 +212,8 @@ pub async fn search_pharmacies(
             "id": p.get::<uuid::Uuid, _>("id"),
             "full_name": p.get::<String, _>("full_name"),
             "address": p.get::<Option<String>, _>("pharmacy_address"),
-            "phone": p.get::<String, _>("phone_number"),
-            "is_verified": p.get::<bool, _>("is_verified"),
+            "phone": p.get::<Option<String>, _>("phone_number"),
+            "is_verified": p.get::<Option<bool>, _>("is_verified").unwrap_or(false),
         })
     }).collect();
 
@@ -258,7 +258,7 @@ pub async fn get_pharmacy_profile(
     axum::extract::Path(id): axum::extract::Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let pharmacy = sqlx::query(
-        "SELECT id, full_name, role, pharmacy_address, pharmacy_license, pharmacy_contact_info, opening_hours, city, state, profile_photo_url, phone_number, is_verified 
+        "SELECT id, full_name, role, pharmacy_address, pharmacy_license, pharmacy_contact_info, opening_hours, city, state, profile_photo, phone_number, is_verified 
          FROM users 
          WHERE id = $1 AND role = 'pharmacy'"
     )
@@ -278,7 +278,7 @@ pub async fn get_pharmacy_profile(
             "opening_hours": p.get::<Option<String>, _>("opening_hours"),
             "city": p.get::<Option<String>, _>("city"),
             "state": p.get::<Option<String>, _>("state"),
-            "profile_photo_url": p.get::<Option<String>, _>("profile_photo_url"),
+            "profile_photo_url": p.get::<Option<String>, _>("profile_photo"),
             "phone": p.get::<String, _>("phone_number"),
             "is_verified": p.get::<bool, _>("is_verified"),
         })))

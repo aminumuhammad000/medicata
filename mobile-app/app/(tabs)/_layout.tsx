@@ -125,15 +125,15 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── PROFILE / INSIGHTS ── */}
+      {/* ── PROFILE ── */}
       <Tabs.Screen
-        name="reputation"
+        name="profile"
         options={{
-          title: isPharmacy ? 'Profile' : 'Insights',
+          title: 'Profile',
           tabBarIcon: ({ color }) => (
             <Ionicons
               size={24}
-              name={isPharmacy ? 'person-outline' : 'stats-chart-outline'}
+              name="person-outline"
               color={color}
             />
           ),
@@ -143,13 +143,6 @@ export default function TabLayout() {
       {/* Hide redundant/cluttered tabs */}
       <Tabs.Screen
         name="settings"
-        options={{
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="profile"
         options={{
           href: null,
         }}

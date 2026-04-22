@@ -268,7 +268,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push('/prescriptions/index')}
+              onPress={() => router.push('/prescriptions')}
             >
               <View style={[styles.iconBg, { backgroundColor: '#ECFDF5' }]}>
                 <Ionicons name="document-text" size={28} color="#059669" />
@@ -396,14 +396,14 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Prescriptions</Text>
-            <TouchableOpacity onPress={() => router.push('/prescriptions/index' as any)}>
+            <TouchableOpacity onPress={() => router.push('/prescriptions' as any)}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
           {recentPrescription ? (
             <TouchableOpacity 
               style={styles.prescriptionCard}
-              onPress={() => router.push({ pathname: '/prescriptions/index', params: { id: recentPrescription.id } } as any)}
+              onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: recentPrescription.id } } as any)}
             >
               <View style={styles.prescriptionHeader}>
                 <View style={[styles.prescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
@@ -687,14 +687,14 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Prescriptions</Text>
-            <TouchableOpacity onPress={() => router.push('/prescriptions/index' as any)}>
+            <TouchableOpacity onPress={() => router.push('/prescriptions' as any)}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
           {recentPrescription ? (
             <TouchableOpacity 
               style={styles.docPrescriptionCard}
-              onPress={() => router.push({ pathname: '/prescriptions/index', params: { id: recentPrescription.id } } as any)}
+              onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: recentPrescription.id } } as any)}
             >
               <View style={styles.docPrescriptionHeader}>
                 <View style={[styles.docPrescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>

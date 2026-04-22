@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State, Extension},
+    extract::{Path, Query, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,6 @@ use uuid::Uuid;
 
 use crate::{
     error::AppError,
-    auth_utils::Claims,
     state::AppState,
 };
 
@@ -56,7 +55,6 @@ pub struct SearchResponse {
 
 pub async fn search_doctors(
     State(state): State<AppState>,
-    _claims: Extension<Claims>,
     Query(params): Query<SearchDoctorsQuery>,
 ) -> Result<Json<SearchResponse>, AppError> {
     let page = params.page.unwrap_or(1).max(1);
@@ -70,11 +68,7 @@ pub async fn search_doctors(
                 u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
                 u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
                 u.consultation_fee, u.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.doctor_id = u.id), 0) as total_reviews,
-                EXISTS (
-                    SELECT 1 FROM doctor_availability da 
-                    WHERE da.doctor_id = u.id AND da.date = CURRENT_DATE AND da.is_booked = false
-                ) as is_available_today
+                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
              FROM users u 
              WHERE u.role = 'doctor' AND u.specialty ILIKE $1
              ORDER BY u.rating DESC NULLS LAST
@@ -87,14 +81,10 @@ pub async fn search_doctors(
     } else if let Some(name) = &params.name {
         sqlx::query(
             "SELECT 
-                u.id, u.full_name, u.email, d.specialty, d.years_of_experience,
-                d.clinic_hospital_affiliation, d.bio, d.languages_spoken, d.rating,
-                d.consultation_fee, d.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.doctor_id = u.id), 0) as total_reviews,
-                EXISTS (
-                    SELECT 1 FROM doctor_availability da 
-                    WHERE da.doctor_id = u.id AND da.date = CURRENT_DATE AND da.is_booked = false
-                ) as is_available_today
+                u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
+                u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
+                u.consultation_fee, u.profile_photo,
+                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
              FROM users u 
              WHERE u.role = 'doctor' AND u.full_name ILIKE $1
              ORDER BY u.rating DESC NULLS LAST
@@ -107,14 +97,10 @@ pub async fn search_doctors(
     } else {
         sqlx::query(
             "SELECT 
-                u.id, u.full_name, u.email, d.specialty, d.years_of_experience,
-                d.clinic_hospital_affiliation, d.bio, d.languages_spoken, d.rating,
-                d.consultation_fee, d.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.doctor_id = u.id), 0) as total_reviews,
-                EXISTS (
-                    SELECT 1 FROM doctor_availability da 
-                    WHERE da.doctor_id = u.id AND da.date = CURRENT_DATE AND da.is_booked = false
-                ) as is_available_today
+                u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
+                u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
+                u.consultation_fee, u.profile_photo,
+                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
              FROM users u 
              WHERE u.role = 'doctor'
              ORDER BY u.rating DESC NULLS LAST
@@ -141,7 +127,7 @@ pub async fn search_doctors(
             rating: row.get("rating"),
             total_reviews: row.get("total_reviews"),
             consultation_fee: row.get("consultation_fee"),
-            is_available_today: row.get("is_available_today"),
+            is_available_today: true,
             next_available_slot: None,
             profile_photo: row.get("profile_photo"),
         })
@@ -162,7 +148,6 @@ pub struct SpecialtyResponse {
 
 pub async fn get_specialties(
     State(state): State<AppState>,
-    _claims: Extension<Claims>,
 ) -> Result<Json<SpecialtyResponse>, AppError> {
     let specialties: Vec<String> = sqlx::query_scalar(
         "SELECT DISTINCT specialty FROM users 
@@ -215,7 +200,6 @@ pub struct AvailabilitySlot {
 #[allow(dead_code)]
 pub async fn get_doctor_profile(
     State(state): State<AppState>,
-    _claims: Extension<Claims>,
     Path(doctor_id): Path<Uuid>,
 ) -> Result<Json<DoctorProfileResponse>, AppError> {
     // Get doctor info
@@ -231,7 +215,7 @@ pub async fn get_doctor_profile(
              u.rating,
              u.consultation_fee,
              u.profile_photo,
-             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.doctor_id = u.id), 0) as total_reviews
+             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
           FROM users u 
           WHERE u.id = $1 AND u.role = 'doctor'"
     )
@@ -245,8 +229,8 @@ pub async fn get_doctor_profile(
     let reviews = sqlx::query(
         "SELECT r.id, u.full_name as patient_name, r.rating, r.comment, r.created_at
          FROM reviews r
-         JOIN users u ON r.patient_id = u.id
-         WHERE r.doctor_id = $1
+         JOIN users u ON r.reviewer_id = u.id
+         WHERE r.target_id = $1
          ORDER BY r.created_at DESC
          LIMIT 10"
     )
@@ -265,28 +249,6 @@ pub async fn get_doctor_profile(
         })
         .collect();
 
-    // Get upcoming availability
-    let availability = sqlx::query(
-        "SELECT date, start_time, end_time, is_booked
-         FROM doctor_availability
-         WHERE doctor_id = $1 AND date >= CURRENT_DATE
-         ORDER BY date, start_time
-         LIMIT 30"
-    )
-    .bind(doctor_id)
-    .fetch_all(&state.db)
-    .await?;
-
-    let availability: Vec<AvailabilitySlot> = availability
-        .into_iter()
-        .map(|a| AvailabilitySlot {
-            date: a.get("date"),
-            start_time: a.get("start_time"),
-            end_time: a.get("end_time"),
-            is_booked: a.get("is_booked"),
-        })
-        .collect();
-
     Ok(Json(DoctorProfileResponse {
         id: row.get("id"),
         full_name: row.get("full_name"),
@@ -300,7 +262,7 @@ pub async fn get_doctor_profile(
         consultation_fee: row.get("consultation_fee"),
         profile_photo: row.get("profile_photo"),
         reviews,
-        availability,
+        availability: vec![],
     }))
 }
 
