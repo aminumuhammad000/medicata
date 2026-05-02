@@ -21,9 +21,78 @@ export default function PharmacyOrderDetail() {
   const [comment, setComment] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const [isPaying, setIsPaying] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+
   useEffect(() => {
     loadData();
-  }, [id]);
+    if (userRole?.toLowerCase() === 'patient') {
+      fetchWalletBalance();
+    }
+  }, [id, userRole]);
+
+  const fetchWalletBalance = async () => {
+    try {
+      const res = await api.getWalletBalance();
+      if (res.data) setWalletBalance(res.data.balance);
+    } catch (err) {
+      console.error('Failed to fetch wallet balance');
+    }
+  };
+
+  const handleDirectCheckout = () => {
+    const totalAmount = order?.order?.total_amount || 0;
+    router.push({
+      pathname: '/wallet/checkout',
+      params: { 
+        amount: totalAmount.toString(), 
+        type: 'pharmacy_order',
+        order_id: id as string
+      }
+    });
+  };
+
+  const handlePayWithWallet = async () => {
+    const totalAmount = order?.order?.total_amount || 0;
+    if (walletBalance < totalAmount) {
+      Alert.alert(
+        "Insufficient Balance", 
+        `Your wallet balance (₦${walletBalance.toLocaleString()}) is less than the order total (₦${totalAmount.toLocaleString()}).`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Use Direct Checkout", onPress: handleDirectCheckout },
+          { text: "Top Up Wallet", onPress: () => router.push('/wallet' as any) }
+        ]
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Payment",
+      `Pay ₦${totalAmount.toLocaleString()} for this order using your wallet?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Confirm & Pay", 
+          onPress: async () => {
+            setIsPaying(true);
+            try {
+              const res = await api.payOrderWithWallet(id as string);
+              if (res.error) throw new Error(res.error);
+              
+              Alert.alert("Payment Successful", "Your order is now being processed by the pharmacy.");
+              loadData();
+              fetchWalletBalance();
+            } catch (err: any) {
+              Alert.alert("Payment Failed", err.message || "Failed to process wallet payment");
+            } finally {
+              setIsPaying(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const loadData = async () => {
     try {
@@ -186,11 +255,58 @@ export default function PharmacyOrderDetail() {
                   <Text style={styles.itemPrice}>₦{(item.price * item.quantity).toLocaleString()}</Text>
                 </View>
               ))}
-              <View style={styles.totalRow}>
+            <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Total Amount</Text>
                 <Text style={styles.totalValue}>₦{order?.order?.total_amount?.toLocaleString() || '0'}</Text>
               </View>
             </View>
+          </View>
+        )}
+
+        {!isPharmacy && order?.status?.toLowerCase() === 'pending' && (
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="wallet" size={20} color="#10B981" />
+              <Text style={styles.sectionTitle}>Payment Options</Text>
+            </View>
+            <View style={styles.walletInfo}>
+              <View>
+                <Text style={styles.walletLabel}>Wallet Balance</Text>
+                <Text style={styles.walletBalance}>₦{walletBalance.toLocaleString()}</Text>
+              </View>
+              <TouchableOpacity 
+                style={[styles.payBtn, isPaying && styles.disabledAction]} 
+                onPress={handlePayWithWallet}
+                disabled={isPaying}
+              >
+                <Ionicons name="wallet-outline" size={18} color="#FFF" />
+                <Text style={styles.payBtnText}>Pay with Wallet</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.checkoutBtn, isPaying && styles.disabledAction]} 
+              onPress={handleDirectCheckout}
+              disabled={isPaying}
+            >
+              <LinearGradient
+                colors={['#4F46E5', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.checkoutGradient}
+              >
+                <Ionicons name="shield-checkmark" size={20} color="#FFF" />
+                <Text style={styles.checkoutBtnText}>Secure Checkout (Direct Pay)</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            {walletBalance < (order?.order?.total_amount || 0) && (
+              <TouchableOpacity 
+                style={styles.topUpLink}
+                onPress={() => router.push('/wallet')}
+              >
+                <Text style={styles.topUpText}>Insufficient balance. Tap here to Top Up.</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -693,6 +809,72 @@ const styles = StyleSheet.create({
   },
   disabledAction: {
     opacity: 0.6,
+  },
+  walletInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  walletBalance: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  payBtn: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  payBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  checkoutBtn: {
+    marginTop: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  checkoutGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  checkoutBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  topUpLink: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  topUpText: {
+    color: '#4F46E5',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 

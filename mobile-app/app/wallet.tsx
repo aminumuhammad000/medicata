@@ -25,14 +25,17 @@ export default function WalletScreen() {
       const role = await AsyncStorage.getItem('user_role');
       setUserRole(role?.toLowerCase() || 'patient');
 
-      // Mock data for now - would come from API
-      setBalance(role === 'doctor' ? 125000 : 25000);
-      setTransactions([
-        { id: 1, type: 'credit', amount: 5000, description: 'Consultation fee', date: '2024-04-10', status: 'completed' },
-        { id: 2, type: 'debit', amount: 3500, description: 'Pharmacy order', date: '2024-04-08', status: 'completed' },
-        { id: 3, type: 'credit', amount: 7500, description: 'Consultation fee', date: '2024-04-05', status: 'completed' },
-        { id: 4, type: 'debit', amount: 1200, description: 'Medicine purchase', date: '2024-04-03', status: 'completed' },
+      const [balanceRes, transRes] = await Promise.all([
+        api.getWalletBalance(),
+        api.getWalletTransactions(),
       ]);
+
+      if (balanceRes.data) {
+        setBalance(balanceRes.data.balance);
+      }
+      if (transRes.data) {
+        setTransactions(transRes.data);
+      }
     } catch (err) {
       console.error('Failed to load wallet:', err);
     } finally {
@@ -40,23 +43,22 @@ export default function WalletScreen() {
     }
   };
 
-  const handleAddMoney = () => {
+  const handleAddMoney = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
-    Alert.alert('Payment', `Add ₦${amount} to wallet`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Pay', onPress: () => {
-        setBalance(balance + parseFloat(amount));
-        setAmount('');
-        setShowAddMoney(false);
-        Alert.alert('Success', 'Money added to wallet');
-      }}
-    ]);
+    
+    setShowAddMoney(false);
+    // Redirect to the new high-fidelity checkout screen
+    router.push({
+      pathname: '/wallet/checkout',
+      params: { amount, type: 'wallet_funding' }
+    });
+    setAmount('');
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (!amount || parseFloat(amount) <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid amount');
       return;
@@ -65,32 +67,41 @@ export default function WalletScreen() {
       Alert.alert('Insufficient Balance', 'You do not have enough balance');
       return;
     }
-    Alert.alert('Withdraw', `Withdraw ₦${amount} to bank account`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Confirm', onPress: () => {
-        setBalance(balance - parseFloat(amount));
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.withdrawMoney(parseInt(amount), 'My Bank Account');
+      if (res.data) {
+        setBalance(res.data.balance);
         setAmount('');
         setShowWithdraw(false);
-        Alert.alert('Success', 'Withdrawal request submitted');
-      }}
-    ]);
+        await loadWalletData(); // Refresh transactions
+        Alert.alert('Success', 'Withdrawal request of ₦' + amount + ' submitted');
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to submit withdrawal');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const TransactionItem = ({ item }: { item: any }) => (
     <View style={styles.transactionItem}>
-      <View style={[styles.transactionIcon, item.type === 'credit' ? styles.creditIcon : styles.debitIcon]}>
+      <View style={[styles.transactionIcon, (item.transaction_type === 'credit' || item.transaction_type === 'deposit') ? styles.creditIcon : styles.debitIcon]}>
         <Ionicons 
-          name={item.type === 'credit' ? 'arrow-down' : 'arrow-up'} 
+          name={(item.transaction_type === 'credit' || item.transaction_type === 'deposit') ? 'arrow-down' : 'arrow-up'} 
           size={20} 
-          color={item.type === 'credit' ? '#22c55e' : '#ef4444'} 
+          color={(item.transaction_type === 'credit' || item.transaction_type === 'deposit') ? '#22c55e' : '#ef4444'} 
         />
       </View>
       <View style={styles.transactionContent}>
-        <Text style={styles.transactionTitle}>{item.description}</Text>
-        <Text style={styles.transactionDate}>{item.date}</Text>
+        <Text style={styles.transactionTitle}>{item.description || 'Transaction'}</Text>
+        <Text style={styles.transactionDate}>{new Date(item.created_at).toLocaleDateString()}</Text>
       </View>
-      <Text style={[styles.transactionAmount, item.type === 'credit' ? styles.creditText : styles.debitText]}>
-        {item.type === 'credit' ? '+' : '-'}₦{item.amount.toLocaleString()}
+      <Text style={[styles.transactionAmount, (item.transaction_type === 'credit' || item.transaction_type === 'deposit') ? styles.creditText : styles.debitText]}>
+        {(item.transaction_type === 'credit' || item.transaction_type === 'deposit') ? '+' : '-'}₦{item.amount.toLocaleString()}
       </Text>
     </View>
   );

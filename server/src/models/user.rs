@@ -74,6 +74,13 @@ pub struct User {
     pub consultation_fee: Option<i64>,
     pub rating: Option<f32>,
     pub review_count: i32,
+    pub verification_documents: Option<serde_json::Value>,
+    pub verification_status: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UploadVerificationDocumentsRequest {
+    pub documents: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -148,4 +155,13 @@ pub struct PharmacyInfoRequest {
     pub pharmacy_license: String,
     pub pharmacy_contact_info: String,
     pub opening_hours: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DoctorProfileUpdateRequest {
+    pub bio: Option<String>,
+    pub specialty: Option<String>,
+    pub years_of_experience: Option<i32>,
+    pub clinic_hospital_affiliation: Option<String>,
+    pub languages_spoken: Option<String>,
 }

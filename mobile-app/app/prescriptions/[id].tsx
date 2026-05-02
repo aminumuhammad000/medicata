@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { api } from '../../services/api';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 
 export default function PrescriptionDetailScreen() {
   const router = useRouter();
@@ -14,6 +17,9 @@ export default function PrescriptionDetailScreen() {
   const [error, setError] = useState('');
   const [sharing, setSharing] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  
+  const viewShotRef = useRef<any>(null);
 
   useEffect(() => {
     loadPrescription();
@@ -31,6 +37,30 @@ export default function PrescriptionDetailScreen() {
       setError(err.message || 'Failed to load prescription');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!viewShotRef.current) return;
+    
+    setExporting(true);
+    try {
+      const uri = await viewShotRef.current.capture();
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share Prescription Card',
+          UTI: 'public.png'
+        });
+      } else {
+        Alert.alert('Success', 'Prescription card captured. Sharing not available.');
+      }
+    } catch (err: any) {
+      console.error('Export error:', err);
+      Alert.alert('Error', 'Failed to generate prescription card');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -66,7 +96,13 @@ export default function PrescriptionDetailScreen() {
           <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
         </TouchableOpacity>
         <Text style={styles.title}>Prescription Details</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={handleExport} disabled={exporting || loading}>
+          {exporting ? (
+            <ActivityIndicator size="small" color="#4a90e2" />
+          ) : (
+            <Ionicons name="download-outline" size={24} color="#4a90e2" />
+          )}
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -80,65 +116,79 @@ export default function PrescriptionDetailScreen() {
           </View>
         ) : prescription ? (
           <>
-            <View style={styles.qrCard}>
-              <Text style={styles.qrTitle}>Digital Prescription</Text>
-              <View style={styles.qrPlaceholder}>
-                <QRCode
-                  value={prescription?.prescription?.qr_code_token || prescription?.prescription?.id}
-                  size={150}
-                  color="#1a1a1a"
-                  backgroundColor="#fff"
-                />
+            <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.9 }} style={styles.exportContainer}>
+              <View style={styles.qrCard}>
+                <View style={styles.brandRow}>
+                  <Ionicons name="medical" size={24} color="#4a90e2" />
+                  <Text style={styles.brandName}>MEDICATA</Text>
+                </View>
+                <Text style={styles.qrTitle}>Digital Prescription</Text>
+                <View style={styles.qrPlaceholder}>
+                  <QRCode
+                    value={prescription?.prescription?.qr_code_token || prescription?.prescription?.id}
+                    size={150}
+                    color="#1a1a1a"
+                    backgroundColor="#fff"
+                  />
+                </View>
+                <Text style={styles.qrId}>ID: {prescription?.prescription?.id?.slice(0, 13).toUpperCase()}...</Text>
+                <Text style={styles.qrNote}>Present this QR code at the pharmacy</Text>
               </View>
-              <Text style={styles.qrId}>ID: {prescription?.prescription?.id}</Text>
-              <Text style={styles.qrNote}>Present this QR code at the pharmacy</Text>
-            </View>
 
-            {prescription.items && prescription.items.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Medication</Text>
-                {prescription.items.map((wrapper: any, index: number) => {
-                  const { item, drug } = wrapper;
-                  return (
-                    <View key={index} style={styles.drugCard}>
-                      <Text style={styles.drugName}>{drug?.name || 'Medication'}</Text>
-                      <View style={styles.dosageRow}>
-                        <View style={styles.dosageItem}>
-                          <Text style={styles.dosageLabel}>Dosage</Text>
-                          <Text style={styles.dosageValue}>{item.dosage}</Text>
+              {prescription.items && prescription.items.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Medication</Text>
+                  {prescription.items.map((wrapper: any, index: number) => {
+                    const { item, drug } = wrapper;
+                    return (
+                      <View key={index} style={styles.drugCard}>
+                        <Text style={styles.drugName}>{drug?.name || 'Medication'}</Text>
+                        <View style={styles.dosageRow}>
+                          <View style={styles.dosageItem}>
+                            <Text style={styles.dosageLabel}>Dosage</Text>
+                            <Text style={styles.dosageValue}>{item.dosage}</Text>
+                          </View>
+                          <View style={styles.dosageItem}>
+                            <Text style={styles.dosageLabel}>Frequency</Text>
+                            <Text style={styles.dosageValue}>{item.frequency}</Text>
+                          </View>
+                          <View style={styles.dosageItem}>
+                            <Text style={styles.dosageLabel}>Duration</Text>
+                            <Text style={styles.dosageValue}>{item.duration_days} Days</Text>
+                          </View>
                         </View>
-                        <View style={styles.dosageItem}>
-                          <Text style={styles.dosageLabel}>Frequency</Text>
-                          <Text style={styles.dosageValue}>{item.frequency}</Text>
-                        </View>
-                        <View style={styles.dosageItem}>
-                          <Text style={styles.dosageLabel}>Duration</Text>
-                          <Text style={styles.dosageValue}>{item.duration_days} Days</Text>
-                        </View>
+                        {item.instructions && (
+                          <Text style={styles.instructions}>{item.instructions}</Text>
+                        )}
                       </View>
-                      {item.instructions && (
-                        <Text style={styles.instructions}>{item.instructions}</Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+                    );
+                  })}
+                </View>
+              )}
 
-            <View style={styles.infoSection}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Status</Text>
-                <Text style={styles.infoValue}>{prescription?.prescription?.is_verified ? 'Verified' : 'Pending'}</Text>
+              <View style={styles.infoSection}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Patient</Text>
+                  <Text style={styles.infoValue}>{prescription?.prescription?.patient_name || 'N/A'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Doctor</Text>
+                  <Text style={styles.infoValue}>Dr. {prescription?.prescription?.doctor_name || 'N/A'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Status</Text>
+                  <Text style={styles.infoValue}>{prescription?.prescription?.is_verified ? 'Verified' : 'Pending'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Date</Text>
+                  <Text style={styles.infoValue}>{prescription?.prescription?.created_at ? new Date(prescription.prescription.created_at).toLocaleDateString() : 'N/A'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Expires</Text>
+                  <Text style={[styles.infoValue, { color: '#ef4444' }]}>{prescription?.prescription?.expiry_date ? new Date(prescription.prescription.expiry_date).toLocaleDateString() : 'N/A'}</Text>
+                </View>
               </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Shared</Text>
-                <Text style={styles.infoValue}>{prescription?.prescription?.is_shared ? 'Yes' : 'No'}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date</Text>
-                <Text style={styles.infoValue}>{prescription?.prescription?.created_at ? new Date(prescription.prescription.created_at).toLocaleDateString() : 'N/A'}</Text>
-              </View>
-            </View>
+            </ViewShot>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity 
@@ -151,7 +201,7 @@ export default function PrescriptionDetailScreen() {
                 ) : (
                   <>
                     <Ionicons name="share-social" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Share</Text>
+                    <Text style={styles.actionButtonText}>Link Pharmacy</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -189,153 +239,200 @@ export default function PrescriptionDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
+  },
+  exportContainer: {
+    backgroundColor: '#f8fafc',
+    padding: 2, // Slight padding for clean capture
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  brandName: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0D1B3A',
+    letterSpacing: 1,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#1a1a1a',
+    color: '#1e293b',
   },
   content: {
     padding: 20,
   },
   qrCard: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#e2e8f0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 2,
+      }
+    })
   },
   qrTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1e293b',
     marginBottom: 20,
   },
   qrPlaceholder: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
     backgroundColor: '#fff',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#f1f5f9',
   },
   qrId: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#4a90e2',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   qrNote: {
     fontSize: 12,
-    color: '#666',
+    color: '#64748b',
     marginTop: 8,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1e293b',
     marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   drugCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#e2e8f0',
     padding: 16,
+    marginBottom: 12,
   },
   drugName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 16,
+    color: '#1e293b',
+    marginBottom: 12,
   },
   dosageRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingBottom: 16,
+    marginBottom: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#f8fafc',
   },
   dosageItem: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   dosageLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 2,
   },
   dosageValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: '#334155',
   },
   instructions: {
-    fontSize: 14,
-    color: '#444',
+    fontSize: 13,
+    color: '#64748b',
     fontStyle: 'italic',
+    lineHeight: 18,
   },
   infoSection: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 32,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
     gap: 12,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   infoLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#64748b',
+    fontWeight: '500',
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1a1a1a',
+    fontWeight: '700',
+    color: '#1e293b',
   },
   orderButton: {
-    backgroundColor: '#4a90e2',
+    backgroundColor: '#0D1B3A',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 18,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 20,
+    borderRadius: 16,
+    gap: 10,
+    marginBottom: 40,
   },
   orderButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    minHeight: 300,
   },
   errorText: {
-    color: '#f44336',
+    color: '#ef4444',
     fontSize: 14,
     textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   actionButton: {
     flex: 1,
@@ -344,15 +441,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     gap: 8,
   },
   actionButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#94a3b8',
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

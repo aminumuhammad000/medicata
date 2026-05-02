@@ -16,16 +16,19 @@ export default function DoctorSearchScreen() {
 
   useEffect(() => {
     loadDoctors();
-  }, [params.specialty]);
+  }, [params.specialty, search]); // Re-run when specialty or search changes
 
   const loadDoctors = async () => {
     setLoading(true);
     setError('');
     try {
-      const params: any = {};
-      if (specialty) params.specialty = specialty;
-      const response = await api.searchDoctors(params);
-      setDoctors(response.data || []);
+      const searchParams: any = {};
+      if (specialty) searchParams.specialty = specialty;
+      if (search) searchParams.name = search;
+      
+      const response = await api.searchDoctors(searchParams);
+      // Backend returns { doctors: [], total: 0, ... }
+      setDoctors(response.data?.doctors || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load doctors');
     } finally {
@@ -81,9 +84,9 @@ export default function DoctorSearchScreen() {
         <Ionicons name="search" size={20} color="#666" />
         <TextInput 
           style={styles.input}
-          placeholder="Search specialty or doctor name"
-          value={specialty}
-          onChangeText={setSpecialty}
+          placeholder="Search by name"
+          value={search}
+          onChangeText={setSearch}
           onSubmitEditing={handleSearch}
           returnKeyType="search"
         />
@@ -91,6 +94,20 @@ export default function DoctorSearchScreen() {
           <Ionicons name="search" size={20} color="#4a90e2" />
         </TouchableOpacity>
       </View>
+
+      {specialty ? (
+        <View style={styles.filterChipContainer}>
+          <View style={styles.filterChip}>
+            <Text style={styles.filterChipText}>Specialty: {specialty}</Text>
+            <TouchableOpacity onPress={() => {
+              setSpecialty('');
+              router.setParams({ specialty: '' });
+            }}>
+              <Ionicons name="close-circle" size={18} color="#4a90e2" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={styles.centerContainer}>
@@ -151,6 +168,25 @@ const styles = StyleSheet.create({
   },
   searchButton: {
     padding: 8,
+  },
+  filterChipContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 8,
+  },
+  filterChipText: {
+    color: '#4a90e2',
+    fontSize: 14,
+    fontWeight: '600',
   },
   list: {
     padding: 20,

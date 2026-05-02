@@ -1,0 +1,12 @@
+warning: struct `LabTestFile` is never constructed
+   --> src/models/consultation.rs:155:12
+    |
+155 | pub struct LabTestFile {
+    |            ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `server` (bin "server") generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.42s
+     Running `target/debug/server`
+[2m2026-04-30T10:47:00.782415Z[0m [34mDEBUG[0m [2mserver[0m[2m:[0m listening on 0.0.0.0:8080

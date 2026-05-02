@@ -7,3 +7,4 @@ pub mod order;
 pub mod review;
 pub mod notification;
 pub mod message;
+pub mod medication;

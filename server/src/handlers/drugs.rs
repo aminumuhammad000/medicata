@@ -104,6 +104,7 @@ pub async fn get_categories(
     Ok(Json(CategoriesResponse { categories }))
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CreateDrugRequest {
     pub name: String,

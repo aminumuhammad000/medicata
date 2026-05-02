@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import OrdersScreen from '../orders/index';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +47,8 @@ function ConsultationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+
   const fetchConsultations = async () => {
     try {
       const response = await api.getMyConsultations();
@@ -55,12 +58,13 @@ function ConsultationsScreen() {
         // Map backend data to UI format
         const mappedData = (response.data || []).map(item => ({
           id: item.id,
-          doctor: item.doctor_name || 'System Doctor',
+          doctor: item.doctor_name || item.patient_name || 'System User',
           date: new Date(item.scheduled_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
           time: new Date(item.scheduled_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
           mode: item.mode.charAt(0).toUpperCase() + item.mode.slice(1),
           status: item.status.charAt(0).toUpperCase() + item.status.slice(1),
-          rawStatus: item.status
+          rawStatus: item.status,
+          scheduled_at: new Date(item.scheduled_at)
         }));
         setConsultations(mappedData);
       }
@@ -81,96 +85,343 @@ function ConsultationsScreen() {
     fetchConsultations();
   };
 
+  const filteredConsultations = consultations.filter(c => {
+    if (activeTab === 'upcoming') {
+      return c.rawStatus === 'pending' || c.rawStatus === 'accepted';
+    } else {
+      return c.rawStatus === 'completed' || c.rawStatus === 'cancelled';
+    }
+  });
+
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      style={styles.card}
+      activeOpacity={0.7}
+      style={styles.doctorExploreCard}
       onPress={() => router.push(`/consultations/desk/${item.id}`)}
     >
-      <View style={styles.cardHeader}>
-        <View style={styles.doctorInfo}>
-          <Ionicons name="person-circle" size={40} color="#4a90e2" />
-          <View style={styles.details}>
-            <Text style={styles.doctorName}>{item.doctor}</Text>
-            <Text style={styles.dateTime}>{item.date} • {item.time}</Text>
+      <View style={styles.doctorExploreHeader}>
+        <View style={styles.doctorExploreAvatar}>
+          <LinearGradient
+            colors={['#0D1B3A', '#1a2a4e']}
+            style={styles.doctorExploreGradient}
+          >
+            <Text style={styles.doctorExploreAvatarText}>{(item.doctor || 'S').charAt(0)}</Text>
+          </LinearGradient>
+        </View>
+        <View style={styles.doctorExploreInfo}>
+          <Text style={styles.doctorExploreName}>{item.doctor}</Text>
+          <View style={styles.doctorExploreMetaRow}>
+            <Ionicons name="calendar-outline" size={12} color="#64748B" />
+            <Text style={styles.doctorExploreMeta}>{item.date}</Text>
+            <View style={styles.dotSeparator} />
+            <Ionicons name="time-outline" size={12} color="#64748B" />
+            <Text style={styles.doctorExploreMeta}>{item.time}</Text>
           </View>
         </View>
         <View style={[
-          styles.statusBadge, 
-          item.rawStatus === 'completed' && styles.statusBadgeCompleted,
-          item.rawStatus === 'cancelled' && styles.statusBadgeCancelled,
-          item.rawStatus === 'pending' && styles.statusBadgePending
+          styles.doctorStatusBadge, 
+          item.rawStatus === 'completed' && styles.doctorStatusBadgeCompleted,
+          item.rawStatus === 'cancelled' && styles.doctorStatusBadgeCancelled,
+          item.rawStatus === 'pending' && styles.doctorStatusBadgePending
         ]}>
           <Text style={[
-            styles.statusText, 
-            item.rawStatus === 'completed' && styles.statusTextCompleted,
-            item.rawStatus === 'cancelled' && styles.statusTextCancelled,
-            item.rawStatus === 'pending' && styles.statusTextPending
+            styles.doctorStatusText, 
+            item.rawStatus === 'completed' && styles.doctorStatusTextCompleted,
+            item.rawStatus === 'cancelled' && styles.doctorStatusTextCancelled,
+            item.rawStatus === 'pending' && styles.doctorStatusTextPending
           ]}>{item.status}</Text>
         </View>
       </View>
-      <View style={styles.cardFooter}>
-        <View style={styles.modeRow}>
-          <Ionicons name={item.mode === 'Video' ? 'videocam' : 'chatbubbles'} size={16} color="#666" />
-          <Text style={styles.modeText}>{item.mode} Consultation</Text>
+      <View style={styles.doctorExploreFooter}>
+        <View style={styles.doctorModeRow}>
+          <Ionicons name={item.mode === 'Video' ? 'videocam' : 'chatbubbles'} size={14} color="#64748B" />
+          <Text style={styles.doctorModeText}>{item.mode} Session</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.viewButton}
-          onPress={() => router.push(`/consultations/desk/${item.id}`)}
-        >
-          <Text style={styles.viewButtonText}>View Details</Text>
-        </TouchableOpacity>
+        <View style={styles.doctorViewAction}>
+          <Text style={styles.doctorViewText}>Enter Desk</Text>
+          <Ionicons name="arrow-forward" size={14} color="#2572D9" />
+        </View>
       </View>
     </TouchableOpacity>
   );
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, styles.center]}>
-        <ActivityIndicator size="large" color="#4a90e2" />
-      </SafeAreaView>
+      <View style={styles.doctorLoadingContainer}>
+        <ActivityIndicator size="large" color="#0D1B3A" />
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Consultations</Text>
-      </View>
+    <View style={styles.doctorContainer}>
+      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.doctorHeader}>
+        <SafeAreaView edges={['top']}>
+          <Text style={styles.doctorHeaderTitle}>Appointments</Text>
+          <Text style={styles.doctorHeaderSubtitle}>Manage your medical schedule</Text>
+        </SafeAreaView>
+      </LinearGradient>
 
-      <View style={styles.tabs}>
-        <TouchableOpacity style={[styles.tab, styles.tabActive]}><Text style={[styles.tabText, styles.tabTextActive]}>Upcoming</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.tab}><Text style={styles.tabText}>Past</Text></TouchableOpacity>
+      <View style={styles.doctorTabs}>
+        <TouchableOpacity 
+          style={[styles.doctorTab, activeTab === 'upcoming' && styles.doctorTabActive]}
+          onPress={() => setActiveTab('upcoming')}
+        >
+          <Text style={[styles.doctorTabText, activeTab === 'upcoming' && styles.doctorTabTextActive]}>Upcoming</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.doctorTab, activeTab === 'past' && styles.doctorTabActive]}
+          onPress={() => setActiveTab('past')}
+        >
+          <Text style={[styles.doctorTabText, activeTab === 'past' && styles.doctorTabTextActive]}>Past History</Text>
+        </TouchableOpacity>
       </View>
 
       {error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={fetchConsultations} style={styles.retryButton}>
-            <Text style={styles.retryText}>Retry</Text>
+        <View style={styles.doctorErrorContainer}>
+          <Text style={styles.doctorErrorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchConsultations} style={styles.doctorRetryButton}>
+            <Text style={styles.doctorRetryText}>Retry Fetch</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={consultations}
+          data={filteredConsultations}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.doctorList}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4a90e2']} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0D1B3A" />
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="calendar-outline" size={64} color="#eee" />
-              <Text style={styles.emptyText}>No consultations found</Text>
+            <View style={styles.doctorEmpty}>
+              <Ionicons name="calendar-outline" size={64} color="#E2E8F0" />
+              <Text style={styles.doctorEmptyText}>No appointments found</Text>
             </View>
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  doctorContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  doctorLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  doctorHeader: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  doctorHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 20,
+  },
+  doctorHeaderSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  doctorTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 16,
+    gap: 12,
+  },
+  doctorTab: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  doctorTabActive: {
+    backgroundColor: '#0D1B3A',
+    borderColor: '#0D1B3A',
+  },
+  doctorTabText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  doctorTabTextActive: {
+    color: '#fff',
+  },
+  doctorList: {
+    padding: 24,
+    paddingBottom: 40,
+  },
+  doctorExploreCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  doctorExploreHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  doctorExploreAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    marginRight: 12,
+  },
+  doctorExploreGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doctorExploreAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  doctorExploreInfo: {
+    flex: 1,
+  },
+  doctorExploreName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  doctorExploreMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  doctorExploreMeta: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 2,
+  },
+  doctorStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
+  },
+  doctorStatusBadgeCompleted: {
+    backgroundColor: '#F0FDF4',
+  },
+  doctorStatusBadgeCancelled: {
+    backgroundColor: '#FEF2F2',
+  },
+  doctorStatusBadgePending: {
+    backgroundColor: '#FFF7ED',
+  },
+  doctorStatusText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+    textTransform: 'uppercase',
+  },
+  doctorStatusTextPending: {
+    color: '#D97706',
+  },
+  doctorStatusTextCompleted: {
+    color: '#16A34A',
+  },
+  doctorStatusTextCancelled: {
+    color: '#DC2626',
+  },
+  doctorExploreFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
+  },
+  doctorModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  doctorModeText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  doctorViewAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  doctorViewText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#2572D9',
+  },
+  doctorEmpty: {
+    marginTop: 80,
+    alignItems: 'center',
+  },
+  doctorEmptyText: {
+    fontSize: 16,
+    color: '#94A3B8',
+    marginTop: 16,
+    fontWeight: '600',
+  },
+  doctorErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  doctorErrorText: {
+    fontSize: 14,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  doctorRetryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#0D1B3A',
+    borderRadius: 12,
+  },
+  doctorRetryText: {
+    color: '#fff',
+    fontWeight: '800',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

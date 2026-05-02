@@ -158,3 +158,45 @@ CREATE TABLE IF NOT EXISTS notifications (
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Chat Messages Table
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    consultation_id UUID NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id),
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Lab Test Status Enum
+CREATE TYPE lab_test_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
+
+-- Lab Test Requests Table (Enhanced for tracking)
+CREATE TABLE IF NOT EXISTS lab_test_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    consultation_id UUID REFERENCES consultations(id),
+    patient_id UUID NOT NULL REFERENCES users(id),
+    doctor_id UUID NOT NULL REFERENCES users(id),
+    
+    -- Requisition Details
+    requisition_code VARCHAR(20) UNIQUE, -- Format: LAB-YYYY-XXXX (e.g., LAB-2024-X8K2)
+    tests JSONB NOT NULL, -- Array of {id, name, category, status}
+    instructions TEXT,
+    status lab_test_status DEFAULT 'pending',
+    
+    -- Timestamps
+    requested_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    
+    -- Results
+    result_files JSONB DEFAULT '[]', -- Array of {url, filename, uploaded_at, uploaded_by}
+    result_summary TEXT, -- Doctor's summary after reviewing results
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index for fast lookup
+CREATE INDEX IF NOT EXISTS idx_lab_tests_consultation ON lab_test_requests(consultation_id);
+CREATE INDEX IF NOT EXISTS idx_lab_tests_patient ON lab_test_requests(patient_id);
+CREATE INDEX IF NOT EXISTS idx_lab_tests_requisition ON lab_test_requests(requisition_code);

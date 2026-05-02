@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,27 +35,106 @@ export default function VideoCallScreen() {
   const [isFrontCamera, setIsFrontCamera] = useState(true);
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [userId, setUserId] = useState<string>('');
+  const [targetId, setTargetId] = useState<string>('');
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const { connected: wsConnected, sendMessage } = useWebSocket();
+  
+  const onMessage = useCallback((msg: any) => {
+    if (msg.consultation_id !== consultationId) return;
+    
+    switch (msg.type) {
+      case 'webrtc_offer':
+        handleOffer(msg);
+        break;
+      case 'webrtc_answer':
+        handleAnswer(msg);
+        break;
+      case 'webrtc_ice':
+        handleIceCandidate(msg);
+        break;
+    }
+  }, [consultationId]);
+
+  const { connected: wsConnected, sendMessage } = useWebSocket(onMessage);
 
   useEffect(() => {
-    loadUserId();
+    loadData();
     return () => {
       endCall();
     };
   }, []);
 
   useEffect(() => {
-    if (userId && wsConnected) {
+    if (userId && targetId && wsConnected) {
       startLocalStream();
     }
-  }, [userId, wsConnected]);
+  }, [userId, targetId, wsConnected]);
 
-  const loadUserId = async () => {
-    const userData = await AsyncStorage.getItem('user_data');
-    if (userData) {
-      const parsed = JSON.parse(userData);
-      setUserId(parsed.id || '');
+  const loadData = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user_data');
+      let currentUserId = '';
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        currentUserId = parsed.id || '';
+        setUserId(currentUserId);
+      }
+
+      // Fetch consultations to find targetId
+      const res = await api.getMyConsultations();
+      if (res.data) {
+        const currentConsultation = res.data.find((c: any) => c.id === consultationId);
+        if (currentConsultation) {
+          const tId = currentUserId === currentConsultation.patient_id 
+            ? currentConsultation.doctor_id 
+            : currentConsultation.patient_id;
+          setTargetId(tId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    }
+  };
+
+  const handleOffer = async (msg: any) => {
+    if (!pcRef.current) return;
+    try {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription({
+        type: 'offer',
+        sdp: msg.sdp
+      }));
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      
+      sendMessage({
+        type: 'webrtc_answer',
+        consultation_id: consultationId,
+        user_id: userId,
+        target_id: targetId,
+        sdp: answer.sdp,
+      });
+    } catch (err) {
+      console.error('Error handling offer:', err);
+    }
+  };
+
+  const handleAnswer = async (msg: any) => {
+    if (!pcRef.current) return;
+    try {
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription({
+        type: 'answer',
+        sdp: msg.sdp
+      }));
+    } catch (err) {
+      console.error('Error handling answer:', err);
+    }
+  };
+
+  const handleIceCandidate = async (msg: any) => {
+    if (!pcRef.current) return;
+    try {
+      await pcRef.current.addIceCandidate(new RTCIceCandidate(JSON.parse(msg.candidate)));
+    } catch (err) {
+      console.error('Error adding ICE candidate:', err);
     }
   };
 
@@ -74,7 +153,22 @@ export default function VideoCallScreen() {
         },
       });
       setLocalStream(stream);
-      initializePeerConnection(stream);
+      const pc = initializePeerConnection(stream);
+      
+      // If we are the initiator (e.g. doctor or whoever enters first), we can create an offer
+      // For simplicity, let's say the person who starts the stream creates an offer if it's a new connection
+      // In a real app, you'd have more complex signaling to decide who offers
+      if (userId && targetId) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendMessage({
+          type: 'webrtc_offer',
+          consultation_id: consultationId,
+          user_id: userId,
+          target_id: targetId,
+          sdp: offer.sdp,
+        });
+      }
     } catch (err) {
       console.error('Failed to get local stream:', err);
       Alert.alert('Error', 'Failed to access camera/microphone');
@@ -105,6 +199,7 @@ export default function VideoCallScreen() {
           type: 'webrtc_ice',
           consultation_id: consultationId,
           user_id: userId,
+          target_id: targetId,
           candidate: JSON.stringify(event.candidate),
         });
       }

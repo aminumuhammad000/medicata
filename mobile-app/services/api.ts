@@ -306,10 +306,17 @@ class ApiService {
     });
   }
 
-  async addPatientFeedback(id: string, rating: number) {
+  async addPatientFeedback(id: string, feedback: any) {
     return this.request<any>(`/consultations/${id}/feedback`, {
       method: 'POST',
-      body: JSON.stringify({ rating }),
+      body: JSON.stringify(feedback),
+    });
+  }
+
+  async addLabTestComment(id: string, summary: string) {
+    return this.request<any>(`/consultations/labs/comment/${id}`, {
+      method: 'POST',
+      body: JSON.stringify({ result_summary: summary }),
     });
   }
 
@@ -384,12 +391,18 @@ class ApiService {
     return this.request<any[]>('/orders');
   }
 
-  async getOrderDetails(id: string) {
-    return this.request<any>(`/orders/${id}`);
+  async getOrderDetails(orderId: string) {
+    return this.request<any>(`/orders/${orderId}`);
   }
 
-  async updateOrderStatus(id: string, status: string) {
-    return this.request<any>(`/orders/${id}/status`, {
+  async payOrderWithWallet(orderId: string) {
+    return this.request<any>(`/orders/${orderId}/pay-wallet`, {
+      method: 'POST',
+    });
+  }
+
+  async updateOrderStatus(orderId: string, status: string) {
+    return this.request<any>(`/orders/${orderId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
@@ -419,6 +432,10 @@ class ApiService {
   async searchPharmacies(params: { city?: string; state?: string }) {
     const queryParams = new URLSearchParams(params as any).toString();
     return this.request<any[]>(`/pharmacies/search?${queryParams}`);
+  }
+
+  async searchPatients(query: string) {
+    return this.request<any[]>(`/patients/search?q=${query}`);
   }
 
   async searchDrugs(name: string) {
@@ -502,6 +519,115 @@ class ApiService {
     });
   }
 
+  async getSchedules() {
+    return this.request<any[]>('/schedule');
+  }
+
+  async createSchedule(data: {
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+    slot_duration_minutes?: number;
+  }) {
+    return this.request<any>('/schedule', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSchedule(id: string) {
+    return this.request<any>(`/schedule/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async requestLabTest(data: {
+    consultation_id?: string;
+    patient_id: string;
+    tests: Array<{ id: string; name: string }>;
+    instructions?: string;
+  }) {
+    return this.request<any>('/consultations/labs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Lab Test Management
+  async getConsultationLabTests(consultationId: string) {
+    return this.request<any[]>(`/consultations/${consultationId}/lab-tests`);
+  }
+
+  async getLabTest(labTestId: string) {
+    return this.request<any>(`/lab-tests/${labTestId}`);
+  }
+
+  async updateLabTestStatus(labTestId: string, status: 'pending' | 'in_progress' | 'completed' | 'cancelled') {
+    return this.request<any>(`/lab-tests/${labTestId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async uploadLabResult(labTestId: string, resultSummary?: string) {
+    return this.request<any>(`/lab-tests/${labTestId}/results`, {
+      method: 'POST',
+      body: JSON.stringify({ result_summary: resultSummary }),
+    });
+  }
+
+  async uploadLabResultWithImage(labTestId: string, imageUrl: string, resultSummary?: string) {
+    return this.request<any>(`/lab-tests/${labTestId}/results`, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        result_summary: resultSummary,
+        result_files: [{ url: imageUrl, uploaded_at: new Date().toISOString() }]
+      }),
+    });
+  }
+
+  async getPatientHistory(patientId: string) {
+    return this.request<any>(`/patients/${patientId}/history`);
+  }
+
+  // Medication Reminders
+  async getMyReminders() {
+    return this.request<any[]>('/medication/reminders');
+  }
+
+  async createReminder(data: {
+    prescription_id?: string;
+    medication_name: string;
+    dosage?: string;
+    frequency: string;
+    times: string[];
+    start_date: string;
+    end_date?: string;
+  }) {
+    return this.request<any>('/medication/reminders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateReminderStatus(id: string, isActive: boolean) {
+    return this.request<any>(`/medication/reminders/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  }
+
+  async deleteReminder(id: string) {
+    return this.request<any>(`/medication/reminders/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Get prescriptions for a consultation
+  async getConsultationPrescriptions(consultationId: string) {
+    return this.request<any[]>(`/consultations/${consultationId}/prescriptions`);
+  }
+
   // Used by profile.tsx to update pharmacy business info
   async updatePharmacyProfile(data: {
     pharmacy_name?: string;
@@ -554,6 +680,13 @@ class ApiService {
     return this.request<any>('/doctor/analytics');
   }
 
+  async uploadVerificationDocuments(documents: any[]) {
+    return this.request<any>('/doctor/verify', {
+      method: 'POST',
+      body: JSON.stringify({ documents }),
+    });
+  }
+
   // Prescription verification (Public)
   async verifyPrescription(token: string) {
     return this.request<any>(`/prescriptions/verify/${token}`);
@@ -566,6 +699,13 @@ class ApiService {
 
   async getWalletTransactions() {
     return this.request<any[]>('/wallet/transactions');
+  }
+
+  async initializeCheckout(data: { amount: number, type: string }) {
+    return this.request<any>('/wallet/checkout/initialize', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   async addMoneyToWallet(amount: number, paymentMethod: string) {

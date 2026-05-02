@@ -1,44 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, FlatList, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../../services/api';
-import { useWebSocket } from '../../../hooks/useWebSocket';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ConsultationDesk() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   
-  const [activeTab, setActiveTab] = useState<'desk' | 'chat'>('desk');
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState<any>(null);
   const [notes, setNotes] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [user, setUser] = useState<any>(null);
-  const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   
-  // Chat state
-  const [messages, setMessages] = useState<any[]>([]);
-  const [inputText, setInputText] = useState('');
-  const flatListRef = useRef<FlatList>(null);
-
-  // WebSocket for real-time
-  const { connected, sendMessage } = useWebSocket((msg) => {
-    if (msg.consultation_id !== id) return;
-
-    if (msg.type === 'chat') {
-      setMessages(prev => [...prev, msg]);
-    } else if (msg.type === 'webrtc_offer' && user?.id !== msg.user_id) {
-      setIncomingCall(msg);
-    } else if (msg.type === 'webrtc_answer' && user?.id !== msg.user_id) {
-      console.log('Received WebRTC Answer:', msg.sdp);
-      alert('Patient accepted call. Establishing connection...');
-    } else if (msg.type === 'webrtc_ice' && user?.id !== msg.user_id) {
-      console.log('Received ICE Candidate');
-    }
-  });
-
+  const [labTests, setLabTests] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  
   useEffect(() => {
     loadUserAndData();
   }, [id]);
@@ -47,19 +28,25 @@ export default function ConsultationDesk() {
     try {
       const me = await api.getMyProfile();
       if (me.data) setUser(me.data);
-
-      const historyRes = await api.getChatHistory(id);
-      if (historyRes.data) {
-        setMessages(historyRes.data);
-      }
       
       const listRes = await api.getMyConsultations();
+      let currentId = id;
       if (listRes.data) {
         const item = listRes.data.find((c: any) => c.id === id);
         if (item) {
           setConsultation(item);
           setNotes(item.doctor_notes || '');
+          currentId = item.id;
         }
+      }
+      
+      if (currentId && currentId !== '') {
+        const [labRes, presRes] = await Promise.all([
+          api.getConsultationLabTests(currentId),
+          api.getConsultationPrescriptions(currentId),
+        ]);
+        if (labRes.data) setLabTests(labRes.data);
+        if (presRes.data) setPrescriptions(presRes.data);
       }
     } catch (error) {
       console.error('Failed to load consultation data:', error);
@@ -70,45 +57,20 @@ export default function ConsultationDesk() {
 
   const isDoctor = user?.role === 'doctor';
 
-  const handleSendChat = () => {
-    if (!inputText.trim() || !user) return;
-
-    const msg = {
-      type: 'chat',
-      consultation_id: id,
-      user_id: user.id,
-      content: inputText.trim(),
-    };
-
-    sendMessage(msg);
-    setInputText('');
-  };
-
-  const handleStartVideo = () => {
-    if (!consultation || !user) return;
-    
-    sendMessage({
-      type: 'webrtc_offer',
-      consultation_id: id,
-      user_id: user.id,
-      target_id: isDoctor ? consultation.patient_id : consultation.doctor_id,
-      sdp: 'OFFER_PLACEHOLDER',
-    });
-    alert('Call initiated...');
-  };
-
-  const handleAcceptCall = () => {
-    if (!incomingCall || !user) return;
-
-    sendMessage({
-      type: 'webrtc_answer',
-      consultation_id: id,
-      user_id: user.id,
-      target_id: incomingCall.user_id,
-      sdp: 'ANSWER_PLACEHOLDER',
-    });
-    setIncomingCall(null);
-    alert('Call connected!');
+  const handleStatusUpdate = async (newStatus: string) => {
+    try {
+      setIsUpdatingStatus(true);
+      await api.updateConsultationStatus(id, newStatus);
+      const listRes = await api.getMyConsultations();
+      if (listRes.data) {
+        const item = listRes.data.find((c: any) => c.id === id);
+        if (item) setConsultation(item);
+      }
+    } catch (error) {
+      alert('Failed to update appointment status');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -117,10 +79,207 @@ export default function ConsultationDesk() {
         await api.updateConsultationStatus(id, 'completed');
         await api.addConsultationNotes(id, diagnosis + "\n\n" + notes);
       }
-      router.replace('/doctor/dashboard');
+      // Redirect to the main tab index where the doctor dashboard lives
+      router.replace('/(tabs)');
     } catch (error) {
       alert('Failed to complete consultation');
     }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return '#F59E0B';
+      case 'in_progress': return '#3B82F6';
+      case 'completed': return '#22C55E';
+      case 'cancelled': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'in_progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      default: return status;
+    }
+  };
+
+  const renderPrescriptionsSection = () => {
+    if (prescriptions.length === 0) return null;
+
+    return (
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconBg, { backgroundColor: '#F0FDF4' }]}>
+            <Ionicons name="medical" size={20} color="#22C55E" />
+          </View>
+          <View>
+            <Text style={styles.sectionTitle}>Prescriptions</Text>
+            <Text style={styles.sectionSubtitle}>{prescriptions.length} issued</Text>
+          </View>
+        </View>
+        
+        {prescriptions.map((prescription, index) => (
+          <View key={prescription.id} style={[styles.prescriptionCard, index === prescriptions.length - 1 && { marginBottom: 0 }]}>
+            <View style={styles.prescriptionHeader}>
+              <View style={styles.prescriptionIdBadge}>
+                <Text style={styles.prescriptionIdText}>RX-{prescription.id?.slice(0, 8).toUpperCase()}</Text>
+              </View>
+              <Text style={styles.prescriptionDate}>
+                {new Date(prescription.created_at).toLocaleDateString()}
+              </Text>
+            </View>
+            
+            <View style={styles.medicationsList}>
+              {prescription.items?.map((item: any, idx: number) => (
+                <View key={idx} style={styles.medicationItem}>
+                  <View style={styles.medicationDot} />
+                  <View style={styles.medicationInfo}>
+                    <Text style={styles.medicationName}>{item.drug_name}</Text>
+                    <Text style={styles.medicationDetails}>
+                      {item.dosage} • {item.frequency} • {item.duration_days} days
+                    </Text>
+                    {item.instructions && (
+                      <Text style={styles.medicationNote}>Note: {item.instructions}</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+            
+            <View style={styles.prescriptionStatus}>
+              <View style={[styles.statusBadge, { backgroundColor: prescription.is_dispensed ? '#DCFCE7' : '#FEF3C7' }]}>
+                <Text style={[styles.statusBadgeText, { color: prescription.is_dispensed ? '#166534' : '#92400E' }]}>
+                  {prescription.is_dispensed ? '✓ Dispensed' : '⏳ Active'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderLabTestsSection = () => {
+    if (labTests.length === 0 && !isDoctor) return null;
+
+    return (
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeader}>
+          <View style={[styles.sectionIconBg, { backgroundColor: '#EFF6FF' }]}>
+            <Ionicons name="flask" size={20} color="#3B82F6" />
+          </View>
+          <View>
+            <Text style={styles.sectionTitle}>Lab Tests</Text>
+            <Text style={styles.sectionSubtitle}>
+              {labTests.filter(lt => lt.status !== 'completed').length} active • {labTests.filter(lt => lt.status === 'completed').length} completed
+            </Text>
+          </View>
+        </View>
+        
+        {labTests.length === 0 ? (
+          isDoctor && (
+            <View style={styles.emptyLabState}>
+              <Text style={styles.emptyLabText}>No lab tests requested yet</Text>
+              <Text style={styles.emptyLabSubtext}>Use the Lab Test button to request tests</Text>
+            </View>
+          )
+        ) : (
+          labTests.map((labTest, index) => (
+            <View key={labTest.id} style={[styles.labTestCard, index === labTests.length - 1 && { marginBottom: 0 }]}>
+              <View style={styles.labTestHeader}>
+                <View>
+                  <Text style={styles.requisitionCode}>{labTest.requisition_code || 'LAB-XXXX-XXXX'}</Text>
+                  <Text style={styles.requestedDate}>
+                    Requested {new Date(labTest.requested_at || labTest.created_at).toLocaleDateString()}
+                  </Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(labTest.status) + '20' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: getStatusColor(labTest.status) }]} />
+                  <Text style={[styles.statusBadgeText, { color: getStatusColor(labTest.status) }]}>
+                    {getStatusLabel(labTest.status)}
+                  </Text>
+                </View>
+              </View>
+              
+              {labTest.instructions && (
+                <View style={styles.instructionsBox}>
+                  <Ionicons name="information-circle" size={14} color="#3B82F6" />
+                  <Text style={styles.instructionsText}>{labTest.instructions}</Text>
+                </View>
+              )}
+              
+              <View style={styles.testsList}>
+                {labTest.tests?.map((test: any, idx: number) => (
+                  <View key={idx} style={styles.testItem}>
+                    <View style={[styles.testCategoryTag, { backgroundColor: getStatusColor(labTest.status) + '15' }]}>
+                      <Text style={[styles.testCategoryText, { color: getStatusColor(labTest.status) }]}>
+                        {test.category || 'Lab'}
+                      </Text>
+                    </View>
+                    <Text style={styles.testName}>{test.name}</Text>
+                  </View>
+                ))}
+              </View>
+              
+              <View style={styles.labTestActions}>
+                {isDoctor ? (
+                  labTest.status === 'completed' ? (
+                    <TouchableOpacity 
+                      style={styles.labActionBtn}
+                      onPress={() => router.push({
+                        pathname: '/doctor/labs/results/[id]',
+                        params: { id: labTest.id }
+                      })}
+                    >
+                      <Ionicons name="eye-outline" size={16} color="#22C55E" />
+                      <Text style={[styles.labActionText, { color: '#22C55E' }]}>View Results</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.waitingForPatient}>
+                      <Ionicons name="time-outline" size={14} color="#64748B" />
+                      <Text style={styles.waitingForPatientText}>Awaiting Patient Results</Text>
+                    </View>
+                  )
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.labActionBtn}
+                      onPress={() => router.push({
+                        pathname: '/doctor/labs/requisition/[id]',
+                        params: { id: labTest.id }
+                      })}
+                    >
+                      <Ionicons name="document-text-outline" size={16} color="#3B82F6" />
+                      <Text style={[styles.labActionText, { color: '#3B82F6' }]}>View Card</Text>
+                    </TouchableOpacity>
+                    
+                    {(labTest.status === 'pending' || labTest.status === 'in_progress') && (
+                      <TouchableOpacity 
+                        style={styles.labActionBtn}
+                        onPress={() => router.push({ pathname: '/patient/labs/upload/[id]', params: { id: labTest.id } })}
+                      >
+                        <Ionicons name="cloud-upload-outline" size={16} color="#F59E0B" />
+                        <Text style={[styles.labActionText, { color: '#F59E0B' }]}>Upload Results</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+              </View>
+              
+              {labTest.result_summary && (
+                <View style={styles.resultsBox}>
+                  <Text style={styles.resultsLabel}>Doctor's Summary:</Text>
+                  <Text style={styles.resultsText}>{labTest.result_summary}</Text>
+                </View>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+    );
   };
 
   if (loading) {
@@ -131,544 +290,257 @@ export default function ConsultationDesk() {
     );
   }
 
-  const renderChatItem = ({ item }: { item: any }) => {
-    const isMe = item.user_id === consultation?.doctor_id;
-    return (
-      <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
-        <Text style={[styles.messageText, isMe ? styles.myMessageText : styles.theirMessageText]}>
-          {item.content}
-        </Text>
-      </View>
-    );
-  };
+  const isAccepted = consultation?.status === 'accepted' || consultation?.status === 'completed';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Consultation Desk</Text>
-          <TouchableOpacity onPress={handleStartVideo}>
-            <Ionicons name="videocam" size={24} color="#4a90e2" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tabBar}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'desk' && styles.activeTab]}
-            onPress={() => setActiveTab('desk')}
-          >
-            <Text style={[styles.tabText, activeTab === 'desk' && styles.activeTabText]}>Clinical Desk</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-            onPress={() => setActiveTab('chat')}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.tabText, activeTab === 'chat' && styles.activeTabText]}>Chat</Text>
-              {!connected && <View style={styles.offlineDot} />}
+    <View style={styles.container}>
+      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.topSection}>
+        <SafeAreaView edges={['top']}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
+              <Ionicons name="chevron-back" size={24} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Clinical Desk</Text>
+              <Text style={styles.headerSubtitle}>Consultation Details & Records</Text>
             </View>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity 
+              onPress={() => router.push({ pathname: '/consultations/chat/[id]', params: { id } })}
+              style={[styles.headerBtn, { backgroundColor: '#4A90E2' }]}
+            >
+              <Ionicons name="chatbubbles" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-        {activeTab === 'desk' ? (
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.patientCard}>
-              <View style={styles.patientInfo}>
-                <View style={[styles.avatar, { backgroundColor: isDoctor ? '#4a90e2' : '#f0f0f0' }]}>
-                  <Text style={[styles.avatarText, !isDoctor && { color: '#666' }]}>
-                    {(isDoctor ? consultation?.patient_name : consultation?.doctor_name || 'A').charAt(0)}
-                  </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        {!isAccepted && isDoctor ? (
+          <View style={styles.pendingOverlay}>
+            <View style={styles.pendingCard}>
+              <View style={styles.pendingIconBg}>
+                <Ionicons name="time-outline" size={48} color="#F59E0B" />
+              </View>
+              <Text style={styles.pendingTitle}>Pending Approval</Text>
+              <Text style={styles.pendingSubtitle}>
+                Please review and accept this appointment for {consultation?.patient_name} before starting the clinical session.
+              </Text>
+              <View style={styles.pendingActions}>
+                <TouchableOpacity style={[styles.approvalBtn, styles.declineBtn]} onPress={() => handleStatusUpdate('cancelled')} disabled={isUpdatingStatus}>
+                  <Text style={styles.declineBtnText}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.approvalBtn, styles.acceptBtn]} onPress={() => handleStatusUpdate('accepted')} disabled={isUpdatingStatus}>
+                  {isUpdatingStatus ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptBtnText}>Accept Appointment</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.patientProfileCard}>
+              <View style={styles.profileMain}>
+                <View style={styles.profileAvatar}>
+                  <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.avatarGradient}>
+                    <Text style={styles.avatarText}>
+                      {(isDoctor ? consultation?.patient_name : consultation?.doctor_name || 'A').charAt(0)}
+                    </Text>
+                  </LinearGradient>
                 </View>
-                <View>
-                  <Text style={styles.patientName}>
+                <View style={styles.profileDetails}>
+                  <Text style={styles.profileName}>
                     {isDoctor ? consultation?.patient_name : `Dr. ${consultation?.doctor_name || 'Medical Specialist'}`}
                   </Text>
-                  <Text style={styles.patientMeta}>
-                    {consultation?.mode.toUpperCase()} • {consultation?.scheduled_at ? new Date(consultation.scheduled_at).toLocaleDateString() : 'Today'}
-                  </Text>
+                  <View style={styles.profileMetaRow}>
+                    <Text style={styles.profileMeta}>{consultation?.mode.toUpperCase()}</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.tagRow}>
-                <View style={styles.tag}><Text style={styles.tagText}>Reason: {consultation?.reason || 'Fever'}</Text></View>
-                <View style={[styles.tag, { borderColor: '#4caf50' }]}>
-                  <Text style={[styles.tagText, { color: '#4caf50' }]}>Status: {consultation?.status}</Text>
+              <View style={styles.profileFooter}>
+                <View style={styles.reasonTag}>
+                  <Text style={styles.reasonLabel}>Chief Complaint</Text>
+                  <Text style={styles.reasonValue}>{consultation?.reason || 'Not specified'}</Text>
                 </View>
               </View>
             </View>
 
-            {isDoctor && (
-              <>
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Diagnosis</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Primary diagnosis..."
-                    value={diagnosis}
-                    onChangeText={setDiagnosis}
-                  />
+            {renderPrescriptionsSection()}
+            {renderLabTestsSection()}
+
+            {isDoctor ? (
+              <View style={styles.clinicalSections}>
+                <View style={styles.clinicalSection}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="clipboard-outline" size={20} color="#0D1B3A" />
+                    <Text style={styles.clinicalSectionTitle}>Diagnosis</Text>
+                  </View>
+                  <TextInput style={styles.clinicalInput} placeholder="Enter primary diagnosis..." value={diagnosis} onChangeText={setDiagnosis} />
                 </View>
 
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Clinical Notes</Text>
-                  <TextInput
-                    style={styles.textArea}
-                    placeholder="Detailed findings and observations..."
-                    multiline
-                    numberOfLines={6}
-                    value={notes}
-                    onChangeText={setNotes}
-                  />
+                <View style={styles.clinicalSection}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Ionicons name="document-text-outline" size={20} color="#0D1B3A" />
+                    <Text style={styles.clinicalSectionTitle}>Clinical Findings</Text>
+                  </View>
+                  <TextInput style={styles.clinicalTextArea} placeholder="Detailed observations, symptoms, and medical notes..." multiline numberOfLines={6} value={notes} onChangeText={setNotes} />
                 </View>
 
-                <View style={styles.actionRow}>
-                  <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => router.push({ pathname: '/doctor/prescription/create', params: { consultationId: id, patientId: consultation?.patient_id } })}
-                  >
-                    <Ionicons name="medical" size={20} color="#4a90e2" />
-                    <Text style={styles.actionButtonText}>Add Prescription</Text>
+                <View style={styles.quickActionsGrid}>
+                  <TouchableOpacity style={styles.gridActionBtn} onPress={() => router.push({ pathname: '/doctor/prescription/create', params: { consultationId: id, patientId: consultation?.patient_id } })}>
+                    <View style={[styles.gridIconBg, { backgroundColor: '#F0FDF4' }]}>
+                      <Ionicons name="medical" size={22} color="#22C55E" />
+                    </View>
+                    <Text style={styles.gridActionLabel}>Prescribe</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionButton}>
-                    <Ionicons name="flask" size={20} color="#4a90e2" />
-                    <Text style={styles.actionButtonText}>Request Lab Test</Text>
+                  
+                  <TouchableOpacity style={styles.gridActionBtn} onPress={() => router.push({ pathname: '/doctor/labs/request', params: { consultationId: id, patientId: consultation?.patient_id } })}>
+                    <View style={[styles.gridIconBg, { backgroundColor: '#FFF7ED' }]}>
+                      <Ionicons name="flask" size={22} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.gridActionLabel}>Lab Test</Text>
                   </TouchableOpacity>
-                </View>
-              </>
-            )}
 
-            {!isDoctor && (
-              <View style={styles.patientNotesArea}>
-                <Text style={styles.sectionTitle}>Doctor's Notes</Text>
-                <View style={styles.notesBox}>
-                  <Text style={styles.notesText}>{notes || 'The doctor will add notes during the consultation.'}</Text>
-                </View>
-                
-                {consultation?.status === 'completed' && (
-                  <TouchableOpacity 
-                    style={styles.prescriptionBtn}
-                    onPress={() => {
-                        // In a real app, find the prescription ID linked to this consultation
-                        alert('Finding your prescription...');
-                    }}
-                  >
-                    <Ionicons name="receipt" size={20} color="#fff" />
-                    <Text style={styles.prescriptionBtnText}>View Prescriptions</Text>
+                  <TouchableOpacity style={styles.gridActionBtn} onPress={() => router.push({ pathname: '/doctor/history/[id]', params: { id: consultation?.patient_id, name: consultation?.patient_name } })}>
+                    <View style={[styles.gridIconBg, { backgroundColor: '#F0F9FF' }]}>
+                      <Ionicons name="time" size={22} color="#0EA5E9" />
+                    </View>
+                    <Text style={styles.gridActionLabel}>History</Text>
                   </TouchableOpacity>
-                )}
+                </View>
+              </View>
+            ) : (
+              <View style={styles.patientViewContent}>
+                <View style={styles.instructionCard}>
+                  <Ionicons name="information-circle" size={24} color="#4A90E2" />
+                  <Text style={styles.instructionText}>
+                    Your consultation is active. You can use the discussion tab to message the doctor directly.
+                  </Text>
+                </View>
+
+                <View style={styles.doctorNotesSection}>
+                  <Text style={styles.clinicalSectionTitle}>Doctor's Findings</Text>
+                  <View style={styles.notesContainer}>
+                    {notes ? <Text style={styles.notesContent}>{notes}</Text> : (
+                      <View style={styles.waitingContainer}>
+                        <ActivityIndicator color="#64748B" size="small" />
+                        <Text style={styles.waitingText}>Doctor is preparing your notes...</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
               </View>
             )}
           </ScrollView>
-        ) : (
-          <View style={styles.chatContainer}>
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={renderChatItem}
-              keyExtractor={(item, index) => index.toString()}
-              contentContainerStyle={styles.chatList}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-            />
-            <View style={styles.chatInputRow}>
-              <TextInput
-                style={styles.chatInput}
-                placeholder="Type a message..."
-                value={inputText}
-                onChangeText={setInputText}
-              />
-              <TouchableOpacity 
-                style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-                onPress={handleSendChat}
-                disabled={!inputText.trim()}
-              >
-                <Ionicons name="send" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
         )}
 
-        {isDoctor && activeTab === 'desk' && (
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={[styles.completeButton, (!notes || !diagnosis) && styles.completeButtonDisabled]} 
-              onPress={handleComplete}
-              disabled={!notes || !diagnosis}
-            >
-              <Text style={styles.completeButtonText}>Complete Consultation</Text>
+        {isDoctor && isAccepted && (
+          <View style={styles.bottomActions}>
+            <TouchableOpacity style={[styles.submitBtn, (!notes || !diagnosis) && styles.submitBtnDisabled]} onPress={handleComplete} disabled={!notes || !diagnosis}>
+              <Text style={styles.submitBtnText}>Complete Clinical Session</Text>
             </TouchableOpacity>
           </View>
         )}
-
-        {incomingCall && (
-          <View style={styles.callModal}>
-            <View style={styles.callCard}>
-              <View style={styles.callAvatar}>
-                <Ionicons name="videocam" size={40} color="#fff" />
-              </View>
-              <Text style={styles.callTitle}>Incoming Video Call</Text>
-              <Text style={styles.callSubtitle}>Dr. {consultation?.doctor_name} is calling you</Text>
-              
-              <View style={styles.callActions}>
-                <TouchableOpacity 
-                  style={[styles.callBtn, { backgroundColor: '#ff3b30' }]}
-                  onPress={() => setIncomingCall(null)}
-                >
-                  <Ionicons name="close" size={24} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.callBtn, { backgroundColor: '#4caf50' }]}
-                  onPress={handleAcceptCall}
-                >
-                  <Ionicons name="checkmark" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  content: {
-    padding: 20,
-  },
-  patientCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  patientInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#4a90e2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  patientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  patientMeta: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  tagText: {
-    fontSize: 12,
-    color: '#555',
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-  },
-  textArea: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 15,
-    height: 150,
-    textAlignVertical: 'top',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f7ff',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#d0e3ff',
-    gap: 8,
-  },
-  actionButtonText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#4a90e2',
-  },
-  footer: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    backgroundColor: '#fff',
-  },
-  completeButton: {
-    backgroundColor: '#4a90e2',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  completeButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  completeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingHorizontal: 20,
-  },
-  tab: {
-    paddingVertical: 14,
-    marginRight: 24,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: '#4a90e2',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
-  },
-  activeTabText: {
-    color: '#4a90e2',
-  },
-  offlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#ff3b30',
-  },
-  chatContainer: {
-    flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  chatList: {
-    padding: 20,
-    gap: 12,
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 4,
-  },
-  myMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#4a90e2',
-    borderBottomRightRadius: 4,
-  },
-  theirMessage: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  myMessageText: {
-    color: '#fff',
-  },
-  theirMessageText: {
-    color: '#1a1a1a',
-  },
-  chatInputRow: {
-    flexDirection: 'row',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    gap: 12,
-    alignItems: 'center',
-  },
-  chatInput: {
-    flex: 1,
-    backgroundColor: '#f1f3f5',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#4a90e2',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  patientNotesArea: {
-    marginTop: 24,
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  notesBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-  },
-  notesText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-  },
-  prescriptionBtn: {
-    backgroundColor: '#4a90e2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 20,
-    gap: 12,
-  },
-  prescriptionBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  callModal: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  callCard: {
-    backgroundColor: '#fff',
-    width: '80%',
-    padding: 30,
-    borderRadius: 32,
-    alignItems: 'center',
-  },
-  callAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#4a90e2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  callTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
-  },
-  callSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  callActions: {
-    flexDirection: 'row',
-    gap: 30,
-  },
-  callBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
-      }
-    }),
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  topSection: { paddingBottom: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 },
+  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.15)', justifyContent: 'center', alignItems: 'center' },
+  headerTitleContainer: { alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { fontSize: 11, color: 'rgba(255, 255, 255, 0.7)', fontWeight: '600' },
+  pendingOverlay: { flex: 1, justifyContent: 'center', padding: 24 },
+  pendingCard: { backgroundColor: '#fff', borderRadius: 30, padding: 30, alignItems: 'center', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 }, android: { elevation: 10 } }) },
+  pendingIconBg: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  pendingTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 12 },
+  pendingSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  pendingActions: { flexDirection: 'row', gap: 12 },
+  approvalBtn: { flex: 1, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  declineBtn: { backgroundColor: '#F1F5F9' },
+  acceptBtn: { backgroundColor: '#0D1B3A', flex: 2 },
+  declineBtnText: { color: '#64748B', fontWeight: '700' },
+  acceptBtnText: { color: '#fff', fontWeight: '700' },
+  scrollContent: { padding: 20 },
+  patientProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  profileMain: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+  profileAvatar: { width: 60, height: 60, borderRadius: 20, overflow: 'hidden' },
+  avatarGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  profileDetails: { flex: 1 },
+  profileName: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 4 },
+  profileMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  profileMeta: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  profileFooter: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
+  reasonTag: { gap: 4 },
+  reasonLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
+  reasonValue: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  clinicalSections: { gap: 20 },
+  clinicalSection: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  clinicalSectionTitle: { fontSize: 15, fontWeight: '800', color: '#0D1B3A' },
+  clinicalInput: { fontSize: 15, color: '#1E293B', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  clinicalTextArea: { fontSize: 14, color: '#1E293B', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, height: 120, textAlignVertical: 'top', borderWidth: 1, borderColor: '#F1F5F9' },
+  quickActionsGrid: { flexDirection: 'row', gap: 12 },
+  gridActionBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 18, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  gridIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  gridActionLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  bottomActions: { padding: 20, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  submitBtn: { backgroundColor: '#4A90E2', height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+  submitBtnDisabled: { backgroundColor: '#CBD5E1' },
+  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  patientViewContent: { gap: 20 },
+  instructionCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F9FF', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#B9E6FE' },
+  instructionText: { flex: 1, fontSize: 13, color: '#0369A1', fontWeight: '600', lineHeight: 18 },
+  doctorNotesSection: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  notesContainer: { marginTop: 12, minHeight: 100, justifyContent: 'center' },
+  notesContent: { fontSize: 15, color: '#1E293B', lineHeight: 24 },
+  waitingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  waitingText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  sectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  sectionIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#1E293B' },
+  sectionSubtitle: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  prescriptionCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  prescriptionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  prescriptionIdBadge: { backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  prescriptionIdText: { fontSize: 12, fontWeight: '700', color: '#4338CA' },
+  prescriptionDate: { fontSize: 12, color: '#64748B' },
+  medicationsList: { gap: 10 },
+  medicationItem: { flexDirection: 'row', gap: 10 },
+  medicationDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4A90E2', marginTop: 6 },
+  medicationInfo: { flex: 1 },
+  medicationName: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  medicationDetails: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  medicationNote: { fontSize: 11, color: '#4A90E2', fontStyle: 'italic', marginTop: 2 },
+  prescriptionStatus: { marginTop: 12, alignItems: 'flex-start' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  statusBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
+  labTestCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  labTestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  requisitionCode: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  requestedDate: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  instructionsBox: { flexDirection: 'row', gap: 8, backgroundColor: '#EFF6FF', padding: 10, borderRadius: 10, marginBottom: 12, alignItems: 'flex-start' },
+  instructionsText: { flex: 1, fontSize: 12, color: '#3B82F6', lineHeight: 18 },
+  testsList: { gap: 8 },
+  testItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  testCategoryTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  testCategoryText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  testName: { fontSize: 14, color: '#1E293B', fontWeight: '500' },
+  waitingForPatient: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
+  waitingForPatientText: { fontSize: 12, color: '#64748B', fontStyle: 'italic' },
+  labTestActions: { flexDirection: 'row', gap: 12, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  labActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  labActionText: { fontSize: 12, fontWeight: '600', color: '#4A90E2' },
+  resultsBox: { backgroundColor: '#F0FDF4', padding: 12, borderRadius: 10, marginTop: 12, borderLeftWidth: 3, borderLeftColor: '#22C55E' },
+  resultsLabel: { fontSize: 11, fontWeight: '700', color: '#166534', marginBottom: 4 },
+  resultsText: { fontSize: 13, color: '#1E293B', lineHeight: 20 },
+  emptyLabState: { alignItems: 'center', padding: 30, backgroundColor: '#F8FAFC', borderRadius: 16, borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0' },
+  emptyLabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  emptyLabSubtext: { fontSize: 12, color: '#94A3B8', marginTop: 4 },
 });

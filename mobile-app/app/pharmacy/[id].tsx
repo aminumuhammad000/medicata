@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,6 +9,9 @@ export default function PharmacyOrderScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const [pharmacy, setPharmacy] = useState<any>(null);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [selectedPrescription, setSelectedPrescription] = useState<any>(null);
+  const [showPrescriptionList, setShowPrescriptionList] = useState(false);
   const [delivery, setDelivery] = useState(true);
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,31 +19,51 @@ export default function PharmacyOrderScreen() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadPharmacy();
+    loadData();
   }, [id]);
 
-  const loadPharmacy = async () => {
+  const loadData = async () => {
     try {
-      const response = await api.getPharmacyById(id as string);
-      setPharmacy(response.data);
+      const [pharmacyRes, prescriptionsRes] = await Promise.all([
+        api.getPharmacyById(id as string),
+        api.getMyPrescriptions()
+      ]);
+      setPharmacy(pharmacyRes.data);
+      setPrescriptions(prescriptionsRes.data || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to load pharmacy');
+      setError(err.message || 'Failed to load data');
     } finally {
       setPageLoading(false);
     }
   };
 
+  const handleSelectPrescription = (prescription: any) => {
+    setSelectedPrescription(prescription);
+    setShowPrescriptionList(false);
+  };
+
   const handleOrder = async () => {
+    if (!selectedPrescription) {
+      Alert.alert('Selection Required', 'Please select a prescription from your list before placing an order.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     
     try {
-      await api.createOrder({
+      const res = await api.createOrder({
         pharmacy_id: id as string,
+        prescription_id: selectedPrescription.id,
         delivery_address: delivery ? address : undefined,
         is_delivery: delivery,
       });
-      router.replace('/(tabs)');
+
+      if (res.error) throw new Error(res.error);
+
+      Alert.alert('Order Placed', 'Your order has been successfully placed. You can now proceed to payment.', [
+        { text: 'Okay', onPress: () => router.replace('/(tabs)') }
+      ]);
     } catch (err: any) {
       setError(err.message || 'Failed to place order');
     } finally {
@@ -76,14 +99,73 @@ export default function PharmacyOrderScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Prescription</Text>
-          <View style={styles.prescriptionBox}>
-            <Ionicons name="document-text" size={24} color="#4a90e2" />
+          <TouchableOpacity 
+            style={[styles.prescriptionBox, selectedPrescription && styles.prescriptionBoxSelected]}
+            onPress={() => setShowPrescriptionList(!showPrescriptionList)}
+          >
+            <Ionicons 
+              name={selectedPrescription ? "checkmark-circle" : "document-text"} 
+              size={24} 
+              color={selectedPrescription ? "#10B981" : "#4a90e2"} 
+            />
             <View style={styles.prescriptionInfo}>
-              <Text style={styles.prescriptionName}>Select a prescription from your list</Text>
-              <Text style={styles.prescriptionDetail}>Go to prescriptions to select one</Text>
+              <Text style={styles.prescriptionName}>
+                {selectedPrescription ? `Dr. ${selectedPrescription.doctor_name}'s Prescription` : 'Select a prescription from your list'}
+              </Text>
+              <Text style={styles.prescriptionDetail}>
+                {selectedPrescription 
+                  ? `Issued on ${new Date(selectedPrescription.created_at).toLocaleDateString()}` 
+                  : 'Click to view your available prescriptions'}
+              </Text>
+            </View>
+            <Ionicons name={showPrescriptionList ? "chevron-up" : "chevron-down"} size={20} color="#64748B" />
+          </TouchableOpacity>
+
+          {showPrescriptionList && (
+            <View style={styles.prescriptionDropdown}>
+              {prescriptions.length > 0 ? (
+                prescriptions.filter(p => !p.is_dispensed).map((p) => (
+                  <TouchableOpacity 
+                    key={p.id} 
+                    style={styles.prescriptionOption}
+                    onPress={() => handleSelectPrescription(p)}
+                  >
+                    <View>
+                      <Text style={styles.optionTitle}>Dr. {p.doctor_name}</Text>
+                      <Text style={styles.optionSubtitle}>{new Date(p.created_at).toLocaleDateString()}</Text>
+                    </View>
+                    {selectedPrescription?.id === p.id && (
+                      <Ionicons name="checkmark" size={20} color="#4F46E5" />
+                    )}
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyOption}>
+                  <Text style={styles.emptyOptionText}>No active prescriptions found</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {selectedPrescription && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Order Items</Text>
+            <View style={styles.itemsCard}>
+              {selectedPrescription.medications?.map((item: any, index: number) => (
+                <View key={index} style={[styles.itemRow, index === selectedPrescription.medications.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={styles.itemIconBg}>
+                    <Ionicons name="medical" size={20} color="#4F46E5" />
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName}>{item.drug_name}</Text>
+                    <Text style={styles.itemDosage}>{item.dosage} • {item.duration}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
-        </View>
+        )}
 
         <View style={styles.section}>
           <View style={styles.row}>
@@ -207,6 +289,50 @@ const styles = StyleSheet.create({
     borderColor: '#d0e3ff',
     gap: 12,
   },
+  prescriptionBoxSelected: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
+  },
+  prescriptionDropdown: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  prescriptionOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  optionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  optionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  emptyOption: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyOptionText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
   prescriptionInfo: {
     flex: 1,
   },
@@ -322,5 +448,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 16,
     textAlign: 'center',
+  },
+  itemsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    marginTop: 12,
+    overflow: 'hidden',
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  itemIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  itemDosage: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

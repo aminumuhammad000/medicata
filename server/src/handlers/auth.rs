@@ -6,10 +6,45 @@ use chrono::Utc;
 use serde::Deserialize;
 use crate::{
     error::AppError,
-    models::user::{RegisterRequest, LoginRequest, AuthResponse, User, PatientHealthInfoRequest, PatientProfileRequest, DoctorProfessionalInfoRequest, DoctorBioRequest, PharmacyInfoRequest},
+    models::user::{RegisterRequest, LoginRequest, AuthResponse, User, PatientHealthInfoRequest, PatientProfileRequest, DoctorProfessionalInfoRequest, DoctorBioRequest, PharmacyInfoRequest, DoctorProfileUpdateRequest, UploadVerificationDocumentsRequest},
     auth_utils::{hash_password, verify_password, generate_jwt, Claims},
     state::AppState,
+    handlers::notification::create_notification,
 };
+
+pub async fn upload_verification_documents(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<UploadVerificationDocumentsRequest>,
+) -> Result<Json<User>, AppError> {
+    if claims.role != crate::models::user::UserRole::Doctor {
+        return Err(AppError::Forbidden("Only doctors can upload verification documents".to_string()));
+    }
+
+    let documents_json = serde_json::to_value(&payload.documents)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to serialize documents: {}", e)))?;
+
+    let user = sqlx::query_as::<_, User>(
+        "UPDATE users 
+         SET verification_documents = $2, verification_status = 'pending', updated_at = NOW()
+         WHERE id = $1 RETURNING *"
+    )
+    .bind(claims.user_id)
+    .bind(documents_json)
+    .fetch_one(&state.db)
+    .await?;
+
+    // Notify the doctor that documents are being reviewed
+    let _ = create_notification(
+        &state,
+        claims.user_id,
+        "Verification Under Review",
+        "Your medical verification documents have been received and are currently under review by our medical board.",
+        "system"
+    ).await;
+
+    Ok(Json(user))
+}
 
 // From UserJourney.md Step 3: Account Creation (Must-Have Info)
 pub async fn register(
@@ -326,6 +361,33 @@ pub async fn update_doctor_professional_info(
     .bind(&payload.clinic_hospital_affiliation)
     .bind(&payload.profile_photo)
     .bind(&payload.clinic_hospital_address)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(user))
+}
+
+pub async fn update_doctor_profile(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<DoctorProfileUpdateRequest>,
+) -> Result<Json<User>, AppError> {
+    let user = sqlx::query_as::<_, User>(
+        "UPDATE users 
+         SET bio = COALESCE($2, bio),
+             specialty = COALESCE($3, specialty),
+             years_of_experience = COALESCE($4, years_of_experience),
+             clinic_hospital_affiliation = COALESCE($5, clinic_hospital_affiliation),
+             languages_spoken = COALESCE($6, languages_spoken),
+             updated_at = NOW()
+         WHERE id = $1 RETURNING *"
+    )
+    .bind(claims.user_id)
+    .bind(payload.bio)
+    .bind(payload.specialty)
+    .bind(payload.years_of_experience)
+    .bind(payload.clinic_hospital_affiliation)
+    .bind(payload.languages_spoken)
     .fetch_one(&state.db)
     .await?;
 

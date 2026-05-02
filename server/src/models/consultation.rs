@@ -91,3 +91,71 @@ pub struct DoctorAnalytics {
     pub total_earnings: i64,
     pub completed_this_month: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LabTestItem {
+    pub id: String,
+    pub name: String,
+    pub category: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RequestLabTestRequest {
+    pub consultation_id: Option<Uuid>,
+    pub patient_id: Uuid,
+    pub tests: Vec<LabTestItem>,
+    pub instructions: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
+#[sqlx(type_name = "lab_test_status", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum LabTestStatus {
+    Pending,
+    InProgress,
+    Completed,
+    Cancelled,
+}
+
+#[derive(Debug, sqlx::FromRow, Serialize, Deserialize)]
+pub struct LabTestRequest {
+    pub id: Uuid,
+    pub consultation_id: Option<Uuid>,
+    pub patient_id: Uuid,
+    pub doctor_id: Uuid,
+    pub requisition_code: Option<String>,
+    pub tests: serde_json::Value, // JSONB
+    pub instructions: Option<String>,
+    pub status: LabTestStatus,
+    pub requested_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub result_files: serde_json::Value, // JSONB
+    pub result_summary: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    
+    // UI convenience fields
+    #[sqlx(default)]
+    pub patient_name: Option<String>,
+    #[sqlx(default)]
+    pub doctor_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateLabTestStatusRequest {
+    pub status: LabTestStatus,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LabTestFile {
+    pub url: String,
+    pub uploaded_at: Option<String>,
+    pub filename: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UploadLabResultRequest {
+    pub result_summary: Option<String>,
+    pub result_files: Option<Vec<LabTestFile>>,
+}
+

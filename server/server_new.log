@@ -1,0 +1,51 @@
+warning: fields `id` and `name` are never read
+  --> src/models/consultation.rs:97:9
+   |
+96 | pub struct LabTestItem {
+   |            ----------- fields in this struct
+97 |     pub id: String,
+   |         ^^
+98 |     pub name: String,
+   |         ^^^^
+   |
+   = note: `LabTestItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `consultation_id` and `instructions` are never read
+   --> src/models/consultation.rs:103:9
+    |
+102 | pub struct RequestLabTestRequest {
+    |            --------------------- fields in this struct
+103 |     pub consultation_id: Option<Uuid>,
+    |         ^^^^^^^^^^^^^^^
+...
+106 |     pub instructions: Option<String>,
+    |         ^^^^^^^^^^^^
+    |
+    = note: `RequestLabTestRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `generic_name`, `description`, `dosage_forms`, `manufacturer`, and `requires_prescription` are never read
+   --> src/handlers/drugs.rs:110:9
+    |
+108 | pub struct CreateDrugRequest {
+    |            ----------------- fields in this struct
+109 |     pub name: String,
+110 |     pub generic_name: Option<String>,
+    |         ^^^^^^^^^^^^
+...
+113 |     pub description: Option<String>,
+    |         ^^^^^^^^^^^
+114 |     pub dosage_forms: Option<Vec<String>>,
+    |         ^^^^^^^^^^^^
+115 |     pub strengths: Option<Vec<String>>,
+116 |     pub manufacturer: Option<String>,
+    |         ^^^^^^^^^^^^
+117 |     pub requires_prescription: Option<bool>,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `CreateDrugRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: `server` (bin "server") generated 3 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.09s
+     Running `target/debug/server`
+[2m2026-04-24T10:48:16.349139Z[0m [34mDEBUG[0m [2mserver[0m[2m:[0m listening on 0.0.0.0:8080

@@ -286,6 +286,17 @@ export default function HomeScreen() {
               <Text style={styles.actionLabel}>Medi AI</Text>
               <Text style={styles.actionSubLabel}>AI assistance</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/patient/reminders')}
+            >
+              <View style={[styles.iconBg, { backgroundColor: '#FDF2F8' }]}>
+                <Ionicons name="notifications" size={28} color="#DB2777" />
+              </View>
+              <Text style={styles.actionLabel}>Reminders</Text>
+              <Text style={styles.actionSubLabel}>Meds & health</Text>
+            </TouchableOpacity>
           </View>
         </View>
  
@@ -560,17 +571,17 @@ export default function HomeScreen() {
   // Doctor Dashboard
   const DoctorDashboard = () => {
     const doctorStats = [
-      { label: 'Today', value: stats.today || '0', icon: 'today', color: '#2196f3', bg: '#EEF2FF' },
-      { label: 'Pending', value: stats.pending || '0', icon: 'time', color: '#F59E0B', bg: '#FFFBEB' },
-      { label: 'Total', value: stats.total_appointments || '0', icon: 'calendar', color: '#4F46E5', bg: '#F5F3FF' },
+      { label: 'Today', value: stats.today || '0', icon: 'today', color: '#3B82F6', bg: '#EFF6FF' },
+      { label: 'Pending', value: stats.pending || '0', icon: 'time', color: '#F59E0B', bg: '#FFF7ED' },
+      { label: 'Total Appts', value: stats.total || '0', icon: 'calendar', color: '#8B5CF6', bg: '#F5F3FF' },
       { label: 'Earnings', value: `₦${(stats.earnings || 0).toLocaleString()}`, icon: 'wallet', color: '#10B981', bg: '#ECFDF5' },
     ];
 
     return (
-      <>
+      <View style={{ flex: 1 }}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.subGreeting}>Welcome back,</Text>
+            <Text style={styles.subGreeting}>Medical Portal</Text>
             <Text style={styles.greeting}>Dr. {userData?.full_name?.split(' ')[0] || 'Doctor'}</Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
@@ -578,7 +589,7 @@ export default function HomeScreen() {
               style={styles.notifBtn}
               onPress={() => router.push('/notifications' as any)}
             >
-              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+              <Ionicons name="notifications-outline" size={24} color="#1E293B" />
               {unreadNotifications > 0 && (
                 <View style={styles.notifBadge}>
                   <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
@@ -590,26 +601,100 @@ export default function HomeScreen() {
               onPress={() => router.push('/profile' as any)}
             >
               <LinearGradient
-                colors={['#e3f2fd', '#f8f9fa']}
+                colors={['#4A90E2', '#2572D9']}
                 style={styles.profilePicGradient}
               >
-                <Ionicons name="person" size={24} color="#4a90e2" />
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                  {(userData?.full_name || 'D').charAt(0)}
+                </Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Doctor Stats */}
+        {/* Verification Alert for Doctors */}
+        {!userData?.is_verified && (
+          <TouchableOpacity 
+            style={[
+              styles.verificationAlert, 
+              userData?.verification_status === 'pending' && { backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }
+            ]}
+            onPress={() => userData?.verification_status !== 'pending' && router.push('/doctor/verification' as any)}
+            disabled={userData?.verification_status === 'pending'}
+          >
+            <View style={[
+              styles.alertIconBg,
+              userData?.verification_status === 'pending' && { backgroundColor: '#FFEDD5' }
+            ]}>
+              <Ionicons 
+                name={userData?.verification_status === 'pending' ? "time-outline" : "shield-outline"} 
+                size={24} 
+                color={userData?.verification_status === 'pending' ? "#D97706" : "#EF4444"} 
+              />
+            </View>
+            <View style={styles.alertContent}>
+              <Text style={[
+                styles.alertTitle,
+                userData?.verification_status === 'pending' && { color: '#92400E' }
+              ]}>
+                {userData?.verification_status === 'pending' ? 'Verification Pending' : 'Account Not Verified'}
+              </Text>
+              <Text style={[
+                styles.alertDescription,
+                userData?.verification_status === 'pending' && { color: '#B45309' }
+              ]}>
+                {userData?.verification_status === 'pending' 
+                  ? 'Your documents are being reviewed by our medical board.' 
+                  : 'Upload your medical license to unlock full features.'}
+              </Text>
+            </View>
+            {userData?.verification_status !== 'pending' && (
+              <Ionicons name="chevron-forward" size={20} color="#EF4444" />
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Doctor Stats Grid */}
         <View style={styles.doctorStatsRow}>
           {doctorStats.map((s, i) => (
-            <View key={i} style={styles.doctorStatCard}>
+            <TouchableOpacity 
+              key={i} 
+              style={styles.doctorStatCard}
+              onPress={() => s.label === 'Earnings' && router.push('/wallet' as any)}
+            >
               <View style={[styles.doctorStatIconBg, { backgroundColor: s.bg }]}>
-                <Ionicons name={s.icon as any} size={20} color={s.color} />
+                <Ionicons name={s.icon as any} size={22} color={s.color} />
               </View>
               <Text style={styles.doctorStatValue}>{s.value}</Text>
               <Text style={styles.doctorStatLabel}>{s.label}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
+        </View>
+
+        {/* Wallet Quick Access for Doctors */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.walletQuickCard}
+            onPress={() => router.push('/wallet' as any)}
+          >
+            <LinearGradient
+              colors={['#4F46E5', '#7C3AED']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.walletGradient}
+            >
+              <View style={styles.walletLeft}>
+                <View style={styles.walletIconCircle}>
+                  <Ionicons name="wallet" size={24} color="#FFF" />
+                </View>
+                <View>
+                  <Text style={styles.walletTitle}>My Wallet</Text>
+                  <Text style={styles.walletSubtitle}>Manage earnings & withdrawals</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#FFF" opacity={0.8} />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
         {/* Today's Schedule */}
@@ -620,26 +705,27 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
+          
           {recentConsultation && recentConsultation.status !== 'completed' ? (
             <TouchableOpacity 
               style={styles.appointmentCard}
               onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
             >
               <View style={styles.appointmentHeader}>
-                <View style={[styles.appointmentAvatar, { backgroundColor: '#EEF2FF' }]}>
+                <View style={[styles.appointmentAvatar, { backgroundColor: '#F1F5F9' }]}>
                   <Text style={styles.appointmentAvatarText}>
                     {(recentConsultation.patient_name || 'P').charAt(0)}
                   </Text>
                 </View>
                 <View style={styles.appointmentInfo}>
                   <Text style={styles.appointmentPatientName}>{recentConsultation.patient_name || 'Patient'}</Text>
-                  <Text style={styles.appointmentReason}>{recentConsultation.reason || 'Consultation'}</Text>
+                  <Text style={styles.appointmentReason} numberOfLines={1}>{recentConsultation.reason || 'Consultation'}</Text>
                 </View>
                 <View style={[styles.appointmentStatusBadge, { 
-                  backgroundColor: recentConsultation.status === 'scheduled' ? '#ECFDF5' : '#FFFBEB' 
+                  backgroundColor: recentConsultation.status === 'scheduled' ? '#DCFCE7' : '#FEF3C7' 
                 }]}>
                   <Text style={[styles.appointmentStatusText, { 
-                    color: recentConsultation.status === 'scheduled' ? '#10B981' : '#F59E0B' 
+                    color: recentConsultation.status === 'scheduled' ? '#166534' : '#92400E' 
                   }]}>
                     {recentConsultation.status?.toUpperCase()}
                   </Text>
@@ -647,155 +733,55 @@ export default function HomeScreen() {
               </View>
               <View style={styles.appointmentFooter}>
                 <View style={styles.appointmentDetail}>
-                  <Ionicons name="time" size={14} color="#64748B" />
+                  <Ionicons name="time-outline" size={14} color="#64748B" />
                   <Text style={styles.appointmentDetailText}>
                     {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
                   </Text>
                 </View>
                 <View style={styles.appointmentDetail}>
-                  <Ionicons name="videocam" size={14} color="#64748B" />
+                  <Ionicons name={recentConsultation.mode === 'video' ? 'videocam-outline' : 'chatbubbles-outline'} size={14} color="#64748B" />
                   <Text style={styles.appointmentDetailText}>
-                    {recentConsultation.mode || 'Video'}
+                    {recentConsultation.mode?.toUpperCase() || 'VIDEO'}
                   </Text>
                 </View>
               </View>
-              {recentConsultation.status === 'pending' && (
-                <View style={styles.appointmentActions}>
-                  <TouchableOpacity style={styles.acceptBtn}>
-                    <Text style={styles.acceptBtnText}>Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.declineBtn}>
-                    <Text style={styles.declineBtnText}>Decline</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              {recentConsultation.status === 'scheduled' && (
-                <TouchableOpacity style={styles.startConsultationBtn}>
-                  <Text style={styles.startConsultationBtnText}>Start Consultation</Text>
-                </TouchableOpacity>
-              )}
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyActivityCard}>
-              <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
+              <Ionicons name="calendar-outline" size={32} color="#CBD5E1" />
               <Text style={styles.emptyActivityText}>No appointments for today</Text>
             </View>
           )}
         </View>
 
-        {/* Recent Prescriptions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Prescriptions</Text>
-            <TouchableOpacity onPress={() => router.push('/prescriptions' as any)}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentPrescription ? (
-            <TouchableOpacity 
-              style={styles.docPrescriptionCard}
-              onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: recentPrescription.id } } as any)}
-            >
-              <View style={styles.docPrescriptionHeader}>
-                <View style={[styles.docPrescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
-                  <Ionicons name="document-text" size={20} color="#10B981" />
-                </View>
-                <View style={styles.docPrescriptionInfo}>
-                  <Text style={styles.docPrescriptionPatient}>{recentPrescription.patient_name || 'Patient'}</Text>
-                  <Text style={styles.docPrescriptionDate}>
-                    Issued: {new Date(recentPrescription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-                <View style={[styles.docPrescriptionBadge, { 
-                  backgroundColor: recentPrescription.is_dispensed ? '#ECFDF5' : '#FFFBEB' 
-                }]}>
-                  <Text style={[styles.docPrescriptionBadgeText, { 
-                    color: recentPrescription.is_dispensed ? '#10B981' : '#F59E0B' 
-                  }]}>
-                    {recentPrescription.is_dispensed ? 'FILLED' : 'PENDING'}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyActivityCard}>
-              <Ionicons name="document-text-outline" size={32} color="#E2E8F0" />
-              <Text style={styles.emptyActivityText}>No prescriptions issued yet</Text>
-            </View>
-          )}
-        </View>
-
-        {/* New Patient Bookings Notifications */}
-        {stats.pending > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>New Booking Requests</Text>
-              <View style={styles.newBadge}>
-                <Text style={styles.newBadgeText}>{stats.pending} NEW</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.newBookingCard}>
-              <View style={[styles.newBookingIconBg, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="person-add" size={24} color="#D97706" />
-              </View>
-              <View style={styles.newBookingInfo}>
-                <Text style={styles.newBookingTitle}>Pending Appointments</Text>
-                <Text style={styles.newBookingText}>
-                  You have {stats.pending} appointment request(s) awaiting your response
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-            </TouchableOpacity>
-          </View>
-        )}
-
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
+          <View style={[styles.actionsGrid, { marginTop: 16 }]}>
+             <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/doctor/schedule/manage')}
+            >
+              <View style={[styles.iconBg, { backgroundColor: '#F0F9FF' }]}>
+                <Ionicons name="calendar" size={28} color="#0EA5E9" />
+              </View>
+              <Text style={styles.actionLabel}>Manage</Text>
+              <Text style={styles.actionSubLabel}>Set availability</Text>
+            </TouchableOpacity>
+            
             <TouchableOpacity 
               style={styles.actionCard}
               onPress={() => router.push('/doctor/prescription/create')}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#e8f5e9' }]}>
-                <Ionicons name="document-text" size={24} color="#4caf50" />
+              <View style={[styles.iconBg, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="medical" size={28} color="#22C55E" />
               </View>
-              <Text style={styles.actionLabel}>Prescribe</Text>
-              <Text style={styles.actionSubLabel}>Create prescription</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/explore')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#e3f2fd' }]}>
-                <Ionicons name="calendar" size={24} color="#4a90e2" />
-              </View>
-              <Text style={styles.actionLabel}>Appointments</Text>
-              <Text style={styles.actionSubLabel}>View schedule</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/bookings/search')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="people" size={24} color="#7C3AED" />
-              </View>
-              <Text style={styles.actionLabel}>My Patients</Text>
-              <Text style={styles.actionSubLabel}>Patient history</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/doctor/analytics')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#FFFBEB' }]}>
-                <Ionicons name="stats-chart" size={24} color="#F59E0B" />
-              </View>
-              <Text style={styles.actionLabel}>Analytics</Text>
-              <Text style={styles.actionSubLabel}>Track progress</Text>
+              <Text style={styles.actionLabel}>New Rx</Text>
+              <Text style={styles.actionSubLabel}>Write script</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </>
+      </View>
     );
   };
 
@@ -1716,20 +1702,56 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+  // Verification Alert
+  verificationAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  alertIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  alertContent: {
+    flex: 1,
+  },
+  alertTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#991B1B',
+  },
+  alertDescription: {
+    fontSize: 12,
+    color: '#B91C1C',
+    marginTop: 2,
+  },
   // Doctor Dashboard Styles
   doctorStatsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 24,
+    justifyContent: 'space-between',
   },
   doctorStatCard: {
-    flex: 1,
+    width: '48%',
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#F1F5F9',
+    marginBottom: 4,
   },
   doctorStatIconBg: {
     width: 44,
@@ -1749,6 +1771,45 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
     fontWeight: '600',
+  },
+  walletQuickCard: {
+    marginTop: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  walletGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  walletLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  walletIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  walletSubtitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 13,
+    fontWeight: '500',
   },
   // Appointment Card Styles
   appointmentCard: {

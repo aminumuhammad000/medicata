@@ -1,7 +1,6 @@
 use axum::{
     extract::{State, Path, Query},
     Json,
-    Extension,
 };
 use crate::{
     error::AppError,
@@ -37,7 +36,7 @@ pub async fn search_drugs(
 // From UserJourney.md Prescription Workflow: Create Prescription
 pub async fn create_prescription(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Json(payload): Json<CreatePrescriptionRequest>,
 ) -> Result<Json<Prescription>, AppError> {
     if claims.role != UserRole::Doctor {
@@ -144,7 +143,7 @@ pub async fn get_prescription_details(
 // From UserJourney.md Prescription Sharing Workflow: Share Prescription
 pub async fn share_prescription(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Path(id): Path<uuid::Uuid>,
     Json(payload): Json<SharePrescriptionRequest>,
 ) -> Result<Json<Prescription>, AppError> {
@@ -165,7 +164,7 @@ pub async fn share_prescription(
 // From UserJourney.md Prescription Workflow: Reorder Prescription (Buy Again)
 pub async fn reorder_prescription(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Json(payload): Json<ReorderPrescriptionRequest>,
 ) -> Result<Json<Prescription>, AppError> {
     if claims.role != UserRole::Patient {
@@ -228,7 +227,7 @@ pub async fn reorder_prescription(
 
 pub async fn get_my_prescriptions(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
 ) -> Result<Json<Vec<Prescription>>, AppError> {
     let query = match claims.role {
         UserRole::Patient => 
@@ -321,14 +320,14 @@ pub async fn verify_prescription_by_token(
 
 pub async fn dispense_prescription(
     State(state): State<AppState>,
-    Extension(_claims): Extension<Claims>,
+    _claims: Claims,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Prescription>, AppError> {
     let prescription = sqlx::query_as::<_, Prescription>(
         "UPDATE prescriptions 
-         SET is_dispensed = true, dispensed_at = NOW(), updated_at = NOW()
+         SET is_dispensed = true, dispensed_at = NOW()
          WHERE id = $1 AND is_dispensed = false
-         RETURNING *"
+         RETURNING id, consultation_id, patient_id, doctor_id, qr_code_token, expiry_date, is_verified, is_shared, shared_with, is_dispensed, dispensed_at, created_at, NULL as doctor_name, NULL as patient_name"
     )
     .bind(id)
     .fetch_one(&state.db)

@@ -1,0 +1,174 @@
+   Compiling server v0.1.0 (/home/mrcoder/Documents/ProjectStation/medicata/server)
+warning: fields `id` and `name` are never read
+  --> src/models/consultation.rs:97:9
+   |
+96 | pub struct LabTestItem {
+   |            ----------- fields in this struct
+97 |     pub id: String,
+   |         ^^
+98 |     pub name: String,
+   |         ^^^^
+   |
+   = note: `LabTestItem` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `consultation_id` and `instructions` are never read
+   --> src/models/consultation.rs:103:9
+    |
+102 | pub struct RequestLabTestRequest {
+    |            --------------------- fields in this struct
+103 |     pub consultation_id: Option<Uuid>,
+    |         ^^^^^^^^^^^^^^^
+...
+106 |     pub instructions: Option<String>,
+    |         ^^^^^^^^^^^^
+    |
+    = note: `RequestLabTestRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: fields `generic_name`, `description`, `dosage_forms`, `manufacturer`, and `requires_prescription` are never read
+   --> src/handlers/drugs.rs:110:9
+    |
+108 | pub struct CreateDrugRequest {
+    |            ----------------- fields in this struct
+109 |     pub name: String,
+110 |     pub generic_name: Option<String>,
+    |         ^^^^^^^^^^^^
+...
+113 |     pub description: Option<String>,
+    |         ^^^^^^^^^^^
+114 |     pub dosage_forms: Option<Vec<String>>,
+    |         ^^^^^^^^^^^^
+115 |     pub strengths: Option<Vec<String>>,
+116 |     pub manufacturer: Option<String>,
+    |         ^^^^^^^^^^^^
+117 |     pub requires_prescription: Option<bool>,
+    |         ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `CreateDrugRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: `server` (bin "server") generated 3 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 08s
+     Running `target/debug/server`
+[2m2026-04-23T15:52:24.514437Z[0m [34mDEBUG[0m [2mserver[0m[2m:[0m listening on 0.0.0.0:8080
+[2m2026-04-23T15:52:24.594450Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:52:24.594772Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m0 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:52:24.595351Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:52:24.595608Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m0 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:52:24.596632Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:52:24.596971Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m0 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:52:27.541866Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:52:27.542492Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:55:30.746924Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:30.768283Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m21 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:31.288199Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:31.288901Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m0 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:55:31.289321Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:31.290122Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:55:31.299642Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m10 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:31.327611Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations/578430aa-c2d2-422d-aeae-95ecd664f47a/messages [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:31.511544Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations/578430aa-c2d2-422d-aeae-95ecd664f47a/messages [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m184 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:31.565792Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:55:31.571814Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m6 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:36.366360Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:36.367652Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/ws [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m101
+[2m2026-04-23T15:55:36.707325Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:36.708284Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:55:36.716753Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m9 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:36.926501Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:55:36.934958Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m8 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:55:36.982369Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:55:36.985492Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m3 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:56:59.736010Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/api/auth/login [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:57:00.462499Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mPOST [3muri[0m[2m=[0m/api/auth/login [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m726 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:01.058162Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:57:01.058556Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:57:01.060022Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:01.275255Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:57:01.277940Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:01.308460Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:57:01.310511Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:04.755496Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:57:04.755848Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:57:04.757302Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:04.959927Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:57:04.964597Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m4 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:57:04.978558Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:57:04.980616Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:58:32.736401Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:58:32.739161Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:58:47.558259Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:58:47.584349Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:58:47.586385Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m28 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:58:47.711240Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:58:47.713614Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:58:47.747169Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:58:47.748670Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:09.629404Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:09.632104Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:12.224989Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:12.229532Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m4 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:13.663053Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:59:13.663414Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:59:13.664901Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:17.979569Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:59:17.980112Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T15:59:17.984577Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m5 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:18.206897Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:18.212013Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m5 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:18.233753Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:59:18.238482Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m4 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:20.062846Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:20.064702Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:27.695292Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:27.698097Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:29.146213Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T15:59:29.148059Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T15:59:34.617607Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T15:59:34.620011Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:00:39.024416Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T16:00:39.028357Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m4 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:01:16.990583Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T16:01:16.995680Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m5 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:03:19.920385Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T16:03:19.923564Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/doctor/analytics [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m3 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:05:35.550425Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T16:05:35.553488Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m3 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:07:13.786498Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T16:07:13.788414Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:07:18.516727Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T16:07:18.517080Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mserver::handlers::profile[0m[2m:[0m Fetching profile for user ID: 8f860312-c46a-41d6-a39d-a55b870cd5ef
+[2m2026-04-23T16:07:18.518736Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/me [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m2 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:07:18.931252Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[DEBUG] Fetching consultations for user=8f860312-c46a-41d6-a39d-a55b870cd5ef, role=Doctor
+[DEBUG] Fetched 1 consultations
+[2m2026-04-23T16:07:18.933137Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/consultations [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m1 ms [3mstatus[0m[2m=[0m200
+[2m2026-04-23T16:07:18.952038Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_request[0m[2m:[0m started processing request
+[2m2026-04-23T16:07:18.954911Z[0m [34mDEBUG[0m [1mrequest[0m[1m{[0m[3mmethod[0m[2m=[0mGET [3muri[0m[2m=[0m/api/notifications [3mversion[0m[2m=[0mHTTP/1.1[1m}[0m[2m:[0m [2mtower_http::trace::on_response[0m[2m:[0m finished processing request [3mlatency[0m[2m=[0m3 ms [3mstatus[0m[2m=[0m200

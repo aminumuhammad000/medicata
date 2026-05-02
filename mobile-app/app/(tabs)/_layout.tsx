@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { BottomTabBar, BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
@@ -58,13 +59,37 @@ export default function TabLayout() {
   const isPharmacy = userRole === 'pharmacy';
   const isDoctor = userRole === 'doctor';
 
+  console.log('[Tab Layout] Current Role:', userRole, 'isDoctor:', isDoctor);
+
+  const doctorTabOptions = {
+    tabBarStyle: {
+      backgroundColor: '#0D1B3A',
+      borderTopWidth: 0,
+      height: Platform.OS === 'ios' ? 88 : 70,
+      paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+      paddingTop: 10,
+      elevation: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 10,
+    },
+    tabBarActiveTintColor: '#fff',
+    tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.4)',
+    tabBarLabelStyle: {
+      fontWeight: '700' as const,
+      fontSize: 11,
+    },
+  };
+
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: isDoctor ? '#fff' : Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        ...(isDoctor ? doctorTabOptions : {}),
       }}
     >
       {/* ── HOME / DASHBOARD ─────────────────────────────── */}
@@ -119,6 +144,21 @@ export default function TabLayout() {
               name={
                 isPharmacy ? 'cube-outline' : isDoctor ? 'people-outline' : 'folder-outline'
               }
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* ── MESSAGES TAB ─────────────────────────────── */}
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              size={24}
+              name="chatbubbles-outline"
               color={color}
             />
           ),

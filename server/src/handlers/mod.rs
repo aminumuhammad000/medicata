@@ -13,3 +13,4 @@ pub mod schedule;
 pub mod drugs;
 pub mod ai_chat;
 pub mod payments;
+pub mod medication;

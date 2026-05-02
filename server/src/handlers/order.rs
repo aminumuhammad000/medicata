@@ -1,7 +1,6 @@
 use axum::{
     extract::{State, Path},
     Json,
-    Extension,
 };
 use crate::{
     error::AppError,
@@ -13,21 +12,25 @@ use crate::{
     auth_utils::Claims,
     handlers::notification::create_notification,
 };
+use sqlx::Row;
 
 // From UserJourney.md Pharmacy Interaction Flow: Order Medicines
 pub async fn create_order(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Json(payload): Json<CreateOrderRequest>,
 ) -> Result<Json<PharmacyOrder>, AppError> {
     if claims.role != UserRole::Patient {
         return Err(AppError::Forbidden("Only patients can place orders".to_string()));
     }
 
+    let mut tx = state.db.begin().await?;
+
+    // 1. Create the main order record
     let order = sqlx::query_as::<_, PharmacyOrder>(
         "INSERT INTO pharmacy_orders (patient_id, pharmacy_id, prescription_id, delivery_address, contact_info, is_delivery, preferred_time) 
          VALUES ($1, $2, $3, $4, $5, $6, $7) 
-         RETURNING *"
+         RETURNING *, (SELECT 0::BIGINT) as total_amount"
     )
     .bind(claims.sub)
     .bind(payload.pharmacy_id)
@@ -36,8 +39,57 @@ pub async fn create_order(
     .bind(payload.contact_info) // From UserJourney.md: Contact Info
     .bind(payload.is_delivery)
     .bind(payload.preferred_time)
-    .fetch_one(&state.db)
+    .fetch_one(&mut *tx)
     .await?;
+
+    // 2. If a prescription is attached, automatically copy items to the order
+    if let Some(prescription_id) = payload.prescription_id {
+        tracing::debug!("Processing prescription items for prescription: {}", prescription_id);
+        
+        // Fetch items from prescription
+        let prescription_items = sqlx::query!(
+            "SELECT drug_id, quantity FROM prescription_items WHERE prescription_id = $1",
+            prescription_id
+        )
+        .fetch_all(&mut *tx)
+        .await?;
+
+        if prescription_items.is_empty() {
+            tracing::warn!("No items found for prescription: {}", prescription_id);
+        }
+
+        for item in prescription_items {
+            // Get pharmacy price for this drug (default to 1500 as a placeholder if not set)
+            let price_row = sqlx::query!(
+                "SELECT price FROM pharmacy_stock WHERE pharmacy_id = $1 AND drug_id = $2",
+                payload.pharmacy_id,
+                item.drug_id
+            )
+            .fetch_optional(&mut *tx)
+            .await?;
+
+            // Use pharmacy price if available, otherwise use a default MVP price (1500)
+            let price = match price_row {
+                Some(r) => r.price,
+                None => 1500,
+            };
+
+            tracing::debug!("Adding item to order: drug_id={}, quantity={}, price={}", item.drug_id, item.quantity, price);
+
+            // Insert into order_items
+            sqlx::query!(
+                "INSERT INTO order_items (order_id, drug_id, quantity, price) VALUES ($1, $2, $3, $4)",
+                order.id,
+                item.drug_id,
+                item.quantity,
+                price as i64
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    tx.commit().await?;
 
     // From UserJourney.md: Notify pharmacy of new order
     let _ = create_notification(
@@ -53,7 +105,7 @@ pub async fn create_order(
 
 pub async fn get_my_orders(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
 ) -> Result<Json<Vec<PharmacyOrderDetails>>, AppError> {
     let query = match claims.role {
         UserRole::Patient => 
@@ -103,7 +155,7 @@ pub async fn get_my_orders(
 
 pub async fn get_order(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Path(id): Path<uuid::Uuid>,
 ) -> Result<Json<PharmacyOrderDetails>, AppError> {
     let order = sqlx::query_as::<_, PharmacyOrder>(
@@ -139,7 +191,7 @@ pub async fn get_order(
 // Add item to existing order (for pharmacies to add medications)
 pub async fn add_order_item(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Path(order_id): Path<uuid::Uuid>,
     Json(payload): Json<AddOrderItemRequest>,
 ) -> Result<Json<OrderItem>, AppError> {
@@ -189,7 +241,7 @@ pub async fn add_order_item(
 // From UserJourney.md Pharmacy Interaction Flow: Update Order Status
 pub async fn update_order_status(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Path(id): Path<uuid::Uuid>,
     Json(payload): Json<UpdateOrderStatusRequest>,
 ) -> Result<Json<PharmacyOrder>, AppError> {
@@ -218,4 +270,100 @@ pub async fn update_order_status(
     ).await;
 
     Ok(Json(order))
+}
+
+pub async fn pay_order_with_wallet(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(order_id): Path<uuid::Uuid>,
+) -> Result<Json<PharmacyOrder>, AppError> {
+    // 1. Get order and total amount manually to avoid macro issues
+    let order_row = sqlx::query(
+        r#"
+        SELECT o.id, o.patient_id, o.pharmacy_id, o.status,
+               COALESCE((SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id), 0)::BIGINT as total_amount
+        FROM pharmacy_orders o
+        WHERE o.id = $1 AND o.patient_id = $2
+        "#
+    )
+    .bind(order_id)
+    .bind(claims.sub)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or_else(|| AppError::NotFound("Order not found".to_string()))?;
+
+    let order_status: String = order_row.get("status");
+    let total_amount: i64 = order_row.get("total_amount");
+    let pharmacy_id: uuid::Uuid = order_row.get("pharmacy_id");
+
+    if order_status != "pending" {
+        return Err(AppError::BadRequest("Order is already paid or processed".to_string()));
+    }
+
+    if total_amount <= 0 {
+        return Err(AppError::BadRequest("Order has no items or zero total".to_string()));
+    }
+
+    // 2. Perform wallet deduction and order update in a transaction
+    let mut tx = state.db.begin().await?;
+
+    // Check balance and deduct
+    let wallet_row = sqlx::query(
+        "SELECT id, balance FROM wallets WHERE user_id = $1 FOR UPDATE"
+    )
+    .bind(claims.sub)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(|| AppError::BadRequest("Wallet not found".to_string()))?;
+
+    let wallet_id: uuid::Uuid = wallet_row.get("id");
+    let balance: i64 = wallet_row.get("balance");
+
+    if balance < total_amount {
+        return Err(AppError::BadRequest("Insufficient wallet balance".to_string()));
+    }
+
+    // Deduct from wallet
+    sqlx::query(
+        "UPDATE wallets SET balance = balance - $1, updated_at = NOW() WHERE id = $2"
+    )
+    .bind(total_amount)
+    .bind(wallet_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Record transaction
+    sqlx::query(
+        "INSERT INTO wallet_transactions (wallet_id, transaction_type, amount, description, status) 
+         VALUES ($1, 'payment', $2, $3, 'completed')"
+    )
+    .bind(wallet_id)
+    .bind(total_amount)
+    .bind(format!("Payment for Order #{}", &order_id.to_string()[..8]))
+    .execute(&mut *tx)
+    .await?;
+
+    // Update order status
+    let updated_order = sqlx::query_as::<_, PharmacyOrder>(
+        "UPDATE pharmacy_orders 
+         SET status = 'processing', payment_status = 'paid', payment_method = 'wallet', updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING *"
+    )
+    .bind(order_id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    // 3. Notify pharmacy
+    let _ = create_notification(
+        &state,
+        pharmacy_id,
+        "Order Paid",
+        &format!("Order #{} has been paid via wallet and is ready for processing.", &order_id.to_string()[..8]),
+        "order"
+    ).await;
+
+    Ok(Json(updated_order))
 }

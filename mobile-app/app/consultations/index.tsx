@@ -28,15 +28,21 @@ export default function ConsultationsScreen() {
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
-      style={styles.card}
-      onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: item.id } })}
+      style={[styles.card, item.status === 'cancelled' && styles.cardDisabled]}
+      onPress={() => {
+        if (item.status === 'accepted' || item.status === 'completed' || item.status === 'pending') {
+          router.push({ pathname: '/consultations/desk/[id]', params: { id: item.id } });
+        } else {
+          alert('This appointment has been cancelled.');
+        }
+      }}
     >
       <View style={styles.cardLeft}>
-        <View style={[styles.iconContainer, item.status === 'Completed' && styles.iconContainerCompleted]}>
+        <View style={[styles.iconContainer, item.status === 'completed' && styles.iconContainerCompleted]}>
           <Ionicons 
             name={item.mode === 'video' ? 'videocam' : item.mode === 'audio' ? 'mic' : item.mode === 'chat' ? 'chatbubbles' : 'people'} 
             size={24} 
-            color={item.status === 'Completed' ? '#999' : '#4a90e2'} 
+            color={item.status === 'completed' ? '#999' : '#4a90e2'} 
           />
         </View>
         <View style={styles.details}>
@@ -47,29 +53,31 @@ export default function ConsultationsScreen() {
       </View>
       <View style={styles.cardRight}>
         <View style={[styles.badge, getStatusStyle(item.status)]}>
-          <Text style={[styles.badgeText, getStatusTextStyle(item.status)]}>{item.status}</Text>
+          <Text style={[styles.badgeText, getStatusTextStyle(item.status)]}>{item.status.toUpperCase()}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        {(item.status === 'accepted' || item.status === 'completed' || item.status === 'pending') && (
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        )}
       </View>
     </TouchableOpacity>
   );
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Scheduled': return styles.badgeScheduled;
-      case 'InProgress': return styles.badgeInProgress;
-      case 'Completed': return styles.badgeCompleted;
-      case 'Cancelled': return styles.badgeCancelled;
+    switch (status.toLowerCase()) {
+      case 'pending': return styles.badgePending;
+      case 'accepted': return styles.badgeAccepted;
+      case 'completed': return styles.badgeCompleted;
+      case 'cancelled': return styles.badgeCancelled;
       default: return styles.badgeDefault;
     }
   };
 
   const getStatusTextStyle = (status: string) => {
-    switch (status) {
-      case 'Scheduled': return styles.badgeTextScheduled;
-      case 'InProgress': return styles.badgeTextInProgress;
-      case 'Completed': return styles.badgeTextCompleted;
-      case 'Cancelled': return styles.badgeTextCancelled;
+    switch (status.toLowerCase()) {
+      case 'pending': return styles.badgeTextPending;
+      case 'accepted': return styles.badgeTextAccepted;
+      case 'completed': return styles.badgeTextCompleted;
+      case 'cancelled': return styles.badgeTextCancelled;
       default: return styles.badgeTextDefault;
     }
   };
@@ -132,6 +140,9 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     marginBottom: 16,
   },
+  cardDisabled: {
+    opacity: 0.8,
+  },
   cardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,11 +190,11 @@ const styles = StyleSheet.create({
   badgeDefault: {
     backgroundColor: '#f5f5f5',
   },
-  badgeScheduled: {
-    backgroundColor: '#e3f2fd',
-  },
-  badgeInProgress: {
+  badgePending: {
     backgroundColor: '#fff3e0',
+  },
+  badgeAccepted: {
+    backgroundColor: '#e3f2fd',
   },
   badgeCompleted: {
     backgroundColor: '#e8f5e9',
@@ -199,11 +210,11 @@ const styles = StyleSheet.create({
   badgeTextDefault: {
     color: '#999',
   },
-  badgeTextScheduled: {
-    color: '#2196f3',
+  badgeTextPending: {
+    color: '#ef6c00',
   },
-  badgeTextInProgress: {
-    color: '#ff9800',
+  badgeTextAccepted: {
+    color: '#2196f3',
   },
   badgeTextCompleted: {
     color: '#4caf50',

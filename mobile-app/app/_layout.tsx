@@ -15,6 +15,12 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="consultations/desk/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="consultations/chat/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor/prescription/create" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor/labs/request" options={{ headerShown: false }} />
+        <Stack.Screen name="doctor/labs/requisition/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="patient/labs/upload/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

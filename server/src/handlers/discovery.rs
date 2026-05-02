@@ -61,57 +61,44 @@ pub async fn search_doctors(
     let per_page = params.per_page.unwrap_or(20).min(100);
     let offset = (page - 1) * per_page;
 
-    // Simplified search with optional filters using simple SQL binding
-    let rows = if let Some(specialty) = &params.specialty {
-        sqlx::query(
-            "SELECT 
-                u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
-                u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
-                u.consultation_fee, u.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
-             FROM users u 
-             WHERE u.role = 'doctor' AND u.specialty ILIKE $1
-             ORDER BY u.rating DESC NULLS LAST
-             LIMIT $2 OFFSET $3"
-        )
-        .bind(format!("%{}%", specialty))
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(&state.db).await?
-    } else if let Some(name) = &params.name {
-        sqlx::query(
-            "SELECT 
-                u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
-                u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
-                u.consultation_fee, u.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
-             FROM users u 
-             WHERE u.role = 'doctor' AND u.full_name ILIKE $1
-             ORDER BY u.rating DESC NULLS LAST
-             LIMIT $2 OFFSET $3"
-        )
-        .bind(format!("%{}%", name))
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(&state.db).await?
-    } else {
-        sqlx::query(
-            "SELECT 
-                u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
-                u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
-                u.consultation_fee, u.profile_photo,
-                COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
-             FROM users u 
-             WHERE u.role = 'doctor'
-             ORDER BY u.rating DESC NULLS LAST
-             LIMIT $1 OFFSET $2"
-        )
-        .bind(per_page)
-        .bind(offset)
-        .fetch_all(&state.db).await?
-    };
+    let mut query_builder = sqlx::QueryBuilder::new(
+        "SELECT 
+            u.id, u.full_name, u.email, u.specialty, u.years_of_experience,
+            u.clinic_hospital_affiliation, u.bio, u.languages_spoken, u.rating,
+            u.consultation_fee, u.profile_photo,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
+         FROM users u 
+         WHERE u.role = 'doctor'"
+    );
 
-    let total = rows.len() as i64;
+    if let Some(specialty) = &params.specialty {
+        query_builder.push(" AND u.specialty ILIKE ");
+        query_builder.push_bind(format!("%{}%", specialty));
+    }
+
+    if let Some(name) = &params.name {
+        query_builder.push(" AND u.full_name ILIKE ");
+        query_builder.push_bind(format!("%{}%", name));
+    }
+
+    query_builder.push(" ORDER BY u.rating DESC NULLS LAST LIMIT ");
+    query_builder.push_bind(per_page);
+    query_builder.push(" OFFSET ");
+    query_builder.push_bind(offset);
+
+    let rows = query_builder.build().fetch_all(&state.db).await?;
+
+    // Get total count for pagination
+    let mut count_builder = sqlx::QueryBuilder::new("SELECT COUNT(*) FROM users u WHERE u.role = 'doctor'");
+    if let Some(specialty) = &params.specialty {
+        count_builder.push(" AND u.specialty ILIKE ");
+        count_builder.push_bind(format!("%{}%", specialty));
+    }
+    if let Some(name) = &params.name {
+        count_builder.push(" AND u.full_name ILIKE ");
+        count_builder.push_bind(format!("%{}%", name));
+    }
+    let total: i64 = count_builder.build().fetch_one(&state.db).await?.get(0);
 
     let doctors: Vec<DoctorSearchResult> = rows
         .into_iter()
@@ -158,6 +145,34 @@ pub async fn get_specialties(
     .await?;
 
     Ok(Json(SpecialtyResponse { specialties }))
+}
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct PatientSearchResult {
+    pub id: Uuid,
+    pub full_name: String,
+    pub email: String,
+    pub phone_number: Option<String>,
+}
+
+pub async fn search_patients(
+    State(state): State<AppState>,
+    Query(params): Query<serde_json::Value>,
+) -> Result<Json<Vec<PatientSearchResult>>, AppError> {
+    let query = params.get("q").and_then(|v| v.as_str()).unwrap_or("");
+    
+    let patients = sqlx::query_as::<_, PatientSearchResult>(
+        "SELECT id, full_name, email, phone_number 
+         FROM users 
+         WHERE role = 'patient' 
+         AND (full_name ILIKE $1 OR email ILIKE $1 OR phone_number ILIKE $1)
+         LIMIT 20"
+    )
+    .bind(format!("%{}%", query))
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(patients))
 }
 
 #[derive(Debug, Serialize)]
@@ -207,15 +222,15 @@ pub async fn get_doctor_profile(
         "SELECT 
             u.id,
             u.full_name,
-             u.specialty,
-             u.years_of_experience,
-             u.clinic_hospital_affiliation,
-             u.bio,
-             u.languages_spoken,
-             u.rating,
-             u.consultation_fee,
-             u.profile_photo,
-             COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
+            u.specialty,
+            u.years_of_experience,
+            u.clinic_hospital_affiliation,
+            u.bio,
+            u.languages_spoken,
+            u.rating::FLOAT8,
+            u.consultation_fee,
+            u.profile_photo,
+            COALESCE((SELECT COUNT(*) FROM reviews r WHERE r.target_id = u.id), 0) as total_reviews
           FROM users u 
           WHERE u.id = $1 AND u.role = 'doctor'"
     )

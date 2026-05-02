@@ -1,48 +1,57 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-
-const WEBSOCKET_URL = 'ws://localhost:8080/ws'; // Replace with your backend URL in production
+import { api } from '../services/api';
 
 export const useWebSocket = (onMessage?: (msg: any) => void) => {
   const socketRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const socket = new WebSocket(WEBSOCKET_URL);
+    let socket: WebSocket | null = null;
+    let reconnectTimer: any = null;
 
-    socket.onopen = () => {
-      console.log('WebSocket Connected');
-      setConnected(true);
-    };
+    const connect = () => {
+      const url = api.getWebSocketUrl();
+      console.log(`Connecting to WebSocket: ${url}`);
+      socket = new WebSocket(url);
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (onMessage) onMessage(data);
-        
-        // Dispatch global event for incoming calls etc
-        if (data.type === 'webrtc_offer' || data.type === 'webrtc_answer' || data.type === 'webrtc_ice') {
-          const eventName = `ws_${data.type}_${data.consultation_id}`;
-          // In a real app, use a proper event emitter or global state
-          console.log(`Global Signal: ${eventName}`);
+      socket.onopen = () => {
+        console.log('WebSocket Connected');
+        setConnected(true);
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (onMessage) onMessage(data);
+          
+          if (data.type === 'webrtc_offer' || data.type === 'webrtc_answer' || data.type === 'webrtc_ice') {
+            const eventName = `ws_${data.type}_${data.consultation_id}`;
+            console.log(`Global Signal: ${eventName}`);
+          }
+        } catch (e) {
+          console.error('WebSocket message parse error:', e);
         }
-      } catch (e) {
-        console.error('WebSocket message parse error:', e);
-      }
+      };
+
+      socket.onerror = (error) => {
+        console.error('WebSocket Error:', error);
+      };
+
+      socket.onclose = (e) => {
+        console.log('WebSocket Disconnected', e.reason);
+        setConnected(false);
+        // Attempt to reconnect after 3 seconds
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      socketRef.current = socket;
     };
 
-    socket.onerror = (error) => {
-      console.error('WebSocket Error:', error);
-    };
-
-    socket.onclose = () => {
-      console.log('WebSocket Disconnected');
-      setConnected(false);
-    };
-
-    socketRef.current = socket;
+    connect();
 
     return () => {
-      socket.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socket) socket.close();
     };
   }, []);
 

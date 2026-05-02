@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 interface UnifiedRecord {
   id: string;
@@ -45,7 +47,144 @@ export default function UnifiedTwoScreen() {
     return <InventoryScreen isTab={true} />;
   }
 
+  if (userRole === 'doctor') {
+    return <DoctorPatientsScreen />;
+  }
+
   return <RecordsScreen />;
+}
+
+function DoctorPatientsScreen() {
+  const router = useRouter();
+  const [patients, setPatients] = useState<any[]>([]);
+  const [filteredPatients, setFilteredPatients] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchPatients = async () => {
+    try {
+      const res = await api.getMyConsultations();
+      if (res.data) {
+        const uniquePatients: any[] = [];
+        const seenIds = new Set();
+        
+        (res.data as any[]).forEach(c => {
+          if (c.patient_id && !seenIds.has(c.patient_id)) {
+            seenIds.add(c.patient_id);
+            uniquePatients.push({
+              id: c.patient_id,
+              name: c.patient_name || 'Unknown Patient',
+              last_visit: new Date(c.scheduled_at).toLocaleDateString(),
+              reason: c.reason,
+              consultation_id: c.id,
+              last_status: c.status
+            });
+          }
+        });
+        setPatients(uniquePatients);
+        setFilteredPatients(uniquePatients);
+      }
+    } catch (err) {
+      console.error('Failed to fetch patients:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const filtered = patients.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.reason.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredPatients(filtered);
+  }, [searchQuery, patients]);
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  const renderPatient = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={styles.doctorPatientCard} 
+      activeOpacity={0.7}
+      onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: item.consultation_id } })}
+    >
+      <View style={styles.doctorPatientAvatar}>
+        <LinearGradient
+          colors={['#0D1B3A', '#4A90E2']}
+          style={styles.doctorAvatarGradient}
+        >
+          <Text style={styles.doctorAvatarText}>{(item.name || 'P').charAt(0)}</Text>
+        </LinearGradient>
+      </View>
+      <View style={styles.details}>
+        <Text style={styles.doctorPatientName}>{item.name}</Text>
+        <View style={styles.doctorPatientMetaRow}>
+          <Ionicons name="calendar-outline" size={12} color="#64748B" />
+          <Text style={styles.doctorPatientMeta}>Last: {item.last_visit}</Text>
+          <View style={styles.dotSeparator} />
+          <Text style={[styles.doctorPatientMeta, { color: item.last_status === 'completed' ? '#22C55E' : '#F59E0B' }]}>
+            {item.last_status.toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.doctorPatientReason} numberOfLines={1}>{item.reason}</Text>
+      </View>
+      <View style={styles.doctorPatientAction}>
+        <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.doctorLoadingContainer}>
+        <ActivityIndicator size="large" color="#0D1B3A" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.doctorContainer}>
+      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.doctorHeader}>
+        <SafeAreaView edges={['top']}>
+          <Text style={styles.doctorHeaderTitle}>Patient Directory</Text>
+          <Text style={styles.doctorHeaderSubtitle}>{patients.length} Registered Patients</Text>
+          
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={18} color="rgba(255, 255, 255, 0.5)" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by name or condition..."
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+      
+      <FlatList
+        data={filteredPatients}
+        renderItem={renderPatient}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.doctorList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPatients(); }} tintColor="#0D1B3A" />
+        }
+        ListEmptyComponent={
+          <View style={styles.doctorEmptyContainer}>
+            <Ionicons name="people-outline" size={64} color="#E2E8F0" />
+            <Text style={styles.doctorEmptyTitle}>{searchQuery ? 'No matching patients' : 'No patients found'}</Text>
+            <Text style={styles.doctorEmptySubtitle}>
+              {searchQuery ? 'Try searching for a different name or condition.' : 'Your patient list will grow as you complete consultations.'}
+            </Text>
+          </View>
+        }
+      />
+    </View>
+  );
 }
 
 function RecordsScreen() {
@@ -196,6 +335,142 @@ function RecordsScreen() {
 }
 
 const styles = StyleSheet.create({
+  doctorContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  doctorLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  doctorHeader: {
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 48,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dotSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
+    marginHorizontal: 6,
+  },
+  doctorHeaderTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 20,
+  },
+  doctorHeaderSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  doctorList: {
+    padding: 24,
+  },
+  doctorPatientCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 24,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#64748B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  doctorPatientAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    marginRight: 16,
+  },
+  doctorAvatarGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doctorAvatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  doctorPatientName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  doctorPatientMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
+  doctorPatientMeta: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  doctorPatientReason: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  doctorPatientAction: {
+    marginLeft: 'auto',
+  },
+  doctorEmptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  doctorEmptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 16,
+  },
+  doctorEmptySubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 40,
+    lineHeight: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

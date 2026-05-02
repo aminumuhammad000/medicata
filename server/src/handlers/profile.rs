@@ -225,7 +225,7 @@ pub async fn get_doctor_profile(
     axum::extract::Path(id): axum::extract::Path<uuid::Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let doctor = sqlx::query(
-        "SELECT id, full_name, role, specialty, clinic_hospital_affiliation, bio, languages_spoken, years_of_experience, profile_photo_url
+        "SELECT id, full_name, role, specialty, clinic_hospital_affiliation, bio, languages_spoken, years_of_experience, profile_photo
          FROM users 
          WHERE id = $1 AND role = 'doctor'"
     )
@@ -238,13 +238,13 @@ pub async fn get_doctor_profile(
         Ok(Json(serde_json::json!({
             "id": d.get::<uuid::Uuid, _>("id"),
             "full_name": d.get::<String, _>("full_name"),
-            "role": d.get::<String, _>("role"),
+            "role": "doctor",
             "specialty": d.get::<Option<String>, _>("specialty"),
             "hospital_affiliation": d.get::<Option<String>, _>("clinic_hospital_affiliation"),
             "bio": d.get::<Option<String>, _>("bio"),
             "languages_spoken": d.get::<Option<String>, _>("languages_spoken"),
             "years_of_experience": d.get::<Option<i32>, _>("years_of_experience"),
-            "profile_photo_url": d.get::<Option<String>, _>("profile_photo_url"),
+            "profile_photo": d.get::<Option<String>, _>("profile_photo"),
             "rating": 5.0, // Placeholder
             "review_count": 0,
         })))
@@ -271,15 +271,15 @@ pub async fn get_pharmacy_profile(
         Ok(Json(serde_json::json!({
             "id": p.get::<uuid::Uuid, _>("id"),
             "full_name": p.get::<String, _>("full_name"),
-            "role": p.get::<String, _>("role"),
+            "role": "pharmacy",
             "address": p.get::<Option<String>, _>("pharmacy_address"),
             "license": p.get::<Option<String>, _>("pharmacy_license"),
             "contact_info": p.get::<Option<String>, _>("pharmacy_contact_info"),
             "opening_hours": p.get::<Option<String>, _>("opening_hours"),
             "city": p.get::<Option<String>, _>("city"),
             "state": p.get::<Option<String>, _>("state"),
-            "profile_photo_url": p.get::<Option<String>, _>("profile_photo"),
-            "phone": p.get::<String, _>("phone_number"),
+            "profile_photo": p.get::<Option<String>, _>("profile_photo"),
+            "phone": p.get::<Option<String>, _>("phone_number"),
             "is_verified": p.get::<bool, _>("is_verified"),
         })))
     } else {
