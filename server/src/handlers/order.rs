@@ -107,17 +107,19 @@ pub async fn get_my_orders(
     State(state): State<AppState>,
     claims: Claims,
 ) -> Result<Json<Vec<PharmacyOrderDetails>>, AppError> {
+    tracing::debug!("[DEBUG] get_my_orders called for user={}, role={:?}", claims.sub, claims.role);
+
     let query = match claims.role {
         UserRole::Patient => 
             "SELECT o.*, u.full_name as pharmacy_name,
-             (SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id) as total_amount
+             COALESCE((SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id), 0)::BIGINT as total_amount
              FROM pharmacy_orders o
              JOIN users u ON o.pharmacy_id = u.id
              WHERE o.patient_id = $1 
              ORDER BY o.created_at DESC",
         UserRole::Pharmacy => 
             "SELECT o.*, u.full_name as patient_name,
-             (SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id) as total_amount
+             COALESCE((SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id), 0)::BIGINT as total_amount
              FROM pharmacy_orders o
              JOIN users u ON o.patient_id = u.id
              WHERE o.pharmacy_id = $1 
@@ -129,6 +131,8 @@ pub async fn get_my_orders(
         .bind(claims.sub)
         .fetch_all(&state.db)
         .await?;
+
+    tracing::debug!("[DEBUG] Found {} orders in database", orders.len());
 
     let mut detailed_orders = Vec::new();
 
