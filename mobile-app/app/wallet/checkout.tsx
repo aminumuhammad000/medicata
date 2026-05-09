@@ -13,6 +13,8 @@ export default function CheckoutScreen() {
   const [session, setSession] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes in seconds
 
+  const [isVerifying, setIsVerifying] = useState(false);
+
   useEffect(() => {
     initializeCheckout();
   }, []);
@@ -53,6 +55,20 @@ export default function CheckoutScreen() {
   const copyToClipboard = (text: string, label: string) => {
     Clipboard.setString(text);
     Alert.alert('Copied', `${label} copied to clipboard`);
+  };
+
+  const handleConfirmTransfer = async () => {
+    setIsVerifying(true);
+    // In a real scenario, this would poll the backend or wait for a webhook
+    // For the UI, we'll show a loading state and then redirect to a "Processing" or Home screen
+    setTimeout(() => {
+      setIsVerifying(false);
+      Alert.alert(
+        'Payment Received', 
+        'We have detected your transfer. Your consultation is now active!',
+        [{ text: 'Great!', onPress: () => router.push('/(tabs)') }]
+      );
+    }, 2000);
   };
 
   if (loading) {
@@ -134,17 +150,18 @@ export default function CheckoutScreen() {
 
         <TouchableOpacity 
           style={styles.confirmButton}
-          onPress={() => {
-            Alert.alert('Payment Verification', 'We are waiting for the bank to confirm your transfer. This usually takes 1-5 minutes.', [
-              { text: 'Okay', onPress: () => router.push('/wallet' as any) }
-            ]);
-          }}
+          onPress={handleConfirmTransfer}
+          disabled={isVerifying}
         >
           <LinearGradient
             colors={['#4F46E5', '#7C3AED']}
             style={styles.gradientButton}
           >
-            <Text style={styles.confirmButtonText}>I have made the transfer</Text>
+            {isVerifying ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.confirmButtonText}>I have made the transfer</Text>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 

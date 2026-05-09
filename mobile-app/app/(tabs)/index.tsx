@@ -8,21 +8,95 @@ import { RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
+
+// Configure notification behavior safely
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [recentConsultation, setRecentConsultation] = useState<any>(null);
   const [recentOrder, setRecentOrder] = useState<any>(null);
   const [recentPrescription, setRecentPrescription] = useState<any>(null);
-  const [stats, setStats] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [stats, setStats] = useState<any>({
+    today: 0,
+    pending: 0,
+    earnings: 0,
+    total: 0,
+    revenue: 0,
+    pendingOrders: 0,
+    activePrescriptions: 0
+  });
 
   useEffect(() => {
+    // Initial load
     loadDashboardData();
+    registerForPushNotifications();
   }, []);
+
+  async function registerForPushNotifications() {
+    // Skip if not a physical device or if running in Expo Go
+    if (!Device.isDevice || Constants.appOwnership === 'expo') {
+      console.log('Skipping push notification registration: Not a device or running in Expo Go');
+      return;
+    }
+
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return;
+      }
+
+      // Get the token
+      const token = (await Notifications.getExpoPushTokenAsync({
+        projectId: Constants.expoConfig?.extra?.eas?.projectId,
+      })).data;
+
+      console.log('Push Token:', token);
+      
+      // Send to backend
+      await api.savePushToken(token);
+    } catch (error) {
+      console.error('Error registering for push notifications:', error);
+    }
+  }
+
+  // Use a navigation focus hook logic instead
+  const navigation = Platform.OS !== 'web' ? require('@react-navigation/native').useNavigation() : null;
+  
+  useEffect(() => {
+    if (navigation) {
+      const unsubscribe = navigation.addListener('focus', () => {
+        fetchData(); // Refresh everything when screen comes into focus
+      });
+      return unsubscribe;
+    }
+  }, [navigation]);
 
   const loadDashboardData = async () => {
     // Check if we already have some user data to show something immediately
@@ -253,22 +327,13 @@ export default function HomeScreen() {
               <View style={[styles.iconBg, { backgroundColor: '#EBF4FF' }]}>
                 <Ionicons name="add-circle" size={28} color="#2563EB" />
               </View>
-              <Text style={styles.actionLabel}>Book Doctor</Text>
-              <Text style={styles.actionSubLabel}>Find specialists</Text>
+              <Text style={styles.actionLabel}>Book Appointment</Text>
+              <Text style={styles.actionSubLabel}>Find a doctor</Text>
             </TouchableOpacity>
+
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push('/pharmacy/search')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="medical" size={28} color="#7C3AED" />
-              </View>
-              <Text style={styles.actionLabel}>Pharmacy</Text>
-              <Text style={styles.actionSubLabel}>Order meds</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/prescriptions')}
+              onPress={() => router.push('/explore')}
             >
               <View style={[styles.iconBg, { backgroundColor: '#ECFDF5' }]}>
                 <Ionicons name="document-text" size={28} color="#059669" />

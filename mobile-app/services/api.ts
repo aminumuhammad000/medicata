@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 // Use machine's IP address for Expo Go on mobile device (localhost won't work on physical devices)
 // If on web, route directly to localhost.
-const API_BASE_URL = Platform.OS === 'web' ? 'http://localhost:8080/api' : 'http://192.168.100.10:8080/api';
+const API_BASE_URL = Platform.OS === 'web' ? 'http://16.170.212.172:8080/api' : 'http://16.170.212.172:8080/api';
 
 interface ApiResponse<T> {
   data?: T;
@@ -183,6 +183,13 @@ class ApiService {
     await this.clearToken();
   }
 
+  async savePushToken(token: string) {
+    return this.request<any>('/auth/push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  }
+
   async getMyProfile() {
     return this.request<any>('/me');
   }
@@ -328,17 +335,18 @@ class ApiService {
   async createPrescription(data: {
     consultation_id?: string;
     patient_id: string;
-    items: Array<{
+    items: {
       drug_id: string;
       dosage: string;
       frequency: string;
       duration_days: number;
       quantity: number;
       instructions?: string;
-    }>;
+    }[];
     expiry_days: number;
+    suggested_pharmacy_id?: string;
   }) {
-    return this.request<any>('/prescriptions', {
+    return this.request('/prescriptions', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -657,7 +665,7 @@ class ApiService {
     return this.request<any[]>('/notifications');
   }
 
-  async markNotificationAsRead(id: string) {
+  async markAsRead(id: string) {
     return this.request(`/notifications/${id}/read`, {
       method: 'PATCH',
     });
@@ -725,8 +733,8 @@ class ApiService {
   // WebSocket connection URL
   getWebSocketUrl() {
     return Platform.OS === 'web' 
-      ? 'ws://localhost:8080/ws'
-      : 'ws://192.168.100.10:8080/ws';
+      ? 'ws://16.170.212.172:8080/ws'
+      : 'ws://16.170.212.172:8080/ws';
   }
 }
 

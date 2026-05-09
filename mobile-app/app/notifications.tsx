@@ -23,21 +23,58 @@ export default function NotificationsScreen() {
   };
 
   const markAsRead = async (id: string) => {
-    await api.markNotificationAsRead(id);
+    await api.markAsRead(id);
     setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
   };
 
   const markAllAsRead = async () => {
     for (const notif of notifications.filter(n => !n.is_read)) {
-      await api.markNotificationAsRead(notif.id);
+      await api.markAsRead(notif.id);
     }
     setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+  };
+
+  const handleNotificationPress = async (item: any) => {
+    // 1. Mark as read in background
+    if (!item.is_read) {
+      await markAsRead(item.id);
+    }
+
+    // 2. Intelligent Redirection based on type
+    // Note: Backend notification creation currently doesn't store resource IDs in the DB table,
+    // but often includes them in the message or titles. 
+    // For MVP, we use the message or standard list navigation as a fallback.
+    try {
+      switch (item.n_type) {
+        case 'appointment':
+          // Redirect to consultations list
+          router.push('/explore' as any);
+          break;
+        case 'order':
+          // Redirect to orders list
+          router.push('/orders' as any);
+          break;
+        case 'prescription':
+          // Redirect to prescriptions list
+          router.push('/prescriptions' as any);
+          break;
+        case 'wallet':
+        case 'payment':
+          router.push('/wallet' as any);
+          break;
+        default:
+          // Stay on notifications if type is unknown
+          break;
+      }
+    } catch (e) {
+      console.error("Navigation failed", e);
+    }
   };
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[styles.notifCard, !item.is_read && styles.notifUnread]}
-      onPress={() => markAsRead(item.id)}
+      onPress={() => handleNotificationPress(item)}
     >
       <View style={styles.iconContainer}>
         <Ionicons 

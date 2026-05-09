@@ -27,7 +27,9 @@ export default function OrdersScreen({ isTab = false }: { isTab?: boolean }) {
       const role = await api.getUserRole();
       setUserRole(role);
       const response = await api.getMyOrders();
-      setOrders(response.data || []);
+      const ordersData = response.data || [];
+      console.log(`[DEBUG] Received ${ordersData.length} orders from API`);
+      setOrders(ordersData);
     } catch (err: any) {
       setError(err.message || 'Failed to load orders');
     } finally {
@@ -51,8 +53,9 @@ export default function OrdersScreen({ isTab = false }: { isTab?: boolean }) {
   const filteredOrders = activeTab === 'All'
     ? orders
     : orders.filter(o => {
-        const backendStatus = (o.status || '').toLowerCase().replace(/ /g, '_');
-        return backendStatus === (tabStatusMap[activeTab] || activeTab.toLowerCase());
+        const backendStatus = (o.status || '').toLowerCase().replace(/_/g, '');
+        const targetStatus = (tabStatusMap[activeTab] || activeTab).toLowerCase().replace(/_/g, '');
+        return backendStatus === targetStatus;
       });
 
   const isPharmacy = userRole?.toLowerCase() === 'pharmacy';

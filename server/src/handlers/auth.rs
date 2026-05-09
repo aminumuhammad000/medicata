@@ -189,6 +189,25 @@ pub struct ForgotPasswordRequest {
     pub email: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct UpdatePushTokenRequest {
+    pub token: String,
+}
+
+pub async fn update_push_token(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<UpdatePushTokenRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    sqlx::query("UPDATE users SET expo_push_token = $1 WHERE id = $2")
+        .bind(&payload.token)
+        .bind(claims.user_id)
+        .execute(&state.db)
+        .await?;
+
+    Ok(Json(serde_json::json!({ "success": true })))
+}
+
 pub async fn forgot_password(
     State(state): State<AppState>,
     Json(payload): Json<ForgotPasswordRequest>,

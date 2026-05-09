@@ -15,6 +15,9 @@ export default function WalletScreen() {
   const [showAddMoney, setShowAddMoney] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [amount, setAmount] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName] = useState('');
 
   useEffect(() => {
     loadWalletData();
@@ -24,6 +27,13 @@ export default function WalletScreen() {
     try {
       const role = await AsyncStorage.getItem('user_role');
       setUserRole(role?.toLowerCase() || 'patient');
+
+      const profile = await api.getMyProfile();
+      if (profile.data) {
+        setBankName(profile.data.bank_name || '');
+        setAccountNumber(profile.data.account_number || '');
+        setAccountName(profile.data.account_name || '');
+      }
 
       const [balanceRes, transRes] = await Promise.all([
         api.getWalletBalance(),
@@ -67,19 +77,26 @@ export default function WalletScreen() {
       Alert.alert('Insufficient Balance', 'You do not have enough balance');
       return;
     }
+    if (!bankName || !accountNumber || !accountName) {
+      Alert.alert('Missing Details', 'Please provide complete bank account details');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const res = await api.withdrawMoney(parseInt(amount), 'My Bank Account');
+      const res = await api.withdrawMoney(
+        parseInt(amount), 
+        `${bankName} - ${accountNumber} (${accountName})`
+      );
       if (res.data) {
         setBalance(res.data.balance);
         setAmount('');
         setShowWithdraw(false);
         await loadWalletData(); // Refresh transactions
-        Alert.alert('Success', 'Withdrawal request of ₦' + amount + ' submitted');
+        Alert.alert('Success', 'Withdrawal request of ₦' + amount + ' submitted for processing');
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to submit withdrawal');
+      Alert.alert('Error', 'Failed to submit withdrawal. Please try again later.');
     } finally {
       setIsSubmitting(false);
     }
@@ -187,20 +204,62 @@ export default function WalletScreen() {
         {showWithdraw && (
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Withdraw to Bank</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter amount (₦)"
-              keyboardType="numeric"
-              value={amount}
-              onChangeText={setAmount}
-            />
-            <Text style={styles.hintText}>Available: ₦{balance.toLocaleString()}</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Amount (₦)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0.00"
+                keyboardType="numeric"
+                value={amount}
+                onChangeText={setAmount}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Bank Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Zenith Bank"
+                value={bankName}
+                onChangeText={setBankName}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Account Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="10-digit number"
+                keyboardType="numeric"
+                maxLength={10}
+                value={accountNumber}
+                onChangeText={setAccountNumber}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Account Name</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="As it appears on bank"
+                value={accountName}
+                onChangeText={setAccountName}
+              />
+            </View>
+
+            <Text style={styles.hintText}>Available for withdrawal: ₦{balance.toLocaleString()}</Text>
+            
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowWithdraw(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleWithdraw}>
-                <Text style={styles.confirmBtnText}>Withdraw</Text>
+              <TouchableOpacity 
+                style={[styles.confirmBtn, isSubmitting && styles.submitBtnDisabled]} 
+                onPress={handleWithdraw}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.confirmBtnText}>Withdraw</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -349,7 +408,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1e293b',
+    marginBottom: 20,
+  },
+  inputGroup: {
     marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
@@ -357,7 +425,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    marginBottom: 8,
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#cbd5e1',
   },
   hintText: {
     fontSize: 12,

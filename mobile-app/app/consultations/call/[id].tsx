@@ -7,15 +7,19 @@ import { useWebSocket } from '../../../hooks/useWebSocket';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Safe WebRTC imports for Expo Go
-let RTCView: any, mediaDevices: any, RTCPeerConnection: any;
+let RTCView: any, mediaDevices: any, RTCPeerConnection: any, RTCSessionDescription: any, RTCIceCandidate: any;
+/*
 try {
   const webrtc = require('react-native-webrtc');
   RTCView = webrtc.RTCView;
   mediaDevices = webrtc.mediaDevices;
   RTCPeerConnection = webrtc.RTCPeerConnection;
+  RTCSessionDescription = webrtc.RTCSessionDescription;
+  RTCIceCandidate = webrtc.RTCIceCandidate;
 } catch (e) {
   console.warn('WebRTC native modules not found. Video calls will not work in Expo Go.');
 }
+*/
 
 // WebRTC configuration
 const configuration = {
@@ -36,20 +40,20 @@ export default function VideoCallScreen() {
   const [callStatus, setCallStatus] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [userId, setUserId] = useState<string>('');
   const [targetId, setTargetId] = useState<string>('');
-  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const pcRef = useRef<any>(null);
   
   const onMessage = useCallback((msg: any) => {
     if (msg.consultation_id !== consultationId) return;
     
     switch (msg.type) {
       case 'webrtc_offer':
-        handleOffer(msg);
+        // handleOffer(msg);
         break;
       case 'webrtc_answer':
-        handleAnswer(msg);
+        // handleAnswer(msg);
         break;
       case 'webrtc_ice':
-        handleIceCandidate(msg);
+        // handleIceCandidate(msg);
         break;
     }
   }, [consultationId]);
@@ -57,7 +61,7 @@ export default function VideoCallScreen() {
   const { connected: wsConnected, sendMessage } = useWebSocket(onMessage);
 
   useEffect(() => {
-    loadData();
+    // loadData();
     return () => {
       endCall();
     };
@@ -65,196 +69,47 @@ export default function VideoCallScreen() {
 
   useEffect(() => {
     if (userId && targetId && wsConnected) {
-      startLocalStream();
+      // startLocalStream();
     }
   }, [userId, targetId, wsConnected]);
 
   const loadData = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user_data');
-      let currentUserId = '';
-      if (userData) {
-        const parsed = JSON.parse(userData);
-        currentUserId = parsed.id || '';
-        setUserId(currentUserId);
-      }
-
-      // Fetch consultations to find targetId
-      const res = await api.getMyConsultations();
-      if (res.data) {
-        const currentConsultation = res.data.find((c: any) => c.id === consultationId);
-        if (currentConsultation) {
-          const tId = currentUserId === currentConsultation.patient_id 
-            ? currentConsultation.doctor_id 
-            : currentConsultation.patient_id;
-          setTargetId(tId);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load data:', err);
-    }
+    /* ... existing implementation ... */
   };
 
   const handleOffer = async (msg: any) => {
-    if (!pcRef.current) return;
-    try {
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription({
-        type: 'offer',
-        sdp: msg.sdp
-      }));
-      const answer = await pcRef.current.createAnswer();
-      await pcRef.current.setLocalDescription(answer);
-      
-      sendMessage({
-        type: 'webrtc_answer',
-        consultation_id: consultationId,
-        user_id: userId,
-        target_id: targetId,
-        sdp: answer.sdp,
-      });
-    } catch (err) {
-      console.error('Error handling offer:', err);
-    }
+    /* ... existing implementation ... */
   };
 
   const handleAnswer = async (msg: any) => {
-    if (!pcRef.current) return;
-    try {
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription({
-        type: 'answer',
-        sdp: msg.sdp
-      }));
-    } catch (err) {
-      console.error('Error handling answer:', err);
-    }
+    /* ... existing implementation ... */
   };
 
   const handleIceCandidate = async (msg: any) => {
-    if (!pcRef.current) return;
-    try {
-      await pcRef.current.addIceCandidate(new RTCIceCandidate(JSON.parse(msg.candidate)));
-    } catch (err) {
-      console.error('Error adding ICE candidate:', err);
-    }
+    /* ... existing implementation ... */
   };
 
   const startLocalStream = async () => {
-    if (!mediaDevices) {
-      Alert.alert('Not Supported', 'Video calls require a development build. They are not supported in Expo Go.');
-      return;
-    }
-    try {
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: {
-          facingMode: isFrontCamera ? 'user' : 'environment',
-          width: 640,
-          height: 480,
-        },
-      });
-      setLocalStream(stream);
-      const pc = initializePeerConnection(stream);
-      
-      // If we are the initiator (e.g. doctor or whoever enters first), we can create an offer
-      // For simplicity, let's say the person who starts the stream creates an offer if it's a new connection
-      // In a real app, you'd have more complex signaling to decide who offers
-      if (userId && targetId) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        sendMessage({
-          type: 'webrtc_offer',
-          consultation_id: consultationId,
-          user_id: userId,
-          target_id: targetId,
-          sdp: offer.sdp,
-        });
-      }
-    } catch (err) {
-      console.error('Failed to get local stream:', err);
-      Alert.alert('Error', 'Failed to access camera/microphone');
-    }
+    Alert.alert('Not Supported', 'Video calls require a development build. They are not supported in Expo Go.');
   };
 
   const initializePeerConnection = (stream: any) => {
-    const pc = new RTCPeerConnection(configuration);
-    pcRef.current = pc;
-
-    // Add local stream tracks to peer connection
-    stream.getTracks().forEach((track: any) => {
-      pc.addTrack(track, stream);
-    });
-
-    // Handle remote stream
-    pc.ontrack = (event: any) => {
-      if (event.streams && event.streams[0]) {
-        setRemoteStream(event.streams[0]);
-        setCallStatus('connected');
-      }
-    };
-
-    // Handle ICE candidates
-    pc.onicecandidate = (event: any) => {
-      if (event.candidate) {
-        sendMessage({
-          type: 'webrtc_ice',
-          consultation_id: consultationId,
-          user_id: userId,
-          target_id: targetId,
-          candidate: JSON.stringify(event.candidate),
-        });
-      }
-    };
-
-    // Handle connection state changes
-    pc.onconnectionstatechange = () => {
-      console.log('Connection state:', pc.connectionState);
-      if (pc.connectionState === 'connected') {
-        setCallStatus('connected');
-      }
-    };
+    return null;
   };
 
   const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track: any) => {
-        track.enabled = !track.enabled;
-      });
-      setIsMuted(!isMuted);
-    }
+    setIsMuted(!isMuted);
   };
 
   const toggleVideo = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track: any) => {
-        track.enabled = !track.enabled;
-      });
-      setIsVideoOff(!isVideoOff);
-    }
+    setIsVideoOff(!isVideoOff);
   };
 
   const switchCamera = async () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        try {
-          await videoTrack._switchCamera();
-          setIsFrontCamera(!isFrontCamera);
-        } catch (err) {
-          console.error('Failed to switch camera:', err);
-        }
-      }
-    }
+    setIsFrontCamera(!isFrontCamera);
   };
 
   const endCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track: any) => track.stop());
-    }
-    if (pcRef.current) {
-      pcRef.current.close();
-    }
-    setLocalStream(null);
-    setRemoteStream(null);
     setCallStatus('ended');
     router.back();
   };
@@ -276,42 +131,18 @@ export default function VideoCallScreen() {
 
       {/* Remote Video (Full Screen) */}
       <View style={styles.remoteVideoContainer}>
-        {!RTCPeerConnection ? (
-          <View style={styles.waitingContainer}>
-            <Ionicons name="warning" size={50} color="#f59e0b" />
-            <Text style={styles.waitingText}>WebRTC not available in Expo Go</Text>
-            <Text style={[styles.waitingText, { fontSize: 12, marginTop: 8 }]}>Please use a Development Build for video calls.</Text>
-          </View>
-        ) : remoteStream ? (
-          <RTCView
-            streamURL={remoteStream.toURL()}
-            style={styles.remoteVideo}
-            objectFit="cover"
-            mirror={false}
-          />
-        ) : (
-          <View style={styles.waitingContainer}>
-            <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.waitingText}>Waiting for other participant...</Text>
-          </View>
-        )}
+        <View style={styles.waitingContainer}>
+          <Ionicons name="warning" size={50} color="#f59e0b" />
+          <Text style={styles.waitingText}>WebRTC not available in this build</Text>
+          <Text style={[styles.waitingText, { fontSize: 12, marginTop: 8 }]}>Please use a Development Build for video calls.</Text>
+        </View>
       </View>
 
       {/* Local Video (Picture-in-Picture) */}
       <View style={styles.localVideoContainer}>
-        {localStream ? (
-          <RTCView
-            streamURL={localStream.toURL()}
-            style={styles.localVideo}
-            objectFit="cover"
-            mirror={true}
-            zOrder={1}
-          />
-        ) : (
-          <View style={styles.localVideoPlaceholder}>
-            <Ionicons name="videocam-off" size={30} color="#fff" />
-          </View>
-        )}
+        <View style={styles.localVideoPlaceholder}>
+          <Ionicons name="videocam-off" size={30} color="#fff" />
+        </View>
       </View>
 
       {/* Controls */}

@@ -25,12 +25,15 @@ pub struct Prescription {
     pub is_dispensed: bool, // From UserJourney.md: Track if prescription was filled
     pub dispensed_at: Option<DateTime<Utc>>, // Timestamp when prescription was dispensed
     pub created_at: DateTime<Utc>,
+    pub suggested_pharmacy_id: Option<Uuid>, // New: Suggested pharmacy by doctor
 
     // Add these fields for UI convenience
     #[sqlx(default)]
     pub doctor_name: Option<String>,
     #[sqlx(default)]
     pub patient_name: Option<String>,
+    #[sqlx(default)]
+    pub suggested_pharmacy_name: Option<String>,
 }
 
 #[derive(Debug, sqlx::FromRow, Serialize, Deserialize)]
@@ -51,6 +54,7 @@ pub struct CreatePrescriptionRequest {
     pub patient_id: Uuid,
     pub items: Vec<CreatePrescriptionItemRequest>,
     pub expiry_days: i64, // From UserJourney.md: Expiry date (e.g., 30 days)
+    pub suggested_pharmacy_id: Option<Uuid>, // New: Suggested pharmacy
 }
 
 #[derive(Debug, Deserialize)]

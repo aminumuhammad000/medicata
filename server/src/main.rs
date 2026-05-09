@@ -73,6 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let protected_routes = Router::new()
         .route("/patients/:id/history", get(handlers::consultation::get_patient_history))
         .route("/auth/verify", post(handlers::auth::verify))
+        .route("/auth/push-token", post(handlers::auth::update_push_token))
         .route("/patient/health-info", post(handlers::auth::update_patient_health_info))
         .route("/patient/profile", post(handlers::auth::update_patient_profile))
         .route("/doctor/professional-info", post(handlers::auth::update_doctor_professional_info))

@@ -78,15 +78,32 @@ export default function PrescriptionDetailScreen() {
   };
 
   const handleReorder = async () => {
-    setReordering(true);
-    try {
-      await api.reorderPrescription(id as string);
-      Alert.alert('Success', 'Prescription reordered successfully');
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to reorder prescription');
-    } finally {
-      setReordering(false);
-    }
+    Alert.alert(
+      "Confirm Reorder",
+      "This will create a new pharmacy order with the items from this prescription. Would you like to proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Reorder",
+          onPress: async () => {
+            setReordering(true);
+            try {
+              // Note: We need a pharmacy to order from. 
+              // For "Buy Again", we'll redirect to pharmacy search with this prescription pre-selected
+              // This is the most robust UX so they can choose a pharmacy that has stock.
+              router.push({
+                pathname: '/pharmacy/search',
+                params: { prescription_id: id as string }
+              });
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to initiate reorder');
+            } finally {
+              setReordering(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (

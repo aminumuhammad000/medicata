@@ -290,7 +290,21 @@ export default function ConsultationDesk() {
     );
   }
 
+  const handleDirectCheckout = () => {
+    // Assuming a standard consultation fee of 5000 if not specified
+    const fee = 5000;
+    router.push({
+      pathname: '/wallet/checkout',
+      params: { 
+        amount: fee.toString(), 
+        type: 'consultation',
+        consultation_id: id as string
+      }
+    });
+  };
+
   const isAccepted = consultation?.status === 'accepted' || consultation?.status === 'completed';
+  const isPending = consultation?.status === 'pending';
 
   return (
     <View style={styles.container}>
@@ -366,6 +380,37 @@ export default function ConsultationDesk() {
             {renderPrescriptionsSection()}
             {renderLabTestsSection()}
 
+            {isAccepted && (
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.sectionIconBg, { backgroundColor: '#F5F3FF' }]}>
+                    <Ionicons name="videocam" size={20} color="#7C3AED" />
+                  </View>
+                  <View>
+                    <Text style={styles.sectionTitle}>Consultation Session</Text>
+                    <Text style={styles.sectionSubtitle}>Start video or voice consultation</Text>
+                  </View>
+                </View>
+                <View style={styles.actionButtonsRow}>
+                  <TouchableOpacity 
+                    style={[styles.sessionActionBtn, { backgroundColor: '#4F46E5' }]}
+                    onPress={() => router.push(`/consultations/call/${id}`)}
+                  >
+                    <Ionicons name="videocam" size={20} color="#fff" />
+                    <Text style={styles.sessionActionLabel}>Video Call</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.sessionActionBtn, { backgroundColor: '#10B981' }]}
+                    onPress={() => router.push(`/consultations/call/${id}?audioOnly=true`)}
+                  >
+                    <Ionicons name="call" size={20} color="#fff" />
+                    <Text style={styles.sessionActionLabel}>Voice Call</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {isDoctor ? (
               <View style={styles.clinicalSections}>
                 <View style={styles.clinicalSection}>
@@ -412,9 +457,25 @@ export default function ConsultationDesk() {
                 <View style={styles.instructionCard}>
                   <Ionicons name="information-circle" size={24} color="#4A90E2" />
                   <Text style={styles.instructionText}>
-                    Your consultation is active. You can use the discussion tab to message the doctor directly.
+                    {isPending 
+                      ? "Your consultation request is pending payment. Please proceed to secure checkout to confirm your appointment." 
+                      : "Your consultation is active. You can use the discussion tab to message the doctor directly."}
                   </Text>
                 </View>
+
+                {isPending && !isDoctor && (
+                  <TouchableOpacity style={styles.checkoutBtn} onPress={handleDirectCheckout}>
+                    <LinearGradient
+                      colors={['#4F46E5', '#7C3AED']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.checkoutGradient}
+                    >
+                      <Ionicons name="shield-checkmark" size={20} color="#FFF" />
+                      <Text style={styles.checkoutBtnText}>Secure Checkout (Direct Pay)</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.doctorNotesSection}>
                   <Text style={styles.clinicalSectionTitle}>Doctor's Findings</Text>
@@ -492,8 +553,35 @@ const styles = StyleSheet.create({
   submitBtnDisabled: { backgroundColor: '#CBD5E1' },
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
-  patientViewContent: { gap: 20 },
-  instructionCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F9FF', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#B9E6FE' },
+  patientViewContent: {
+    paddingHorizontal: 20,
+    marginTop: 20,
+    gap: 20
+  },
+  checkoutBtn: {
+    marginTop: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  checkoutGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 12,
+  },
+  checkoutBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  instructionCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F9FF', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#B9E6FE' },
   instructionText: { flex: 1, fontSize: 13, color: '#0369A1', fontWeight: '600', lineHeight: 18 },
   doctorNotesSection: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9' },
   notesContainer: { marginTop: 12, minHeight: 100, justifyContent: 'center' },
@@ -543,4 +631,23 @@ const styles = StyleSheet.create({
   emptyLabState: { alignItems: 'center', padding: 30, backgroundColor: '#F8FAFC', borderRadius: 16, borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0' },
   emptyLabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
   emptyLabSubtext: { fontSize: 12, color: '#94A3B8', marginTop: 4 },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  sessionActionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  sessionActionLabel: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

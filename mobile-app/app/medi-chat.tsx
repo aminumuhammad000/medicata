@@ -86,9 +86,10 @@ export default function MediChatScreen() {
   const handleSend = async () => {
     if (!message || !isConnected) return;
     
+    const userMsg = message.trim();
     const newMessage = {
       id: Date.now().toString(),
-      text: message,
+      text: userMsg,
       sender: 'user',
       timestamp: new Date(),
     };
@@ -96,40 +97,63 @@ export default function MediChatScreen() {
     const newMessages = [...messages, newMessage];
     setMessages(newMessages);
     setMessage('');
-    saveMessageHistory(newMessages);
     
     try {
-      // TODO: Send message via WebSocket
-      // ws.current?.send(JSON.stringify({
-      //   type: 'message',
-      //   content: message,
-      //   timestamp: new Date().toISOString(),
-      // }));
-      
-      // Placeholder for actual WebSocket send
-      console.log('Sending message:', message);
-      
-      // Simulate AI response for demo
       setIsTyping(true);
+      
+      // Smart Triage Logic for MVP
+      // We look for keywords to suggest the right specialist
       setTimeout(() => {
         setIsTyping(false);
+        
+        let aiText = "I understand. To give you the best advice, could you tell me more about how long you've been feeling this way?";
+        let suggestion: string | null = null;
+        
+        const lowerMsg = userMsg.toLowerCase();
+        
+        if (lowerMsg.includes('heart') || lowerMsg.includes('chest') || lowerMsg.includes('palpitation')) {
+          aiText = "Based on your mention of chest or heart-related symptoms, I recommend speaking with a Cardiologist immediately for a professional evaluation.";
+          suggestion = 'Cardiology';
+        } else if (lowerMsg.includes('child') || lowerMsg.includes('baby') || lowerMsg.includes('kid')) {
+          aiText = "Since this concerns a child, I recommend booking a consultation with a Pediatrician who specializes in children's health.";
+          suggestion = 'Pediatrics';
+        } else if (lowerMsg.includes('headache') || lowerMsg.includes('dizzy') || lowerMsg.includes('nerve') || lowerMsg.includes('brain')) {
+          aiText = "These neurological symptoms (headache/dizziness) suggest you should consult a Neurologist for a detailed check-up.";
+          suggestion = 'Neurology';
+        } else if (lowerMsg.includes('fever') || lowerMsg.includes('flu') || lowerMsg.includes('cold') || lowerMsg.includes('sick')) {
+          aiText = "It sounds like you might have a common infection or flu. A General Practitioner can help diagnose this and provide treatment.";
+          suggestion = 'General';
+        }
+
         const aiResponse = {
           id: (Date.now() + 1).toString(),
-          text: 'I understand. Based on your symptoms, I recommend booking a consultation with a General Practitioner. Would you like me to find one for you?',
+          text: aiText,
           sender: 'ai',
           timestamp: new Date(),
+          suggestion: suggestion // Attach specialty suggestion for the UI
         };
+        
         setMessages(prev => [...prev, aiResponse]);
-        saveMessageHistory([...newMessages, aiResponse]);
       }, 1500);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Failed to process AI message:', error);
     }
   };
 
   const renderMessage = ({ item }: { item: any }) => (
-    <View style={[styles.messageBubble, item.sender === 'user' ? styles.userBubble : styles.aiBubble]}>
-      <Text style={[styles.messageText, item.sender === 'user' ? styles.userText : styles.aiText]}>{item.text}</Text>
+    <View style={item.sender === 'user' ? styles.userMessageContainer : styles.aiMessageContainer}>
+      <View style={[styles.messageBubble, item.sender === 'user' ? styles.userBubble : styles.aiBubble]}>
+        <Text style={[styles.messageText, item.sender === 'user' ? styles.userText : styles.aiText]}>{item.text}</Text>
+      </View>
+      {item.suggestion && (
+        <TouchableOpacity 
+          style={styles.suggestionBtn}
+          onPress={() => router.push({ pathname: '/bookings/search', params: { specialty: item.suggestion } })}
+        >
+          <Ionicons name="calendar" size={16} color="#4F46E5" />
+          <Text style={styles.suggestionBtnText}>Book {item.suggestion} Specialist</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -261,15 +285,44 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     maxWidth: '80%',
   },
-  userBubble: {
+  userMessageContainer: {
     alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  aiMessageContainer: {
+    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  userBubble: {
     backgroundColor: '#4a90e2',
     borderBottomRightRadius: 4,
   },
   aiBubble: {
-    alignSelf: 'flex-start',
     backgroundColor: '#f0f0f0',
     borderBottomLeftRadius: 4,
+  },
+  suggestionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    gap: 8,
+    marginLeft: 4,
+    ...Platform.select({
+      ios: { shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+      android: { elevation: 2 },
+    }) as any,
+  },
+  suggestionBtnText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '700',
   },
   messageText: {
     fontSize: 15,

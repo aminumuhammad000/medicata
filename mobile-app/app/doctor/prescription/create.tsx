@@ -25,10 +25,26 @@ export default function CreatePrescription() {
   const [isSearching, setIsSearching] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
 
+  const [pharmacyQuery, setPharmacyQuery] = useState('');
+  const [pharmacyResults, setPharmacyResults] = useState<any[]>([]);
+  const [selectedPharmacy, setSelectedPharmacy] = useState<any>(null);
+  const [isSearchingPharmacy, setIsSearchingPharmacy] = useState(false);
+
   const [patientQuery, setPatientQuery] = useState('');
   const [patientResults, setPatientResults] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const [isSearchingPatient, setIsSearchingPatient] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (pharmacyQuery.length > 2) {
+        searchPharmacies(pharmacyQuery);
+      } else {
+        setPharmacyResults([]);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [pharmacyQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -90,6 +106,29 @@ export default function CreatePrescription() {
     }
   };
 
+  const searchPharmacies = async (query: string) => {
+    setIsSearchingPharmacy(true);
+    try {
+      // Use the generic search parameter for pharmacy name/location
+      const res = await api.searchPharmacies({}); 
+      // Note: If the searchPharmacies API doesn't support generic string search yet,
+      // we'll filter the results locally or use specialized params if available.
+      // For MVP, we'll fetch and filter if query is provided.
+      if (res.data) {
+        const filtered = query 
+          ? res.data.filter((p: any) => 
+              p.full_name?.toLowerCase().includes(query.toLowerCase()) || 
+              p.address?.toLowerCase().includes(query.toLowerCase()))
+          : res.data;
+        setPharmacyResults(filtered);
+      }
+    } catch (error) {
+      console.error('Pharmacy search failed:', error);
+    } finally {
+      setIsSearchingPharmacy(false);
+    }
+  };
+
   const addItem = () => {
     if (!selectedDrug || !dosage || !quantity) return;
     
@@ -129,6 +168,7 @@ export default function CreatePrescription() {
         consultation_id: consultationId || undefined,
         patient_id: finalPatientId,
         expiry_days: 30, // Default 30 days
+        suggested_pharmacy_id: selectedPharmacy?.id,
         items: items.map(item => ({
           drug_id: item.drug_id,
           dosage: item.dosage,
@@ -166,7 +206,7 @@ export default function CreatePrescription() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Select Patient</Text>
             <View style={styles.searchContainer}>
-              <Ionicons name="person-search" size={20} color="#64748B" />
+              <Ionicons name="person-outline" size={20} color="#64748B" />
               <TextInput 
                 style={styles.searchInput} 
                 placeholder="Name, email or phone..." 
@@ -203,6 +243,44 @@ export default function CreatePrescription() {
             )}
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Suggested Pharmacy (Optional)</Text>
+          <View style={styles.searchContainer}>
+            <Ionicons name="business-outline" size={20} color="#64748B" />
+            <TextInput 
+              style={styles.searchInput} 
+              placeholder="Search pharmacy to suggest..." 
+              value={selectedPharmacy ? selectedPharmacy.full_name : pharmacyQuery}
+              onChangeText={(text) => {
+                setPharmacyQuery(text);
+                if (selectedPharmacy) setSelectedPharmacy(null);
+              }}
+            />
+            {isSearchingPharmacy && <ActivityIndicator size="small" color="#4A90E2" />}
+          </View>
+          
+          {pharmacyResults.length > 0 && !selectedPharmacy && (
+            <View style={styles.suggestionsContainer}>
+              {pharmacyResults.map((p) => (
+                <TouchableOpacity 
+                  key={p.id} 
+                  style={styles.suggestionRow}
+                  onPress={() => {
+                    setSelectedPharmacy(p);
+                    setPharmacyResults([]);
+                  }}
+                >
+                  <Ionicons name="medical-outline" size={20} color="#4A90E2" />
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={styles.suggestionMain}>{p.full_name}</Text>
+                    <Text style={styles.suggestionSub}>{p.address}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardHeader}>Medication Details</Text>

@@ -51,14 +51,15 @@ pub async fn create_prescription(
         .date_naive();
 
     let prescription = sqlx::query_as::<_, Prescription>(
-        "INSERT INTO prescriptions (consultation_id, patient_id, doctor_id, expiry_date, is_verified) 
-         VALUES ($1, $2, $3, $4, true) 
+        "INSERT INTO prescriptions (consultation_id, patient_id, doctor_id, expiry_date, is_verified, suggested_pharmacy_id) 
+         VALUES ($1, $2, $3, $4, true, $5) 
          RETURNING *"
     )
     .bind(payload.consultation_id)
     .bind(payload.patient_id)
     .bind(claims.sub)
     .bind(expiry_date)
+    .bind(payload.suggested_pharmacy_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -231,21 +232,23 @@ pub async fn get_my_prescriptions(
 ) -> Result<Json<Vec<Prescription>>, AppError> {
     let query = match claims.role {
         UserRole::Patient => 
-            "SELECT p.*, u.full_name as doctor_name 
+            "SELECT p.*, u_doc.full_name as doctor_name, u_pharm.full_name as suggested_pharmacy_name
              FROM prescriptions p
-             JOIN users u ON p.doctor_id = u.id
+             JOIN users u_doc ON p.doctor_id = u_doc.id
+             LEFT JOIN users u_pharm ON p.suggested_pharmacy_id = u_pharm.id
              WHERE p.patient_id = $1 
              ORDER BY p.created_at DESC",
         UserRole::Doctor => 
-            "SELECT p.*, u.full_name as patient_name 
+            "SELECT p.*, u_pat.full_name as patient_name, u_pharm.full_name as suggested_pharmacy_name
              FROM prescriptions p
-             JOIN users u ON p.patient_id = u.id
+             JOIN users u_pat ON p.patient_id = u_pat.id
+             LEFT JOIN users u_pharm ON p.suggested_pharmacy_id = u_pharm.id
              WHERE p.doctor_id = $1 
              ORDER BY p.created_at DESC",
         UserRole::Pharmacy =>
-            "SELECT p.*, u.full_name as patient_name 
+            "SELECT p.*, u_pat.full_name as patient_name 
              FROM prescriptions p
-             JOIN users u ON p.patient_id = u.id
+             JOIN users u_pat ON p.patient_id = u_pat.id
              WHERE p.is_shared = true AND p.shared_with = (SELECT full_name FROM users WHERE id = $1)
              ORDER BY p.created_at DESC",
         _ => return Err(AppError::Forbidden("Unauthorized role for prescriptions".to_string())),
@@ -267,10 +270,11 @@ pub async fn verify_prescription_by_token(
 
     // 1. Fetch prescription by qr_code_token
     let prescription = sqlx::query_as::<_, Prescription>(
-        "SELECT p.*, u_doc.full_name as doctor_name, u_pat.full_name as patient_name 
+        "SELECT p.*, u_doc.full_name as doctor_name, u_pat.full_name as patient_name, u_pharm.full_name as suggested_pharmacy_name
          FROM prescriptions p
          JOIN users u_doc ON p.doctor_id = u_doc.id
          JOIN users u_pat ON p.patient_id = u_pat.id
+         LEFT JOIN users u_pharm ON p.suggested_pharmacy_id = u_pharm.id
          WHERE p.qr_code_token = $1"
     )
     .bind(token)
