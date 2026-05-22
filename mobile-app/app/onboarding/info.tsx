@@ -2,16 +2,21 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 
 export default function InfoScreen() {
   const router = useRouter();
   const { data, updateData, submitPatientHealthInfo, submitDoctorProfessionalInfo, loading, error } = useOnboarding();
   
   // Patient state
-  const [dob, setDob] = useState('');
+  const [dob, setDob] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [gender, setGender] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [genotype, setGenotype] = useState('');
   const [allergies, setAllergies] = useState('');
   const [conditions, setConditions] = useState('');
 
@@ -22,10 +27,12 @@ export default function InfoScreen() {
 
   const handleNext = async () => {
     if (data.userType === 'patient') {
-      updateData({ dob, gender, allergies, conditions });
+      updateData({ dob: dob.toISOString().split('T')[0], gender, allergies, conditions });
       const success = await submitPatientHealthInfo({
-        date_of_birth: dob,
+        date_of_birth: dob.toISOString().split('T')[0],
         gender,
+        blood_group: bloodGroup,
+        genotype: genotype,
         allergies,
         existing_conditions: conditions,
       });
@@ -36,7 +43,7 @@ export default function InfoScreen() {
       updateData({ licenseNumber: license, specialties: [specialty], experience });
       const success = await submitDoctorProfessionalInfo();
       if (success) {
-        router.push('/onboarding/profile');
+        router.push('/onboarding/doctor-verify');
       }
     }
   };
@@ -59,6 +66,7 @@ export default function InfoScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ProgressBar currentStep={5} totalSteps={data.userType === 'patient' ? 7 : 8} label="Medical Context" />
           <View style={styles.header}>
             <Text style={styles.title}>
               {data.userType === 'patient' ? 'Health Information' : 'Professional Info'}
@@ -74,13 +82,25 @@ export default function InfoScreen() {
             <View style={styles.form}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Date of Birth</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  value={dob}
-                  onChangeText={setDob}
-                />
+                <TouchableOpacity 
+                  style={styles.input} 
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 16 }}>
+                    {dob.toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dob}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) setDob(selectedDate);
+                    }}
+                  />
+                )}
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Gender</Text>
@@ -97,6 +117,30 @@ export default function InfoScreen() {
                   ))}
                 </View>
               </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Blood Group</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: O+"
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    value={bloodGroup}
+                    onChangeText={setBloodGroup}
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1 }]}>
+                  <Text style={styles.label}>Genotype</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Ex: AA"
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    value={genotype}
+                    onChangeText={setGenotype}
+                  />
+                </View>
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Allergies (Optional)</Text>
                 <TextInput
@@ -236,6 +280,10 @@ const styles = StyleSheet.create({
     padding: 18,
     fontSize: 16,
     color: '#FFFFFF',
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
   },
   chipContainer: {
     flexDirection: 'row',

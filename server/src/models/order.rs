@@ -86,3 +86,11 @@ pub struct AddOrderItemRequest {
     pub quantity: i32,
     pub price: i64, // Price per unit in kobo (Naira * 100)
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PharmacyAnalytics {
+    pub total_orders: i64,
+    pub pending_orders: i64,
+    pub total_revenue: i64,
+    pub prescriptions_received: i64,
+}

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 
 export default function PharmacyInfoScreen() {
   const router = useRouter();
@@ -156,19 +157,8 @@ export default function PharmacyInfoScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ProgressBar currentStep={step + 4} totalSteps={8} label="Business Profile" />
           <View style={styles.header}>
-            <View style={styles.stepIndicatorContainer}>
-              {[1, 2, 3].map((s) => (
-                <View 
-                  key={s} 
-                  style={[
-                    styles.stepDot, 
-                    s === step && styles.stepDotActive,
-                    s < step && styles.stepDotCompleted
-                  ]} 
-                />
-              ))}
-            </View>
             <Text style={styles.title}>
               {step === 1 ? 'Basic Details' : step === 2 ? 'Verification' : 'Operations'}
             </Text>
@@ -266,24 +256,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.6)',
     lineHeight: 24,
-  },
-  stepIndicatorContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  stepDot: {
-    width: 32,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  stepDotActive: {
-    backgroundColor: '#4A90E2',
-    width: 48,
-  },
-  stepDotCompleted: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   form: {
     gap: 24,

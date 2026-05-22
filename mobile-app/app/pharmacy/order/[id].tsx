@@ -417,14 +417,17 @@ export default function PharmacyOrderDetail() {
 }
 
 const getNextStatus = (current: string) => {
+  const normalized = current?.toLowerCase().replace(/_/g, '');
   const statusMap: { [key: string]: string } = {
     'pending': 'processing',
     'processing': 'ready_for_pickup',
-    'ready_for_pickup': 'picked_up',
-    'ReadyForPickup': 'picked_up',
+    'readyforpickup': 'picked_up',
     'ready': 'picked_up',
+    'outfordelivery': 'delivered',
+    'delivered': 'completed',
+    'pickedup': 'completed',
   };
-  return statusMap[current] || current;
+  return statusMap[normalized] || normalized;
 };
 
 const getStatusSubtext = (status: string) => {

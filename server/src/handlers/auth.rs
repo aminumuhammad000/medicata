@@ -321,7 +321,8 @@ pub async fn update_patient_health_info(
 ) -> Result<Json<User>, AppError> {
     let user = sqlx::query_as::<_, User>(
         "UPDATE users 
-         SET date_of_birth = $2, gender = $3, allergies = $4, existing_conditions = $5, updated_at = NOW()
+         SET date_of_birth = $2, gender = $3, allergies = $4, existing_conditions = $5, 
+             blood_group = $6, genotype = $7, updated_at = NOW()
          WHERE id = $1 RETURNING *"
     )
     .bind(claims.user_id)
@@ -329,6 +330,8 @@ pub async fn update_patient_health_info(
     .bind(&payload.gender)
     .bind(&payload.allergies)
     .bind(&payload.existing_conditions)
+    .bind(&payload.blood_group)
+    .bind(&payload.genotype)
     .fetch_one(&state.db)
     .await?;
 

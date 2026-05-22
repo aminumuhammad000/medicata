@@ -49,6 +49,14 @@ pub enum WsMessage {
         user_id: Uuid,
         is_typing: bool,
     },
+    #[serde(rename = "emergency_alert")]
+    EmergencyAlert {
+        id: Uuid,
+        patient_name: String,
+        location: String,
+        message: String,
+        time: String,
+    },
 }
 
 pub type ClientMap = Arc<Mutex<HashMap<String, broadcast::Sender<WsMessage>>>>;
@@ -145,4 +153,11 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
 pub fn create_client_map() -> ClientMap {
     Arc::new(Mutex::new(HashMap::new()))
+}
+
+pub fn broadcast_message(state: &AppState, msg: WsMessage) {
+    let clients_lock = state.ws_clients.lock().unwrap();
+    for (_, tx) in clients_lock.iter() {
+        let _ = tx.send(msg.clone());
+    }
 }

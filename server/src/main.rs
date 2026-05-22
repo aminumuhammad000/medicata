@@ -1,11 +1,11 @@
 use axum::{
-    routing::{get, post, patch, delete},
+    routing::{get, post, patch, put, delete},
     Router,
     middleware as axum_middleware,
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
@@ -48,11 +48,29 @@ async fn main() -> anyhow::Result<()> {
 
     // Application state
     let state = AppState {
-        db,
-        config,
+        db: db.clone(),
+        config: config.clone(),
         ws_clients,
         email_service,
     };
+
+    // Seed admin user if not exists
+    let admin_exists = sqlx::query("SELECT 1 FROM users WHERE email = 'admin@medicata.com'")
+        .fetch_optional(&db)
+        .await?;
+
+    if admin_exists.is_none() {
+        let password_hash = crate::auth_utils::hash_password("admin123")?;
+        sqlx::query(
+            "INSERT INTO users (full_name, email, password_hash, role, is_verified) 
+             VALUES ('System Administrator', 'admin@medicata.com', $1, $2, TRUE)"
+        )
+        .bind(password_hash)
+        .bind(crate::models::user::UserRole::Admin)
+        .execute(&db)
+        .await?;
+        tracing::info!("Seeded default admin user: admin@medicata.com");
+    }
 
     // Public routes (no auth required)
     let public_routes = Router::new()
@@ -113,6 +131,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/orders/:id/pay-wallet", post(handlers::order::pay_order_with_wallet))
         .route("/orders/:id/items", post(handlers::order::add_order_item))
         .route("/orders/:id/status", patch(handlers::order::update_order_status))
+        .route("/pharmacy/analytics", get(handlers::order::get_pharmacy_analytics))
         .route("/reviews", post(handlers::review::create_review))
         .route("/reviews", get(handlers::review::get_reviews))
         .route("/notifications", get(handlers::notification::get_my_notifications))
@@ -125,6 +144,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/wallet/transactions", get(handlers::wallet::get_transactions))
         .route("/settings", get(handlers::settings::get_settings))
         .route("/settings", patch(handlers::settings::update_settings))
+        .route("/system-settings", get(handlers::settings::get_system_settings))
+        .route("/system-settings", patch(handlers::settings::update_system_settings))
         .route("/schedule", post(handlers::schedule::create_schedule))
         .route("/schedule", get(handlers::schedule::get_my_schedule))
         .route("/schedule/:id", delete(handlers::schedule::delete_schedule))
@@ -139,6 +160,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ai/chat", post(handlers::ai_chat::send_message))
         .route("/ai/sessions", get(handlers::ai_chat::get_sessions))
         .route("/ai/sessions/:session_id/history", get(handlers::ai_chat::get_chat_history))
+        .route("/ai/sessions/:session_id", delete(handlers::ai_chat::delete_session))
         .route("/payments/initialize", post(handlers::payments::initialize_payment))
         .route("/payments/verify", post(handlers::payments::verify_payment))
         .route("/payments/transactions", get(handlers::payments::get_transactions))
@@ -148,10 +170,43 @@ async fn main() -> anyhow::Result<()> {
         .route("/medication/reminders/:id", delete(handlers::medication::delete_reminder))
         .layer(axum_middleware::from_fn_with_state(state.clone(), crate::middleware::auth::auth_middleware));
 
+    let admin_routes = Router::new()
+        .route("/stats", get(handlers::admin::get_admin_stats))
+        .route("/pending-doctors", get(handlers::admin::get_pending_doctors))
+        .route("/verify-doctor/:id", post(handlers::admin::verify_doctor))
+        .route("/trigger-emergency", post(handlers::admin::trigger_test_emergency))
+        .route("/patients", get(handlers::admin::get_all_patients))
+        .route("/patients/:id", delete(handlers::admin::delete_patient))
+        .route("/doctors", get(handlers::admin::get_all_doctors))
+        .route("/doctors/:id", delete(handlers::admin::delete_doctor))
+        .route("/inventory", get(handlers::admin::get_inventory))
+        .route("/inventory", post(handlers::admin::add_inventory_item))
+        .route("/inventory/:id", put(handlers::admin::update_inventory_item))
+        .route("/inventory/:id", delete(handlers::admin::delete_inventory_item))
+        .route("/pharmacies", get(handlers::admin::get_all_pharmacies))
+        .route("/pharmacies/:id", delete(handlers::admin::delete_pharmacy))
+        .route("/orders", get(handlers::admin::get_all_orders))
+        .route("/orders/:id/cancel", patch(handlers::admin::admin_cancel_order))
+        .route("/revenue", get(handlers::admin::get_revenue_stats))
+        .route("/payouts", get(handlers::admin::get_all_payouts))
+        .route("/payouts/:id", patch(handlers::admin::update_payout_status))
+        .route("/lab-tests", get(handlers::admin::get_all_lab_tests))
+        .route("/broadcast", post(handlers::admin::broadcast_notification))
+        .route("/user-activity/:id", get(handlers::admin::get_user_activity))
+        .route("/consultations", get(handlers::admin::get_all_consultations))
+        .route("/consultations/:id/cancel", patch(handlers::admin::admin_cancel_consultation))
+        .route("/prescriptions", get(handlers::admin::get_prescription_audit))
+        .route("/specialties", get(handlers::admin::get_all_specialties))
+        .route("/specialties", post(handlers::admin::create_specialty))
+        .route("/quality-reports", get(handlers::admin::get_quality_reports))
+        .route("/audit-logs", get(handlers::admin::get_admin_audit_logs))
+        .layer(axum_middleware::from_fn_with_state(state.clone(), crate::middleware::auth::auth_middleware));
+
     // Combined router nested under /api
     let api_router = Router::new()
         .merge(public_routes)
-        .merge(protected_routes);
+        .merge(protected_routes)
+        .nest("/admin", admin_routes);
 
     // Main app router
     let app = Router::new()
@@ -160,7 +215,16 @@ async fn main() -> anyhow::Result<()> {
         .route("/ws", get(websocket::websocket_handler))
         .nest("/api", api_router)
         .layer(tower_http::trace::TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(vec![
+                    axum::http::header::AUTHORIZATION,
+                    axum::http::header::CONTENT_TYPE,
+                ])
+                .expose_headers(Any),
+        )
         .with_state(state.clone());
 
     // Run our app with hyper

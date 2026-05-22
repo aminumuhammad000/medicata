@@ -29,8 +29,12 @@ export default function AnalyticsScreen() {
         if (response.data) {
           setAnalytics(response.data);
         }
+      } else if (role?.toLowerCase() === 'pharmacy') {
+        const response = await api.getPharmacyAnalytics();
+        if (response.data) {
+          setAnalytics(response.data);
+        }
       }
-      // Pharmacy analytics would be similar
     } catch (err) {
       console.error('Failed to load analytics:', err);
     } finally {
@@ -217,8 +221,7 @@ export default function AnalyticsScreen() {
     );
   }
 
-  // Pharmacy View
-  if (userRole === 'pharmacy') {
+  if (userRole === 'pharmacy' && analytics) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -231,43 +234,41 @@ export default function AnalyticsScreen() {
         <ScrollView style={styles.content}>
           <View style={styles.statsGrid}>
             <StatCard
-              title="Orders"
-              value="48"
-              subtitle="This month"
+              title="Total Orders"
+              value={analytics.total_orders || 0}
+              subtitle="All time"
               icon="cart"
               color="#4a90e2"
             />
             <StatCard
               title="Pending"
-              value="5"
+              value={analytics.pending_orders || 0}
               subtitle="To fulfill"
               icon="time"
               color="#f59e0b"
             />
             <StatCard
               title="Revenue"
-              value="₦125K"
-              subtitle="This month"
+              value={`₦${((analytics.total_revenue || 0) / 1).toLocaleString()}`}
+              subtitle="Total earnings"
               icon="cash"
               color="#22c55e"
             />
             <StatCard
               title="Prescriptions"
-              value="32"
-              subtitle="Received"
+              value={analytics.prescriptions_received || 0}
+              subtitle="Processed"
               icon="medical"
               color="#8b5cf6"
             />
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Top Selling Medicines</Text>
+            <Text style={styles.sectionTitle}>Sales Distribution</Text>
             <View style={styles.chartCard}>
-              <ChartBar label="Paracetamol" value={45} max={50} color="#4a90e2" />
-              <ChartBar label="Amoxicillin" value={38} max={50} color="#22c55e" />
-              <ChartBar label="Ibuprofen" value={32} max={50} color="#f59e0b" />
-              <ChartBar label="Cough Syrup" value={28} max={50} color="#8b5cf6" />
-              <ChartBar label="Vitamins" value={20} max={50} color="#ec4899" />
+              <ChartBar label="Revenue" value={analytics.total_revenue || 0} max={Math.max(analytics.total_revenue || 1, 100000)} color="#22c55e" />
+              <ChartBar label="Orders" value={analytics.total_orders || 0} max={Math.max(analytics.total_orders || 1, 100)} color="#4a90e2" />
+              <ChartBar label="Pending" value={analytics.pending_orders || 0} max={Math.max(analytics.total_orders || 1, 10)} color="#f59e0b" />
             </View>
           </View>
         </ScrollView>

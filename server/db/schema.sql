@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS users (
     height_cm INT,
     weight_kg INT,
     body_type TEXT,
+    blood_group TEXT,
+    genotype TEXT,
     address TEXT,
     city TEXT,
     state TEXT,

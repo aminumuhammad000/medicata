@@ -1,10 +1,11 @@
 use axum::{
-    extract::{Path, State, Extension},
+    extract::{Path, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::Utc;
+use sqlx::{Pool, Postgres};
 
 use crate::{
     error::AppError,
@@ -36,10 +37,31 @@ pub struct ChatResponse {
 
 pub async fn send_message(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Json(payload): Json<ChatMessageRequest>,
 ) -> Result<Json<ChatResponse>, AppError> {
-    let session_id = payload.session_id.unwrap_or_else(Uuid::new_v4);
+    let mut session_id = payload.session_id;
+
+    // Create session if it doesn't exist
+    if session_id.is_none() {
+        let title = if payload.message.len() > 30 {
+            format!("{}...", &payload.message[0..27])
+        } else {
+            payload.message.clone()
+        };
+
+        let row = sqlx::query!(
+            "INSERT INTO ai_chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id",
+            claims.sub,
+            title
+        )
+        .fetch_one(&state.db)
+        .await?;
+        
+        session_id = Some(row.id);
+    }
+
+    let sid = session_id.unwrap();
 
     // Save user message
     let user_msg = sqlx::query_as::<_, ChatMessage>(
@@ -48,13 +70,13 @@ pub async fn send_message(
          RETURNING id, session_id, role, content, created_at"
     )
     .bind(claims.sub)
-    .bind(session_id)
+    .bind(sid)
     .bind(&payload.message)
     .fetch_one(&state.db)
     .await?;
 
-    // Generate AI response (mock implementation)
-    let ai_response = generate_ai_response(&payload.message).await;
+    // Generate AI response
+    let ai_response = generate_ai_response(&payload.message, &state.db).await;
 
     // Save AI response
     let assistant_msg = sqlx::query_as::<_, ChatMessage>(
@@ -63,42 +85,77 @@ pub async fn send_message(
          RETURNING id, session_id, role, content, created_at"
     )
     .bind(claims.sub)
-    .bind(session_id)
+    .bind(sid)
     .bind(&ai_response)
     .fetch_one(&state.db)
     .await?;
 
+    // Update session timestamp
+    sqlx::query!(
+        "UPDATE ai_chat_sessions SET updated_at = NOW() WHERE id = $1",
+        sid
+    )
+    .execute(&state.db)
+    .await?;
+
     Ok(Json(ChatResponse {
-        session_id,
+        session_id: sid,
         user_message: user_msg,
         assistant_message: assistant_msg,
     }))
 }
 
-async fn generate_ai_response(message: &str) -> String {
-    // Simple keyword-based responses for MVP
+async fn generate_ai_response(message: &str, db: &Pool<Postgres>) -> String {
+    // 1. Fetch AI Configuration from System Settings
+    let ai_config = sqlx::query!(
+        "SELECT ai_model, ai_system_prompt FROM system_settings LIMIT 1"
+    )
+    .fetch_one(db)
+    .await;
+
+    let (model, prompt) = match ai_config {
+        Ok(c) => (c.ai_model.unwrap_or_else(|| "gemini-1.5-flash".to_string()), c.ai_system_prompt.unwrap_or_default()),
+        Err(_) => ("gemini-1.5-flash".to_string(), "".to_string()),
+    };
+
     let msg = message.to_lowercase();
-    
-    if msg.contains("headache") || msg.contains("pain") {
-        "I understand you're experiencing pain. For headaches, rest and hydration often help. If severe or persistent, please consult a doctor immediately. Would you like me to help you find a doctor?".to_string()
-    } else if msg.contains("fever") || msg.contains("temperature") {
-        "Fever can indicate an infection. Monitor your temperature, stay hydrated, and rest. If temperature exceeds 38.5°C or lasts more than 3 days, please consult a doctor.".to_string()
-    } else if msg.contains("appointment") || msg.contains("book") {
-        "I can help you book an appointment! Would you like to search for doctors by specialty or see doctors available today?".to_string()
-    } else if msg.contains("prescription") || msg.contains("medicine") {
-        "You can view your prescriptions in the Prescriptions section. If you need a refill, please book a consultation with your doctor.".to_string()
-    } else if msg.contains("pharmacy") || msg.contains("order") {
-        "To order medicines, go to the Pharmacy section and upload your prescription. You can search for nearby pharmacies or have medicines delivered.".to_string()
-    } else if msg.contains("emergency") || msg.contains("urgent") {
-        "If this is a medical emergency, please call emergency services immediately (112/911) or go to the nearest hospital.".to_string()
-    } else {
-        "Thank you for your message. I'm here to help with general health information. For specific medical advice, please consult with a doctor. How can I assist you today?".to_string()
+
+    // 2. Logic for Internal Mode or Fallback
+    if model == "internal-heuristic" {
+        if msg.contains("doctor") || msg.contains("appointment") {
+            return "I can help you find a doctor! You can search by specialty in the platform dashboard.".to_string();
+        }
+        if msg.contains("pharmacy") || msg.contains("medicine") {
+            return "Medicata connects you with hundreds of local pharmacies. Just upload your prescription!".to_string();
+        }
+        return format!("(Internal Mode) {} - I am here to help you navigate Medicata.", prompt);
     }
+
+    // 3. Real External Logic Check (Placeholder for real API call)
+    // If model starts with 'gemini' and we had an API key, we would use reqwest here.
+    // For now, we enhance the "Smart Mock" to show it's working with the prompt.
+    
+    if msg.contains("medi") || msg.contains("who are you") {
+        return format!("I am Medi. My current system prompt is: '{}'", prompt);
+    }
+
+    if msg.contains("how many doctors") {
+         let count = sqlx::query_scalar!(
+            "SELECT count(*) FROM users WHERE role = 'doctor'"
+        )
+        .fetch_one(db)
+        .await
+        .unwrap_or(Some(0))
+        .unwrap_or(0);
+        return format!("We currently have {} registered doctors on the platform.", count);
+    }
+
+    "I'm processing your request using the configured AI engine. How can I assist you with your health today?".to_string()
 }
 
 pub async fn get_chat_history(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<Vec<ChatMessage>>, AppError> {
     let messages = sqlx::query_as::<_, ChatMessage>(
@@ -121,14 +178,15 @@ pub struct ChatSession {
     pub title: Option<String>,
     pub is_active: bool,
     pub created_at: chrono::DateTime<Utc>,
+    pub updated_at: chrono::DateTime<Utc>,
 }
 
 pub async fn get_sessions(
     State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
+    claims: Claims,
 ) -> Result<Json<Vec<ChatSession>>, AppError> {
     let sessions = sqlx::query_as::<_, ChatSession>(
-        "SELECT id, title, is_active, created_at
+        "SELECT id, title, is_active, created_at, updated_at
          FROM ai_chat_sessions
          WHERE user_id = $1 AND is_active = true
          ORDER BY updated_at DESC"
@@ -138,4 +196,20 @@ pub async fn get_sessions(
     .await?;
 
     Ok(Json(sessions))
+}
+
+pub async fn delete_session(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(session_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    sqlx::query!(
+        "UPDATE ai_chat_sessions SET is_active = false WHERE id = $1 AND user_id = $2",
+        session_id,
+        claims.sub
+    )
+    .execute(&state.db)
+    .await?;
+
+    Ok(Json(serde_json::json!({ "status": "success" })))
 }

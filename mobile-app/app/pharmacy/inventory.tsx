@@ -75,6 +75,16 @@ export default function InventoryScreen({ isTab = false }: { isTab?: boolean }) 
   const [refreshing, setRefreshing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredStock = stock.filter(item => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (item.drug_name || '').toLowerCase().includes(query) ||
+      (item.drug_category || '').toLowerCase().includes(query) ||
+      (item.drug_brand || '').toLowerCase().includes(query)
+    );
+  });
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -289,10 +299,28 @@ export default function InventoryScreen({ isTab = false }: { isTab?: boolean }) 
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchSection}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={20} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search medications..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#CBD5E1" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
       <View style={styles.mainContent}>
         {loading ? <ActivityIndicator size="large" color="#0D1B3A" style={{ marginTop: 50 }} /> : (
           <FlatList
-            data={stock}
+            data={filteredStock}
             renderItem={renderStockItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
@@ -528,11 +556,14 @@ function BrandPickerModal({ visible, brands, onSelect, onClose }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   headerGradient: { position: 'absolute', left: 0, right: 0, top: 0, height: 160 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: Platform.OS === 'ios' ? 10 : 24 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: Platform.OS === 'ios' ? 10 : 24, paddingBottom: 12 },
   title: { fontSize: 22, fontWeight: '900', color: '#FFF', letterSpacing: -0.5 },
   addButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   backButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  mainContent: { flex: 1, backgroundColor: '#F8FAFC', borderTopLeftRadius: 32, borderTopRightRadius: 32, marginTop: -10, padding: 24 },
+  searchSection: { paddingHorizontal: 24, marginBottom: 12 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 16, paddingHorizontal: 16, height: 50, elevation: 4, shadowColor: '#0D1B3A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10 },
+  searchInput: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '600', color: '#0F172A' },
+  mainContent: { flex: 1, backgroundColor: '#F8FAFC', borderTopLeftRadius: 32, borderTopRightRadius: 32, marginTop: 10, padding: 24 },
   listContent: { paddingBottom: 40 },
   stockCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10 },
   cardInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 import { api } from '../../services/api';
 
 export default function VerifyScreen() {
@@ -57,6 +58,7 @@ export default function VerifyScreen() {
         style={{ flex: 1 }}
       >
         <View style={styles.content}>
+          <ProgressBar currentStep={4} totalSteps={data.userType === 'patient' ? 7 : 8} label="Security" />
           <Text style={styles.title}>Verification</Text>
           <Text style={styles.subtitle}>Enter the 4-digit code sent to {data.email}</Text>
 

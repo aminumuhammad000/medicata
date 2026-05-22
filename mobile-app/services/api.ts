@@ -688,6 +688,10 @@ class ApiService {
     return this.request<any>('/doctor/analytics');
   }
 
+  async getPharmacyAnalytics() {
+    return this.request<any>('/pharmacy/analytics');
+  }
+
   async uploadVerificationDocuments(documents: any[]) {
     return this.request<any>('/doctor/verify', {
       method: 'POST',

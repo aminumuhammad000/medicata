@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 
 export default function ContactScreen() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function ContactScreen() {
       />
       
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ProgressBar currentStep={3} totalSteps={data.userType === 'patient' ? 7 : 8} label="Contact Info" />
         <View style={styles.header}>
           <Text style={styles.title}>Contact Details</Text>
           <Text style={styles.subtitle}>How can we and your {data.userType === 'patient' ? 'doctor' : 'patients'} reach you?</Text>

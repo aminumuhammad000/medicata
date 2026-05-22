@@ -2,6 +2,8 @@ use axum::{
     extract::{State, Path},
     Json,
 };
+use sqlx::Row;
+use uuid::Uuid;
 use crate::{
     error::AppError,
     models::{
@@ -12,7 +14,6 @@ use crate::{
     auth_utils::Claims,
     handlers::notification::create_notification,
 };
-use sqlx::Row;
 
 // From UserJourney.md Pharmacy Interaction Flow: Order Medicines
 pub async fn create_order(
@@ -47,10 +48,10 @@ pub async fn create_order(
         tracing::debug!("Processing prescription items for prescription: {}", prescription_id);
         
         // Fetch items from prescription
-        let prescription_items = sqlx::query!(
-            "SELECT drug_id, quantity FROM prescription_items WHERE prescription_id = $1",
-            prescription_id
+        let prescription_items = sqlx::query(
+            "SELECT drug_id, quantity FROM prescription_items WHERE prescription_id = $1"
         )
+        .bind(prescription_id)
         .fetch_all(&mut *tx)
         .await?;
 
@@ -58,32 +59,35 @@ pub async fn create_order(
             tracing::warn!("No items found for prescription: {}", prescription_id);
         }
 
-        for item in prescription_items {
+        for item_row in prescription_items {
+            let drug_id: Uuid = item_row.get("drug_id");
+            let quantity: i32 = item_row.get("quantity");
+            
             // Get pharmacy price for this drug (default to 1500 as a placeholder if not set)
-            let price_row = sqlx::query!(
-                "SELECT price FROM pharmacy_stock WHERE pharmacy_id = $1 AND drug_id = $2",
-                payload.pharmacy_id,
-                item.drug_id
+            let price_row = sqlx::query(
+                "SELECT price FROM pharmacy_stock WHERE pharmacy_id = $1 AND drug_id = $2"
             )
+            .bind(payload.pharmacy_id)
+            .bind(drug_id)
             .fetch_optional(&mut *tx)
             .await?;
 
             // Use pharmacy price if available, otherwise use a default MVP price (1500)
             let price = match price_row {
-                Some(r) => r.price,
+                Some(r) => r.get::<i64, _>("price"),
                 None => 1500,
             };
 
-            tracing::debug!("Adding item to order: drug_id={}, quantity={}, price={}", item.drug_id, item.quantity, price);
+            tracing::debug!("Adding item to order: drug_id={}, quantity={}, price={}", drug_id, quantity, price);
 
             // Insert into order_items
-            sqlx::query!(
-                "INSERT INTO order_items (order_id, drug_id, quantity, price) VALUES ($1, $2, $3, $4)",
-                order.id,
-                item.drug_id,
-                item.quantity,
-                price as i64
+            sqlx::query(
+                "INSERT INTO order_items (order_id, drug_id, quantity, price) VALUES ($1, $2, $3, $4)"
             )
+            .bind(order.id)
+            .bind(drug_id)
+            .bind(quantity)
+            .bind(price as i64)
             .execute(&mut *tx)
             .await?;
         }
@@ -370,4 +374,43 @@ pub async fn pay_order_with_wallet(
     ).await;
 
     Ok(Json(updated_order))
+}
+
+pub async fn get_pharmacy_analytics(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<Json<crate::models::order::PharmacyAnalytics>, AppError> {
+    if claims.role != UserRole::Pharmacy {
+        return Err(AppError::Forbidden("Only pharmacies can access their analytics".to_string()));
+    }
+
+    // 1. Get order counts and revenue
+    let record: (Option<i64>, Option<i64>, Option<i64>) = sqlx::query_as(
+        r#"
+           SELECT 
+               COUNT(*) as total_count,
+               COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+               COALESCE(SUM((SELECT SUM(price * quantity) FROM order_items WHERE order_id = o.id)), 0)::BIGINT as total_revenue
+           FROM pharmacy_orders o
+           WHERE pharmacy_id = $1
+        "#
+    )
+    .bind(claims.sub)
+    .fetch_one(&state.db)
+    .await?;
+
+    // 2. Count prescriptions received (where prescription_id is not null)
+    let prescriptions_received = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM pharmacy_orders WHERE pharmacy_id = $1 AND prescription_id IS NOT NULL"
+    )
+    .bind(claims.sub)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(crate::models::order::PharmacyAnalytics {
+        total_orders: record.0.unwrap_or(0),
+        pending_orders: record.1.unwrap_or(0),
+        total_revenue: record.2.unwrap_or(0),
+        prescriptions_received,
+    }))
 }

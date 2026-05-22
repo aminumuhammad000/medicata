@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -54,6 +55,7 @@ export default function AccountScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ProgressBar currentStep={2} totalSteps={data.userType === 'patient' ? 7 : 8} label="Account Setup" />
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Enter your details to get started</Text>

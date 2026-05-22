@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import ProgressBar from '../../components/onboarding/ProgressBar';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -57,6 +58,11 @@ export default function ProfileScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          <ProgressBar 
+            currentStep={data.userType === 'patient' ? 6 : 7} 
+            totalSteps={data.userType === 'patient' ? 7 : 8} 
+            label="Final Touches" 
+          />
           <View style={styles.header}>
             <Text style={styles.title}>
               {data.userType === 'patient' ? 'Profile & Body Info' : 'Bio & Affiliation'}
@@ -109,14 +115,19 @@ export default function ProfileScreen() {
                   </View>
                 </View>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Body Type (Optional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Ex: Slim, Athletic, Average"
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                    value={bodyType}
-                    onChangeText={setBodyType}
-                  />
+                  <Text style={styles.label}>Body Type</Text>
+                  <View style={styles.chipContainer}>
+                    {['Slim', 'Athletic', 'Average', 'Heavy'].map((t) => (
+                      <TouchableOpacity 
+                        key={t}
+                        style={[styles.smallChip, bodyType === t && styles.chipActive]}
+                        onPress={() => setBodyType(t)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.chipText, bodyType === t && styles.chipTextActive]}>{t}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </>
             ) : (
@@ -235,6 +246,33 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 16,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 8,
+  },
+  smallChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  chipActive: {
+    backgroundColor: '#2572D9',
+    borderColor: '#4A90E2',
+  },
+  chipText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   errorText: {
     color: '#FF6B6B',

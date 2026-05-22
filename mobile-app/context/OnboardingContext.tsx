@@ -53,6 +53,7 @@ interface OnboardingContextType {
   submitDoctorProfessionalInfo: () => Promise<boolean>;
   submitDoctorBio: () => Promise<boolean>;
   submitPharmacyInfo: (pharmacyData?: any) => Promise<boolean>;
+  uploadVerificationDocs: (urls: string[]) => Promise<boolean>;
 }
 
 const initialData: OnboardingData = {
@@ -324,6 +325,22 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const uploadVerificationDocs = async (urls: string[]): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+
+    const response = await api.uploadVerificationDocuments(urls);
+
+    setLoading(false);
+
+    if (response.error) {
+      setError(response.error);
+      return false;
+    }
+
+    return true;
+  };
+
   return (
     <OnboardingContext.Provider
       value={{
@@ -340,6 +357,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         submitDoctorProfessionalInfo,
         submitDoctorBio,
         submitPharmacyInfo,
+        uploadVerificationDocs,
       }}
     >
       {children}

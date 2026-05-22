@@ -124,3 +124,86 @@ pub async fn update_settings(
 
     Ok(Json(updated))
 }
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct SystemSettings {
+    pub id: Uuid,
+    pub commission_rate_percentage: f64,
+    pub min_withdrawal_amount: i64,
+    pub platform_name: String,
+    pub support_email: String,
+    pub emergency_contact: String,
+    pub maintenance_mode: bool,
+    pub ai_model: Option<String>,
+    pub ai_api_key: Option<String>,
+    pub ai_system_prompt: Option<String>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateSystemSettingsRequest {
+    pub commission_rate_percentage: Option<f64>,
+    pub min_withdrawal_amount: Option<i64>,
+    pub platform_name: Option<String>,
+    pub support_email: Option<String>,
+    pub emergency_contact: Option<String>,
+    pub maintenance_mode: Option<bool>,
+    pub ai_model: Option<String>,
+    pub ai_api_key: Option<String>,
+    pub ai_system_prompt: Option<String>,
+}
+
+// Get system settings (Admin only ideally, but public for some info)
+pub async fn get_system_settings(
+    State(state): State<AppState>,
+) -> Result<Json<SystemSettings>, AppError> {
+    let settings = sqlx::query_as::<_, SystemSettings>(
+        "SELECT * FROM system_settings LIMIT 1"
+    )
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(settings))
+}
+
+// Update system settings (Admin only)
+pub async fn update_system_settings(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<UpdateSystemSettingsRequest>,
+) -> Result<Json<SystemSettings>, AppError> {
+    // Basic role check (simplified, should use middleware or more robust check)
+    // Assuming admin role is checked in router or here
+    use crate::models::user::UserRole;
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin only".to_string()));
+    }
+
+    let updated = sqlx::query_as::<_, SystemSettings>(
+        "UPDATE system_settings SET 
+            commission_rate_percentage = COALESCE($1, commission_rate_percentage),
+            min_withdrawal_amount = COALESCE($2, min_withdrawal_amount),
+            platform_name = COALESCE($3, platform_name),
+            support_email = COALESCE($4, support_email),
+            emergency_contact = COALESCE($5, emergency_contact),
+            maintenance_mode = COALESCE($6, maintenance_mode),
+            ai_model = COALESCE($7, ai_model),
+            ai_api_key = COALESCE($8, ai_api_key),
+            ai_system_prompt = COALESCE($9, ai_system_prompt),
+            updated_at = NOW()
+         RETURNING *"
+    )
+    .bind(payload.commission_rate_percentage)
+    .bind(payload.min_withdrawal_amount)
+    .bind(payload.platform_name)
+    .bind(payload.support_email)
+    .bind(payload.emergency_contact)
+    .bind(payload.maintenance_mode)
+    .bind(payload.ai_model)
+    .bind(payload.ai_api_key)
+    .bind(payload.ai_system_prompt)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(updated))
+}

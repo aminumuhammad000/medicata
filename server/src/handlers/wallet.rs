@@ -53,6 +53,7 @@ pub struct WalletBalanceResponse {
 #[derive(Debug, Deserialize)]
 pub struct InitializeCheckoutRequest {
     pub amount: i64,
+    #[allow(dead_code)]
     pub r#type: String,
     pub order_id: Option<Uuid>,
     pub consultation_id: Option<Uuid>,
@@ -109,18 +110,20 @@ pub async fn initialize_checkout(
     Json(payload): Json<InitializeCheckoutRequest>,
 ) -> Result<Json<CheckoutSessionResponse>, AppError> {
     // 1. Get user info for VTStack
-    let user = sqlx::query!(
-        "SELECT full_name, email, phone_number FROM users WHERE id = $1",
-        claims.sub
+    let user_row = sqlx::query(
+        "SELECT full_name, email, phone_number FROM users WHERE id = $1"
     )
+    .bind(claims.sub)
     .fetch_one(&state.db)
     .await?;
 
-    let names: Vec<&str> = user.full_name.split_whitespace().collect();
+    let full_name: String = user_row.get("full_name");
+    let email: String = user_row.get("email");
+    let phone_number: String = user_row.get("phone_number");
+
+    let names: Vec<&str> = full_name.split_whitespace().collect();
     let first_name = names.first().unwrap_or(&"Customer").to_string();
     let last_name = names.get(1).unwrap_or(&"User").to_string();
-    let email = user.email;
-    let phone = user.phone_number;
     let reference = format!("MED_WAL_{}", Uuid::new_v4().to_string().replace("-", "").to_uppercase());
 
     // 2. Call VTStack API (Production Implementation)
@@ -132,7 +135,7 @@ pub async fn initialize_checkout(
         "firstName": first_name,
         "lastName": last_name,
         "email": email,
-        "phone": phone,
+        "phone": phone_number,
         "bvn": "22123456789", // Mock BVN as it's sensitive, in production this should be collected
         "reference": reference
     });
@@ -148,7 +151,7 @@ pub async fn initialize_checkout(
             let vt_data: serde_json::Value = res.json().await.map_err(|e| AppError::Internal(anyhow::anyhow!("Failed to parse VTStack response: {}", e)))?;
             let account_num = vt_data["data"]["accountNumber"].as_str().unwrap_or("0000000000").to_string();
             let bank_name = vt_data["data"]["bankName"].as_str().unwrap_or("PalmPay").to_string();
-            let account_name = vt_data["data"]["accountName"].as_str().unwrap_or(&user.full_name).to_string();
+            let account_name = vt_data["data"]["accountName"].as_str().unwrap_or(&full_name).to_string();
             (account_num, bank_name, account_name)
         },
         _ => {
@@ -157,7 +160,7 @@ pub async fn initialize_checkout(
             (
                 format!("99{}", rand::Rng::gen_range(&mut rand::thread_rng(), 10000000..99999999)),
                 "Medicata Test Bank".to_string(),
-                user.full_name.clone()
+                full_name.clone()
             )
         }
     };
@@ -165,34 +168,34 @@ pub async fn initialize_checkout(
     let expires_at = Utc::now() + chrono::Duration::minutes(30);
 
     // 3. Save checkout session to database
-    let session = sqlx::query!(
+    let session_row = sqlx::query(
         r#"
         INSERT INTO checkout_sessions 
         (user_id, amount, reference, virtual_account_number, virtual_bank_name, virtual_account_name, expires_at, order_id, consultation_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id, amount, reference, virtual_account_number, virtual_bank_name, virtual_account_name, expires_at
-        "#,
-        claims.sub,
-        payload.amount,
-        reference,
-        virtual_account_number,
-        virtual_bank_name,
-        virtual_account_name,
-        expires_at,
-        payload.order_id,
-        payload.consultation_id
+        "#
     )
+    .bind(claims.sub)
+    .bind(payload.amount)
+    .bind(reference)
+    .bind(virtual_account_number)
+    .bind(virtual_bank_name)
+    .bind(virtual_account_name)
+    .bind(expires_at)
+    .bind(payload.order_id)
+    .bind(payload.consultation_id)
     .fetch_one(&state.db)
     .await?;
 
     Ok(Json(CheckoutSessionResponse {
-        id: session.id,
-        amount: session.amount,
-        reference: session.reference,
-        account_number: session.virtual_account_number.unwrap_or_default(),
-        bank_name: session.virtual_bank_name.unwrap_or_default(),
-        account_name: session.virtual_account_name.unwrap_or_default(),
-        expires_at: session.expires_at,
+        id: session_row.get("id"),
+        amount: session_row.get("amount"),
+        reference: session_row.get("reference"),
+        account_number: session_row.get::<Option<String>, _>("virtual_account_number").unwrap_or_default(),
+        bank_name: session_row.get::<Option<String>, _>("virtual_bank_name").unwrap_or_default(),
+        account_name: session_row.get::<Option<String>, _>("virtual_account_name").unwrap_or_default(),
+        expires_at: session_row.get("expires_at"),
     }))
 }
 
@@ -206,7 +209,9 @@ pub struct VTStackWebhookPayload {
 pub struct VTStackTransactionData {
     pub reference: String,
     pub amount: i64,
+    #[allow(dead_code)]
     pub currency: String,
+    #[allow(dead_code)]
     pub status: Option<String>,
 }
 
@@ -219,14 +224,19 @@ pub async fn vtstack_webhook(
 
     if payload.event == "transaction.deposit" {
         // 1. Find the checkout session by reference
-        let session = sqlx::query!(
-            "SELECT user_id, amount, order_id, consultation_id FROM checkout_sessions WHERE reference = $1",
-            payload.data.reference
+        let session_row = sqlx::query(
+            "SELECT user_id, amount, order_id, consultation_id FROM checkout_sessions WHERE reference = $1"
         )
+        .bind(&payload.data.reference)
         .fetch_optional(&state.db)
         .await?;
 
-        if let Some(session) = session {
+        if let Some(row) = session_row {
+            let session_user_id: Uuid = row.get("user_id");
+            let _session_amount: i64 = row.get("amount");
+            let session_order_id: Option<Uuid> = row.get("order_id");
+            let session_consultation_id: Option<Uuid> = row.get("consultation_id");
+
             // 2. Perform updates in a transaction
             let mut tx = state.db.begin().await?;
 
@@ -239,7 +249,7 @@ pub async fn vtstack_webhook(
                  ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW() 
                  RETURNING id"
             )
-            .bind(session.user_id)
+            .bind(session_user_id)
             .fetch_one(&mut *tx)
             .await?;
 
@@ -260,13 +270,12 @@ pub async fn vtstack_webhook(
             .await?;
 
             // Handle Service Specific Logic
-            if let Some(order_id) = session.order_id {
-                let order_id: Uuid = order_id;
+            if let Some(order_id) = session_order_id {
                 // Update order to paid
-                sqlx::query!(
-                    "UPDATE pharmacy_orders SET status = 'processing', payment_status = 'paid', payment_method = 'bank_transfer', updated_at = NOW() WHERE id = $1",
-                    order_id
+                sqlx::query(
+                    "UPDATE pharmacy_orders SET status = 'processing', payment_status = 'paid', payment_method = 'bank_transfer', updated_at = NOW() WHERE id = $1"
                 )
+                .bind(order_id)
                 .execute(&mut *tx)
                 .await?;
 
@@ -282,33 +291,37 @@ pub async fn vtstack_webhook(
                 .await?;
 
                 // Notify Pharmacy
-                let order_info = sqlx::query!("SELECT pharmacy_id FROM pharmacy_orders WHERE id = $1", order_id)
+                let order_info_row = sqlx::query("SELECT pharmacy_id FROM pharmacy_orders WHERE id = $1")
+                    .bind(order_id)
                     .fetch_one(&mut *tx).await?;
                 
+                let pharmacy_id: Uuid = order_info_row.get("pharmacy_id");
+
                 let _ = crate::handlers::notification::create_notification(
                     &state,
-                    order_info.pharmacy_id,
+                    pharmacy_id,
                     "Order Paid",
                     &format!("Order #{} has been paid and is ready for processing.", &order_id.to_string()[..8]),
                     "order"
                 ).await;
 
-            } else if let Some(consultation_id) = session.consultation_id {
-                let consultation_id: Uuid = consultation_id;
+            } else if let Some(consultation_id) = session_consultation_id {
                 // Update consultation to accepted (which means scheduled/confirmed in our system)
-                // Note: consultations table doesn't have updated_at column
-                sqlx::query!(
-                    "UPDATE consultations SET status = 'accepted' WHERE id = $1",
-                    consultation_id
+                sqlx::query(
+                    "UPDATE consultations SET status = 'accepted' WHERE id = $1"
                 )
+                .bind(consultation_id)
                 .execute(&mut *tx)
                 .await?;
 
                 // --- DOCTOR EARNINGS LOGIC ---
                 // 1. Get doctor_id for this consultation
-                let consultation_info = sqlx::query!("SELECT doctor_id FROM consultations WHERE id = $1", consultation_id)
+                let consultation_info_row = sqlx::query("SELECT doctor_id FROM consultations WHERE id = $1")
+                    .bind(consultation_id)
                     .fetch_one(&mut *tx).await?;
                 
+                let doctor_id: Uuid = consultation_info_row.get("doctor_id");
+
                 // 2. Calculate earnings (e.g., 90% to doctor, 10% platform fee)
                 let total_fee = amount_to_credit;
                 let doctor_earnings = (total_fee as f64 * 0.9) as i64;
@@ -320,7 +333,7 @@ pub async fn vtstack_webhook(
                      ON CONFLICT (user_id) DO UPDATE SET balance = wallets.balance + $2, updated_at = NOW() 
                      RETURNING id"
                 )
-                .bind(consultation_info.doctor_id)
+                .bind(doctor_id)
                 .bind(doctor_earnings)
                 .fetch_one(&mut *tx)
                 .await?;
@@ -341,12 +354,11 @@ pub async fn vtstack_webhook(
                 // 5. Notify Doctor of earnings
                 let _ = crate::handlers::notification::create_notification(
                     &state,
-                    consultation_info.doctor_id,
+                    doctor_id,
                     "Earnings Credited",
                     &format!("You have earned ₦{} from consultation #{}.", format_currency(doctor_earnings), &consultation_id.to_string()[..8]),
                     "wallet"
                 ).await;
-                // --- END DOCTOR EARNINGS LOGIC ---
 
                 // Record payment deduction in wallet history for patient (audit only)
                 sqlx::query(
@@ -362,7 +374,7 @@ pub async fn vtstack_webhook(
                 // Notify Doctor of new appointment
                 let _ = crate::handlers::notification::create_notification(
                     &state,
-                    consultation_info.doctor_id,
+                    doctor_id,
                     "New Appointment Paid",
                     &format!("An appointment (#{}) has been paid and scheduled.", &consultation_id.to_string()[..8]),
                     "appointment"
@@ -370,10 +382,10 @@ pub async fn vtstack_webhook(
             }
 
             // Update session status
-            sqlx::query!(
-                "UPDATE checkout_sessions SET status = 'completed', updated_at = NOW() WHERE reference = $1",
-                payload.data.reference
+            sqlx::query(
+                "UPDATE checkout_sessions SET status = 'completed', updated_at = NOW() WHERE reference = $1"
             )
+            .bind(&payload.data.reference)
             .execute(&mut *tx)
             .await?;
 
@@ -382,7 +394,7 @@ pub async fn vtstack_webhook(
             // Notify user
             let _ = crate::handlers::notification::create_notification(
                 &state,
-                session.user_id,
+                session_user_id,
                 "Payment Successful",
                 &format!("Your payment of ₦{} was successful. Your request is now being processed.", format_currency(amount_to_credit)),
                 "system"

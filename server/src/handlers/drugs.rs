@@ -3,6 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{
@@ -52,33 +53,33 @@ pub async fn search_drugs(
     let search_pattern = format!("%{}%", params.q.as_deref().unwrap_or(""));
 
     // Using existing columns from public.drugs: id, name, category, brand, strength
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         "SELECT id, name, brand as brand_name, category, strength, image_url
          FROM drugs 
          WHERE (name ILIKE $1 OR brand ILIKE $1)
          AND ($2::TEXT IS NULL OR category = $2)
          ORDER BY name 
-         LIMIT $3 OFFSET $4",
-        search_pattern,
-        params.category,
-        per_page,
-        offset
+         LIMIT $3 OFFSET $4"
     )
+    .bind(search_pattern)
+    .bind(params.category)
+    .bind(per_page)
+    .bind(offset)
     .fetch_all(&state.db)
     .await?;
 
     let drugs: Vec<Drug> = rows.into_iter().map(|row| Drug {
-        id: row.id,
-        name: row.name.clone(),
-        generic_name: Some(row.name),
-        brand_name: row.brand_name,
-        category: row.category,
+        id: row.get("id"),
+        name: row.get::<String, _>("name"),
+        generic_name: Some(row.get::<String, _>("name")),
+        brand_name: row.get("brand_name"),
+        category: row.get("category"),
         description: None,
         dosage_forms: vec![],
-        strengths: row.strength.map(|s| vec![s]).unwrap_or_default(),
+        strengths: row.get::<Option<String>, _>("strength").map(|s| vec![s]).unwrap_or_default(),
         manufacturer: None,
         requires_prescription: true,
-        image_url: row.image_url,
+        image_url: row.get("image_url"),
     }).collect();
 
     let total = drugs.len() as i64;
@@ -155,26 +156,26 @@ pub async fn create_drug(
         AppError::Internal(anyhow::anyhow!(e))
     })?;
 
-    let row = sqlx::query!(
+    let row = sqlx::query(
         "SELECT id, name, category, brand as brand_name, strength, image_url
-         FROM drugs WHERE id = $1",
-        drug_id
+         FROM drugs WHERE id = $1"
     )
+    .bind(drug_id)
     .fetch_one(&state.db)
     .await?;
 
     let drug = Drug {
-        id: row.id,
-        name: row.name.clone(),
-        generic_name: Some(row.name),
-        brand_name: row.brand_name,
-        category: row.category,
+        id: row.get("id"),
+        name: row.get::<String, _>("name"),
+        generic_name: Some(row.get::<String, _>("name")),
+        brand_name: row.get("brand_name"),
+        category: row.get("category"),
         description: None,
         dosage_forms: vec![],
-        strengths: row.strength.map(|s| vec![s]).unwrap_or_default(),
+        strengths: row.get::<Option<String>, _>("strength").map(|s| vec![s]).unwrap_or_default(),
         manufacturer: None,
         requires_prescription: true,
-        image_url: row.image_url,
+        image_url: row.get("image_url"),
     };
 
     Ok(Json(drug))

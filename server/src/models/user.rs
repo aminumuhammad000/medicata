@@ -42,6 +42,8 @@ pub struct User {
     #[sqlx(rename = "weight_kg")]
     pub weight: Option<f32>,
     pub body_type: Option<String>,
+    pub blood_group: Option<String>,
+    pub genotype: Option<String>,
     pub address: Option<String>,
     pub city: Option<String>,
     pub state: Option<String>,
@@ -116,6 +118,8 @@ pub struct PatientHealthInfoRequest {
     pub gender: Option<String>,
     pub allergies: Option<String>,
     pub existing_conditions: Option<String>,
+    pub blood_group: Option<String>,
+    pub genotype: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
