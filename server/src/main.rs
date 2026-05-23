@@ -198,8 +198,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/prescriptions", get(handlers::admin::get_prescription_audit))
         .route("/specialties", get(handlers::admin::get_all_specialties))
         .route("/specialties", post(handlers::admin::create_specialty))
+        .route("/specialties/:id", put(handlers::admin::update_specialty))
+        .route("/specialties/:id", delete(handlers::admin::delete_specialty))
         .route("/quality-reports", get(handlers::admin::get_quality_reports))
         .route("/audit-logs", get(handlers::admin::get_admin_audit_logs))
+        .route("/managers", get(handlers::admin::get_all_admins))
+        .route("/managers", post(handlers::admin::create_admin))
+        .route("/managers/:id", delete(handlers::admin::delete_admin))
         .layer(axum_middleware::from_fn_with_state(state.clone(), crate::middleware::auth::auth_middleware));
 
     // Combined router nested under /api

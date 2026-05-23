@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import {
   Users,
   Search,
@@ -10,14 +10,11 @@ import {
   Mail,
   Calendar,
   Stethoscope,
-  Activity,
   RefreshCw,
   Download,
   Award,
   X,
-  UserCircle2,
   FileText,
-  MapPin,
   Trash2,
   Filter
 } from 'lucide-react';

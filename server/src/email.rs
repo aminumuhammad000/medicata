@@ -246,4 +246,41 @@ impl EmailService {
 
         Ok(())
     }
+    pub async fn send_broadcast_email(&self, to_email: &str, message_title: &str, message_body: &str) -> Result<()> {
+        println!("Attempting to send broadcast email to: {}", to_email);
+
+        let html_content = self.get_email_template(
+            message_title,
+            &format!(
+                r#"<p>Hi there,</p>
+                <div class="divider"></div>
+                <p>{}</p>
+                <div class="divider"></div>
+                <p>Log in to your Medicata account for more details.</p>
+                <a href="https://medicata.com/dashboard" class="button">View Dashboard</a>"#,
+                message_body.replace("\n", "<br>")
+            )
+        );
+
+        let email = Message::builder()
+            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .to(to_email.parse()?)
+            .subject(message_title)
+            .header(ContentType::TEXT_HTML)
+            .body(html_content)?;
+
+        let creds = Credentials::new(self.smtp_username.clone(), self.smtp_password.clone());
+
+        let mailer = SmtpTransport::starttls_relay(&self.smtp_host)?
+            .credentials(creds)
+            .port(self.smtp_port)
+            .build();
+
+        match mailer.send(&email) {
+            Ok(_) => println!("Broadcast email sent successfully to: {}", to_email),
+            Err(e) => println!("Failed to send broadcast email to {}: {:?}", to_email, e),
+        }
+
+        Ok(())
+    }
 }

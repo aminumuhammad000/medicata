@@ -15,9 +15,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Lock,
-  User,
-  Megaphone,
-  Send
+  User
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 
@@ -39,14 +37,11 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const { token } = useAuth(); // Just ensuring auth context is available if needed
-  const [activeTab, setActiveTab] = useState<'platform' | 'preferences' | 'security' | 'broadcast'>('platform');
+  useAuth(); // Just ensuring auth context is available if needed
+  const [activeTab, setActiveTab] = useState<'platform' | 'preferences' | 'security'>('platform');
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   
-  // Broadcast state
-  const [broadcast, setBroadcast] = useState({ scope: 'all', title: '', message: '' });
-  const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -100,23 +95,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleBroadcast = async () => {
-    if (!broadcast.title || !broadcast.message) {
-      setMessage({ type: 'error', text: 'Please fill in all broadcast fields' });
-      return;
-    }
-    try {
-      setSendingBroadcast(true);
-      const res = await api.post('/admin/broadcast', broadcast);
-      setMessage({ type: 'success', text: `Broadcast sent to ${res.data.recipients_count} recipients!` });
-      setBroadcast({ scope: 'all', title: '', message: '' });
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Failed to dispatch broadcast' });
-    } finally {
-      setSendingBroadcast(false);
-      setTimeout(() => setMessage(null), 3000);
-    }
-  };
 
   if (loading) {
     return (
@@ -180,16 +158,6 @@ export default function SettingsPage() {
           >
             <Shield size={20} />
             Security
-          </button>
-          <button 
-            onClick={() => setActiveTab('broadcast')}
-            className={cn(
-              "w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all text-left",
-              activeTab === 'broadcast' ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
-            )}
-          >
-            <Megaphone size={20} />
-            Broadcast
           </button>
           
           <div className="mt-8 p-6 glass rounded-3xl space-y-4">
@@ -396,72 +364,6 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {activeTab === 'broadcast' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="p-8 bg-amber-50 rounded-[2rem] border border-amber-100 flex gap-6">
-                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm shrink-0">
-                    <Megaphone size={32} />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-amber-900 text-lg uppercase italic tracking-tight">System-Wide <span className="text-amber-500 not-italic">Broadcast</span></h4>
-                    <p className="text-amber-700/70 font-medium leading-relaxed">Dispatch critical alerts or updates to your ecosystem. Once sent, notifications are pushed in real-time to the selected target group.</p>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">Target Audience</label>
-                    <div className="flex gap-4">
-                      {['all', 'doctors', 'patients', 'pharmacies'].map((scope) => (
-                        <button 
-                          key={scope}
-                          onClick={() => setBroadcast({...broadcast, scope})}
-                          className={cn(
-                            "px-6 py-3 rounded-xl font-bold text-sm capitalize transition-all border",
-                            broadcast.scope === scope ? "bg-primary text-white border-primary shadow-lg shadow-primary/20" : "bg-white text-slate-500 border-slate-200 hover:border-primary"
-                          )}
-                        >
-                          {scope}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">Announcement Title</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. System Maintenance Update"
-                      value={broadcast.title}
-                      onChange={(e) => setBroadcast({...broadcast, title: e.target.value})}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">Message Body</label>
-                    <textarea 
-                      rows={4}
-                      placeholder="Enter your message here..."
-                      value={broadcast.message}
-                      onChange={(e) => setBroadcast({...broadcast, message: e.target.value})}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-4">
-                  <button 
-                    onClick={handleBroadcast}
-                    disabled={sendingBroadcast}
-                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all disabled:opacity-50"
-                  >
-                    <Send size={20} />
-                    {sendingBroadcast ? 'Dispatching...' : 'Dispatch Broadcast'}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

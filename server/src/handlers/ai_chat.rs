@@ -50,15 +50,15 @@ pub async fn send_message(
             payload.message.clone()
         };
 
-        let row = sqlx::query!(
-            "INSERT INTO ai_chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id",
-            claims.sub,
-            title
+        let session_id_scalar: Uuid = sqlx::query_scalar(
+            "INSERT INTO ai_chat_sessions (user_id, title) VALUES ($1, $2) RETURNING id"
         )
+        .bind(claims.sub)
+        .bind(title)
         .fetch_one(&state.db)
         .await?;
         
-        session_id = Some(row.id);
+        session_id = Some(session_id_scalar);
     }
 
     let sid = session_id.unwrap();
@@ -91,10 +91,10 @@ pub async fn send_message(
     .await?;
 
     // Update session timestamp
-    sqlx::query!(
-        "UPDATE ai_chat_sessions SET updated_at = NOW() WHERE id = $1",
-        sid
+    sqlx::query(
+        "UPDATE ai_chat_sessions SET updated_at = NOW() WHERE id = $1"
     )
+    .bind(sid)
     .execute(&state.db)
     .await?;
 
@@ -107,14 +107,14 @@ pub async fn send_message(
 
 async fn generate_ai_response(message: &str, db: &Pool<Postgres>) -> String {
     // 1. Fetch AI Configuration from System Settings
-    let ai_config = sqlx::query!(
+    let ai_config = sqlx::query_as::<_, (Option<String>, Option<String>)>(
         "SELECT ai_model, ai_system_prompt FROM system_settings LIMIT 1"
     )
     .fetch_one(db)
     .await;
 
     let (model, prompt) = match ai_config {
-        Ok(c) => (c.ai_model.unwrap_or_else(|| "gemini-1.5-flash".to_string()), c.ai_system_prompt.unwrap_or_default()),
+        Ok((model_op, prompt_op)) => (model_op.unwrap_or_else(|| "gemini-1.5-flash".to_string()), prompt_op.unwrap_or_default()),
         Err(_) => ("gemini-1.5-flash".to_string(), "".to_string()),
     };
 
@@ -140,14 +140,14 @@ async fn generate_ai_response(message: &str, db: &Pool<Postgres>) -> String {
     }
 
     if msg.contains("how many doctors") {
-         let count = sqlx::query_scalar!(
+         let count: Option<i64> = sqlx::query_scalar(
             "SELECT count(*) FROM users WHERE role = 'doctor'"
         )
         .fetch_one(db)
         .await
-        .unwrap_or(Some(0))
-        .unwrap_or(0);
-        return format!("We currently have {} registered doctors on the platform.", count);
+        .unwrap_or(Some(0));
+        let count_val = count.unwrap_or(0);
+        return format!("We currently have {} registered doctors on the platform.", count_val);
     }
 
     "I'm processing your request using the configured AI engine. How can I assist you with your health today?".to_string()
@@ -203,11 +203,11 @@ pub async fn delete_session(
     claims: Claims,
     Path(session_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    sqlx::query!(
-        "UPDATE ai_chat_sessions SET is_active = false WHERE id = $1 AND user_id = $2",
-        session_id,
-        claims.sub
+    sqlx::query(
+        "UPDATE ai_chat_sessions SET is_active = false WHERE id = $1 AND user_id = $2"
     )
+    .bind(session_id)
+    .bind(claims.sub)
     .execute(&state.db)
     .await?;
 

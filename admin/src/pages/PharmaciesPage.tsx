@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Building2,
   Search,
   ChevronLeft,
   ChevronRight,

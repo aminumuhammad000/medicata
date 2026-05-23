@@ -12,14 +12,13 @@ import InventoryPage from './pages/InventoryPage';
 import PharmaciesPage from './pages/PharmaciesPage';
 import RevenuePage from './pages/RevenuePage';
 import SettingsPage from './pages/SettingsPage';
-import PayoutsPage from './pages/PayoutsPage';
 import LabTestsPage from './pages/LabTestsPage';
 import MediPage from './pages/MediPage';
 import AppointmentsPage from './pages/AppointmentsPage';
 import SpecialtiesPage from './pages/SpecialtiesPage';
 import PrescriptionsPage from './pages/PrescriptionsPage';
-import QualityPage from './pages/QualityPage';
-import AuditPage from './pages/AuditPage';
+import AdminsPage from './pages/AdminsPage';
+import BroadcastPage from './pages/BroadcastPage';
 
 function App() {
   return (
@@ -38,14 +37,13 @@ function App() {
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/pharmacies" element={<PharmaciesPage />} />
               <Route path="/revenue" element={<RevenuePage />} />
-              <Route path="/payouts" element={<PayoutsPage />} />
               <Route path="/lab-tests" element={<LabTestsPage />} />
               <Route path="/medi" element={<MediPage />} />
               <Route path="/appointments" element={<AppointmentsPage />} />
               <Route path="/specialties" element={<SpecialtiesPage />} />
               <Route path="/audit-prescriptions" element={<PrescriptionsPage />} />
-              <Route path="/quality" element={<QualityPage />} />
-              <Route path="/audit-logs" element={<AuditPage />} />
+              <Route path="/admins" element={<AdminsPage />} />
+              <Route path="/broadcast" element={<BroadcastPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

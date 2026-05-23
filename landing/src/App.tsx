@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence, useScroll, useSpring, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import {
   Calendar,
   MapPin,
@@ -112,7 +112,7 @@ import heroImage from './assets/medicata_hero_new_1775487056003.png';
 import mediMascot from './assets/medi.png';
 import doctorBookingImg from './assets/doctor_booking_elite.png';
 import pharmacyDeliveryImg from './assets/pharmacy_delivery_elite.png';
-import eliteMobileImg from './assets/medicata_mobile_mockup_new.jpg';
+
 
 // Elite UI: Magnetic Hook
 const useMagnetic = () => {
@@ -151,7 +151,7 @@ const MagneticWrapper = ({ children }: { children: React.ReactNode }) => {
 };
 
 const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 

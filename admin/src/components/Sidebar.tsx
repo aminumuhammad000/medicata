@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -11,16 +11,15 @@ import {
   Activity,
   ShoppingBag,
   Building2,
-  Wallet,
   Beaker,
   Sparkles,
   Calendar,
   Layers,
   FileText,
-  ShieldAlert,
-  History,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  UserPlus,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../context/AuthContext';
@@ -36,14 +35,13 @@ const menuItems = [
   { icon: Building2, label: 'Pharmacies', path: '/pharmacies' },
   { icon: Calendar, label: 'Appointments', path: '/appointments' },
   { icon: ShoppingBag, label: 'Orders', path: '/orders' },
-  { icon: Beaker, label: 'Diagnostics', path: '/lab-tests' },
+  { icon: Beaker, label: 'Lab Tests', path: '/lab-tests' },
   { icon: Layers, label: 'Specialties', path: '/specialties' },
   { icon: FileText, label: 'Prescriptions', path: '/audit-prescriptions' },
-  { icon: ShieldAlert, label: 'Quality Hub', path: '/quality' },
   { icon: Activity, label: 'Revenue', path: '/revenue' },
-  { icon: Wallet, label: 'Settlements', path: '/payouts' },
   { icon: Sparkles, label: 'Medi AI', path: '/medi' },
-  { icon: History, label: 'Audit Logs', path: '/audit-logs' },
+  { icon: Megaphone, label: 'Broadcast', path: '/broadcast' },
+  { icon: UserPlus, label: 'Admins', path: '/admins' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

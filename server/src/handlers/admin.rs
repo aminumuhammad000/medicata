@@ -968,47 +968,80 @@ pub struct StatusRevenue {
     pub amount: i64,
 }
 
+
+#[derive(Debug, Deserialize)]
+pub struct RevenueQuery {
+    pub range: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RecentTransaction {
+    pub id: String,
+    pub entity_name: String,
+    pub amount: i64,
+    pub date: chrono::DateTime<chrono::Utc>,
+    pub source: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct RevenueStats {
     pub total_revenue: i64,
     pub monthly_revenue: Vec<MonthlyRevenue>,
     pub pharmacy_performance: Vec<PharmacyRevenue>,
     pub revenue_by_status: Vec<StatusRevenue>,
+    pub recent_transactions: Vec<RecentTransaction>,
 }
 
 pub async fn get_revenue_stats(
     claims: crate::auth_utils::Claims,
+    Query(params): Query<RevenueQuery>,
     State(state): State<AppState>,
 ) -> Result<Json<RevenueStats>, AppError> {
     if claims.role != UserRole::Admin {
         return Err(AppError::Unauthorized("Access denied".to_string()));
     }
 
-    // 1. Total Revenue
+    let months = params.range.unwrap_or(12);
+
+    // 1. Total Revenue (Unified Physical Orders)
+    // We assume consultations are free or paid via separate wallets right now. We add checkout_sessions for future proofing.
     let total_revenue = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(oi.price * oi.quantity), 0)::BIGINT 
-         FROM pharmacy_orders po
-         JOIN order_items oi ON oi.order_id = po.id
-         WHERE po.payment_status = 'paid'"
+        r#"
+        SELECT COALESCE(
+           (SELECT COALESCE(SUM(oi.price * oi.quantity), 0) FROM pharmacy_orders po JOIN order_items oi ON oi.order_id = po.id WHERE po.payment_status = 'paid' AND po.created_at >= NOW() - ($1 || ' months')::INTERVAL)
+           + 
+           (SELECT COALESCE(SUM(amount), 0) FROM checkout_sessions WHERE status = 'successful' AND created_at >= NOW() - ($1 || ' months')::INTERVAL)
+        , 0)::BIGINT
+        "#
     )
+    .bind(months)
     .fetch_one(&state.db)
     .await?;
 
-    // 2. Monthly Revenue (Last 6 Months)
+    // 2. Monthly Revenue 
     let monthly_rows = sqlx::query(
         r#"
+        WITH unified_rev AS (
+            SELECT po.created_at, (oi.price * oi.quantity)::BIGINT as amount
+            FROM pharmacy_orders po
+            JOIN order_items oi ON oi.order_id = po.id
+            WHERE po.payment_status = 'paid'
+            UNION ALL
+            SELECT created_at, amount
+            FROM checkout_sessions
+            WHERE status = 'successful'
+        )
         SELECT 
-            TO_CHAR(po.created_at, 'Mon YYYY') as month, 
-            SUM(oi.price * oi.quantity)::BIGINT as amount,
-            DATE_TRUNC('month', po.created_at) as month_date
-        FROM pharmacy_orders po
-        JOIN order_items oi ON oi.order_id = po.id
-        WHERE po.payment_status = 'paid'
-          AND po.created_at > NOW() - INTERVAL '12 months'
+            TO_CHAR(created_at, 'Mon YYYY') as month, 
+            SUM(amount)::BIGINT as amount,
+            DATE_TRUNC('month', created_at) as month_date
+        FROM unified_rev
+        WHERE created_at >= NOW() - ($1 || ' months')::INTERVAL
         GROUP BY 1, 3
         ORDER BY 3 ASC
         "#
     )
+    .bind(months)
     .fetch_all(&state.db)
     .await?;
 
@@ -1017,7 +1050,7 @@ pub async fn get_revenue_stats(
         amount: row.get("amount"),
     }).collect();
 
-    // 3. Pharmacy Performance (Top 5)
+    // 3. Pharmacy Performance
     let pharmacy_rows = sqlx::query(
         r#"
         SELECT 
@@ -1028,11 +1061,13 @@ pub async fn get_revenue_stats(
         JOIN pharmacy_orders po ON po.pharmacy_id = u.id
         JOIN order_items oi ON oi.order_id = po.id
         WHERE po.payment_status = 'paid'
+          AND po.created_at >= NOW() - ($1 || ' months')::INTERVAL
         GROUP BY u.id, u.pharmacy_name, u.full_name
         ORDER BY amount DESC
         LIMIT 5
         "#
     )
+    .bind(months)
     .fetch_all(&state.db)
     .await?;
 
@@ -1050,9 +1085,11 @@ pub async fn get_revenue_stats(
             SUM(oi.price * oi.quantity)::BIGINT as amount
         FROM pharmacy_orders po
         JOIN order_items oi ON oi.order_id = po.id
+        WHERE po.created_at >= NOW() - ($1 || ' months')::INTERVAL
         GROUP BY po.status
         "#
     )
+    .bind(months)
     .fetch_all(&state.db)
     .await?;
 
@@ -1061,11 +1098,39 @@ pub async fn get_revenue_stats(
         amount: row.get("amount"),
     }).collect();
 
+    // 5. Recent Transactions Feed
+    let tx_rows = sqlx::query(
+        r#"
+        SELECT 
+            'ORD-' || substr(po.id::text, 1, 6) as id,
+            COALESCE(u.pharmacy_name, u.full_name) as entity_name,
+            COALESCE((SELECT SUM(price * quantity) FROM order_items WHERE order_id = po.id), 0)::BIGINT as amount,
+            po.created_at as date,
+            'Pharmacy Order' as source
+        FROM pharmacy_orders po
+        JOIN users u ON po.pharmacy_id = u.id
+        WHERE po.payment_status = 'paid'
+        ORDER BY po.created_at DESC
+        LIMIT 10
+        "#
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    let recent_transactions = tx_rows.into_iter().map(|row| RecentTransaction {
+        id: row.get("id"),
+        entity_name: row.get("entity_name"),
+        amount: row.get("amount"),
+        date: row.get("date"),
+        source: row.get("source"),
+    }).collect();
+
     Ok(Json(RevenueStats {
         total_revenue,
         monthly_revenue,
         pharmacy_performance,
         revenue_by_status,
+        recent_transactions
     }))
 }
 
@@ -1159,27 +1224,99 @@ pub struct AdminLabTestRecord {
     pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LabTestsQuery {
+    pub q: Option<String>,
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub per_page: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LabTestsStats {
+    pub total: i64,
+    pub pending: i64,
+    pub completed: i64,
+    pub cancelled: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LabTestsResponse {
+    pub tests: Vec<AdminLabTestRecord>,
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+    pub stats: LabTestsStats,
+}
+
 pub async fn get_all_lab_tests(
     claims: crate::auth_utils::Claims,
     State(state): State<AppState>,
-) -> Result<Json<Vec<AdminLabTestRecord>>, AppError> {
+    Query(params): Query<LabTestsQuery>,
+) -> Result<Json<LabTestsResponse>, AppError> {
     if claims.role != UserRole::Admin {
         return Err(AppError::Unauthorized("Access denied".to_string()));
     }
 
-    let rows = sqlx::query(
+    let page = params.page.unwrap_or(1).max(1);
+    let per_page = params.per_page.unwrap_or(20).min(100);
+    let offset = (page - 1) * per_page;
+    let search = format!("%{}%", params.q.as_deref().unwrap_or(""));
+
+    let status_filter = match params.status.as_deref() {
+        Some("pending") => "AND ltr.status = 'pending'",
+        Some("completed") => "AND ltr.status = 'completed'",
+        Some("cancelled") => "AND ltr.status = 'cancelled'",
+        _ => "",
+    };
+
+    let query_str = format!(
         r#"
         SELECT 
             ltr.id, u_p.full_name as patient_name, u_d.full_name as doctor_name,
-            ltr.test_name, ltr.status::text, ltr.result_url, ltr.created_at
+            COALESCE(ltr.tests->0->>'name', ltr.requisition_code, 'Diagnostic Panel') as test_name, 
+            ltr.status::text, 
+            ltr.result_files->0->>'url' as result_url, 
+            ltr.created_at
         FROM lab_test_requests ltr
         JOIN users u_p ON ltr.patient_id = u_p.id
         JOIN users u_d ON ltr.doctor_id = u_d.id
+        WHERE (u_p.full_name ILIKE $1 OR u_d.full_name ILIKE $1 OR ltr.requisition_code ILIKE $1 OR ltr.id::text ILIKE $1)
+        {}
         ORDER BY ltr.created_at DESC
-        "#
-    )
-    .fetch_all(&state.db)
-    .await?;
+        LIMIT $2 OFFSET $3
+        "#,
+        status_filter
+    );
+
+    let rows = sqlx::query(&query_str)
+        .bind(&search)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&state.db)
+        .await?;
+
+    let count_str = format!(
+        "SELECT COUNT(*) FROM lab_test_requests ltr JOIN users u_p ON ltr.patient_id = u_p.id JOIN users u_d ON ltr.doctor_id = u_d.id WHERE (u_p.full_name ILIKE $1 OR u_d.full_name ILIKE $1 OR ltr.requisition_code ILIKE $1 OR ltr.id::text ILIKE $1) {}",
+        status_filter
+    );
+    
+    let total: i64 = sqlx::query_scalar(&count_str)
+        .bind(&search)
+        .fetch_one(&state.db)
+        .await?;
+
+    let stats_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM lab_test_requests").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_pending: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM lab_test_requests WHERE status = 'pending'").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_completed: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM lab_test_requests WHERE status = 'completed'").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_cancelled: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM lab_test_requests WHERE status = 'cancelled'").fetch_one(&state.db).await.unwrap_or(0);
+
+    let stats = LabTestsStats {
+        total: stats_total,
+        pending: stats_pending,
+        completed: stats_completed,
+        cancelled: stats_cancelled,
+    };
 
     let tests = rows.into_iter().map(|row| AdminLabTestRecord {
         id: row.get("id"),
@@ -1191,14 +1328,16 @@ pub async fn get_all_lab_tests(
         created_at: row.get("created_at"),
     }).collect();
 
-    Ok(Json(tests))
+    Ok(Json(LabTestsResponse { tests, total, page, per_page, stats }))
 }
 
 #[derive(Debug, Deserialize)]
 pub struct BroadcastRequest {
-    pub scope: String, // "all", "doctors", "patients", "pharmacies"
+    pub scope: String, // "all", "doctors", "patients", "pharmacies", "individual"
     pub title: String,
     pub message: String,
+    #[serde(default)]
+    pub user_id: Option<Uuid>,
 }
 
 pub async fn broadcast_notification(
@@ -1214,27 +1353,43 @@ pub async fn broadcast_notification(
         "doctors" => Some("doctor"),
         "patients" => Some("patient"),
         "pharmacies" => Some("pharmacy"),
+        "individual" => None,
         _ => None,
     };
 
-    let users = if let Some(role) = target_role {
-        sqlx::query_scalar::<_, Uuid>("SELECT id FROM users WHERE role = $1")
+    let users: Vec<(Uuid, String)> = if payload.scope == "individual" {
+        if let Some(uid) = payload.user_id {
+            sqlx::query_as::<_, (Uuid, String)>("SELECT id, email FROM users WHERE id = $1")
+                .bind(uid)
+                .fetch_all(&state.db)
+                .await?
+        } else {
+            return Err(AppError::BadRequest("User ID required for individual broadcast".into()));
+        }
+    } else if let Some(role) = target_role {
+        sqlx::query_as::<_, (Uuid, String)>("SELECT id, email FROM users WHERE role = $1")
             .bind(role)
             .fetch_all(&state.db)
             .await?
     } else {
-        sqlx::query_scalar::<_, Uuid>("SELECT id FROM users")
+        sqlx::query_as::<_, (Uuid, String)>("SELECT id, email FROM users")
             .fetch_all(&state.db)
             .await?
     };
 
-    for user_id in &users {
+    for (user_id, email) in &users {
         let _ = crate::handlers::notification::create_notification(
             &state,
             *user_id,
             &payload.title,
             &payload.message,
             "admin"
+        ).await;
+
+        let _ = state.email_service.send_broadcast_email(
+            email,
+            &payload.title,
+            &payload.message
         ).await;
     }
 
@@ -1473,16 +1628,52 @@ pub struct SpecialtyRecord {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct SpecialtyWithCount {
+    pub id: Uuid,
+    pub name: String,
+    pub icon: Option<String>,
+    pub description: Option<String>,
+    pub doctor_count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct SpecialtiesResponse {
+    pub specialties: Vec<SpecialtyWithCount>,
+    pub total: i64,
+    pub total_doctors_assigned: i64,
+}
+
 pub async fn get_all_specialties(
     State(state): State<AppState>,
-) -> Result<Json<Vec<SpecialtyRecord>>, AppError> {
-    let specialties = sqlx::query_as::<_, SpecialtyRecord>(
-        "SELECT id, name, icon, description FROM specialties ORDER BY name ASC"
+) -> Result<Json<SpecialtiesResponse>, AppError> {
+    let rows = sqlx::query(
+        r#"
+        SELECT s.id, s.name, s.icon, s.description,
+               COALESCE((SELECT COUNT(*) FROM users u WHERE u.specialty = s.name AND u.role = 'doctor'), 0) as doctor_count
+        FROM specialties s
+        ORDER BY s.name ASC
+        "#
     )
     .fetch_all(&state.db)
     .await?;
 
-    Ok(Json(specialties))
+    let mut total_doctors: i64 = 0;
+    let specialties: Vec<SpecialtyWithCount> = rows.into_iter().map(|row| {
+        let dc: i64 = row.get("doctor_count");
+        total_doctors += dc;
+        SpecialtyWithCount {
+            id: row.get("id"),
+            name: row.get("name"),
+            icon: row.get("icon"),
+            description: row.get("description"),
+            doctor_count: dc,
+        }
+    }).collect();
+
+    let total = specialties.len() as i64;
+
+    Ok(Json(SpecialtiesResponse { specialties, total, total_doctors_assigned: total_doctors }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1513,6 +1704,50 @@ pub async fn create_specialty(
     Ok(Json(specialty))
 }
 
+pub async fn update_specialty(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<CreateSpecialtyRequest>,
+) -> Result<Json<SpecialtyRecord>, AppError> {
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin ONLY".to_string()));
+    }
+
+    let specialty = sqlx::query_as::<_, SpecialtyRecord>(
+        "UPDATE specialties SET name = $1, icon = $2, description = $3 WHERE id = $4 RETURNING id, name, icon, description"
+    )
+    .bind(&payload.name)
+    .bind(&payload.icon)
+    .bind(&payload.description)
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(specialty))
+}
+
+pub async fn delete_specialty(
+    State(state): State<AppState>,
+    claims: Claims,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin ONLY".to_string()));
+    }
+
+    let result = sqlx::query("DELETE FROM specialties WHERE id = $1")
+        .bind(id)
+        .execute(&state.db)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Specialty not found".to_string()));
+    }
+
+    Ok(Json(serde_json::json!({ "status": "success" })))
+}
+
 // 3. Prescription Registry
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct PrescriptionAuditRecord {
@@ -1524,15 +1759,53 @@ pub struct PrescriptionAuditRecord {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PrescriptionsQuery {
+    pub q: Option<String>,
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub per_page: Option<i64>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PrescriptionsStats {
+    pub total: i64,
+    pub active: i64,
+    pub dispensed: i64,
+    pub expired: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PrescriptionsResponse {
+    pub prescriptions: Vec<PrescriptionAuditRecord>,
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+    pub stats: PrescriptionsStats,
+}
+
 pub async fn get_prescription_audit(
     State(state): State<AppState>,
     claims: Claims,
-) -> Result<Json<Vec<PrescriptionAuditRecord>>, AppError> {
+    Query(params): Query<PrescriptionsQuery>,
+) -> Result<Json<PrescriptionsResponse>, AppError> {
     if claims.role != UserRole::Admin {
         return Err(AppError::Unauthorized("Admin ONLY".to_string()));
     }
 
-    let records = sqlx::query_as::<_, PrescriptionAuditRecord>(
+    let page = params.page.unwrap_or(1).max(1);
+    let per_page = params.per_page.unwrap_or(20).min(100);
+    let offset = (page - 1) * per_page;
+    let search = format!("%{}%", params.q.as_deref().unwrap_or(""));
+
+    let status_filter = match params.status.as_deref() {
+        Some("active") => "AND p.is_dispensed = false AND (p.expiry_date IS NULL OR p.expiry_date >= CURRENT_DATE)",
+        Some("dispensed") => "AND p.is_dispensed = true",
+        Some("expired") => "AND p.is_dispensed = false AND p.expiry_date < CURRENT_DATE",
+        _ => "",
+    };
+
+    let query_str = format!(
         r#"
         SELECT 
             p.id,
@@ -1553,13 +1826,43 @@ pub async fn get_prescription_audit(
         FROM prescriptions p
         JOIN users d ON p.doctor_id = d.id
         JOIN users u ON p.patient_id = u.id
+        WHERE (d.full_name ILIKE $1 OR u.full_name ILIKE $1 OR p.id::text ILIKE $1)
+        {}
         ORDER BY p.created_at DESC
-        "#
-    )
-    .fetch_all(&state.db)
-    .await?;
+        LIMIT $2 OFFSET $3
+        "#,
+        status_filter
+    );
 
-    Ok(Json(records))
+    let records = sqlx::query_as::<_, PrescriptionAuditRecord>(&query_str)
+        .bind(&search)
+        .bind(per_page)
+        .bind(offset)
+        .fetch_all(&state.db)
+        .await?;
+
+    let count_str = format!(
+        "SELECT COUNT(*) FROM prescriptions p JOIN users d ON p.doctor_id = d.id JOIN users u ON p.patient_id = u.id WHERE (d.full_name ILIKE $1 OR u.full_name ILIKE $1 OR p.id::text ILIKE $1) {}",
+        status_filter
+    );
+    let total: i64 = sqlx::query_scalar(&count_str)
+        .bind(&search)
+        .fetch_one(&state.db)
+        .await?;
+
+    let stats_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM prescriptions").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_active: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM prescriptions WHERE is_dispensed = false AND (expiry_date IS NULL OR expiry_date >= CURRENT_DATE)").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_dispensed: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM prescriptions WHERE is_dispensed = true").fetch_one(&state.db).await.unwrap_or(0);
+    let stats_expired: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM prescriptions WHERE is_dispensed = false AND expiry_date < CURRENT_DATE").fetch_one(&state.db).await.unwrap_or(0);
+
+    let stats = PrescriptionsStats {
+        total: stats_total,
+        active: stats_active,
+        dispensed: stats_dispensed,
+        expired: stats_expired,
+    };
+
+    Ok(Json(PrescriptionsResponse { prescriptions: records, total, page, per_page, stats }))
 }
 
 // 4. Feedback & Quality Hub
@@ -1638,3 +1941,113 @@ pub async fn get_admin_audit_logs(
 
     Ok(Json(logs))
 }
+
+// 6. Admin Management
+#[derive(Debug, Serialize, sqlx::FromRow)]
+pub struct AdminProfile {
+    pub id: Uuid,
+    pub full_name: String,
+    pub email: String,
+    pub phone_number: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub is_verified: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateAdminRequest {
+    pub full_name: String,
+    pub email: String,
+    pub password: String,
+}
+
+pub async fn get_all_admins(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<Json<Vec<AdminProfile>>, AppError> {
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin ONLY".to_string()));
+    }
+
+    let logs = sqlx::query_as::<_, AdminProfile>(
+        r#"
+        SELECT 
+            id, full_name, email, phone_number, created_at, COALESCE(is_verified, false) as is_verified
+        FROM users 
+        WHERE role = 'admin'
+        ORDER BY created_at DESC
+        "#
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(Json(logs))
+}
+
+pub async fn create_admin(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<CreateAdminRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin ONLY".to_string()));
+    }
+
+    let password_hash = crate::auth_utils::hash_password(&payload.password)?;
+
+    let user_result = sqlx::query(
+        "INSERT INTO users (full_name, email, password_hash, role, is_verified) 
+         VALUES ($1, $2, $3, 'admin', true)"
+    )
+    .bind(&payload.full_name)
+    .bind(&payload.email)
+    .bind(password_hash)
+    .execute(&state.db)
+    .await;
+
+    match user_result {
+        Ok(_) => Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "Administrator created successfully"
+        }))),
+        Err(e) => {
+            if let Some(db_err) = e.as_database_error() {
+                if db_err.is_unique_violation() {
+                    return Err(AppError::BadRequest("An account with this email already exists".to_string()));
+                }
+            }
+            Err(e.into())
+        }
+    }
+}
+
+pub async fn delete_admin(
+    State(state): State<AppState>,
+    claims: Claims,
+    axum::extract::Path(admin_id): axum::extract::Path<Uuid>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if claims.role != UserRole::Admin {
+        return Err(AppError::Unauthorized("Admin ONLY".to_string()));
+    }
+
+    // Admins cannot delete themselves
+    if claims.user_id == admin_id {
+        return Err(AppError::Forbidden("You cannot delete your own administrative account.".to_string()));
+    }
+
+    let result = sqlx::query(
+        "DELETE FROM users WHERE id = $1 AND role = 'admin'"
+    )
+    .bind(admin_id)
+    .execute(&state.db)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound("Admin account not found".to_string()));
+    }
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Administrator terminated successfully"
+    })))
+}
+
