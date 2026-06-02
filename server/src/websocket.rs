@@ -49,6 +49,12 @@ pub enum WsMessage {
         user_id: Uuid,
         is_typing: bool,
     },
+    #[serde(rename = "read_receipt")]
+    ReadReceipt {
+        consultation_id: Uuid,
+        user_id: Uuid,
+        message_id: Uuid,
+    },
     #[serde(rename = "emergency_alert")]
     EmergencyAlert {
         id: Uuid,

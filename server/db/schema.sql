@@ -56,7 +56,10 @@ CREATE TABLE IF NOT EXISTS users (
     pharmacy_address TEXT,
     pharmacy_license TEXT,
     pharmacy_contact_info TEXT,
-    opening_hours TEXT
+    opening_hours TEXT,
+    
+    -- Notification fields
+    expo_push_token TEXT
 );
 
 -- Drugs Database (From UserJourney.md - Drug Selection)
@@ -140,6 +143,20 @@ CREATE TABLE IF NOT EXISTS order_items (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Pharmacy Stock Table (From UserJourney.md - Pharmacy Inventory)
+CREATE TABLE IF NOT EXISTS pharmacy_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pharmacy_id UUID NOT NULL REFERENCES users(id),
+    drug_id UUID NOT NULL REFERENCES drugs(id),
+    price BIGINT NOT NULL, -- Price in kobo
+    quantity INT NOT NULL DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE,
+    expiry_date DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(pharmacy_id, drug_id)
+);
+
 -- Feedback / Ratings Table
 CREATE TABLE IF NOT EXISTS reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -202,3 +219,40 @@ CREATE TABLE IF NOT EXISTS lab_test_requests (
 CREATE INDEX IF NOT EXISTS idx_lab_tests_consultation ON lab_test_requests(consultation_id);
 CREATE INDEX IF NOT EXISTS idx_lab_tests_patient ON lab_test_requests(patient_id);
 CREATE INDEX IF NOT EXISTS idx_lab_tests_requisition ON lab_test_requests(requisition_code);
+
+-- Wallets Table
+CREATE TABLE IF NOT EXISTS wallets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id),
+    balance BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Wallet Transactions Table
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    wallet_id UUID NOT NULL REFERENCES wallets(id),
+    transaction_type TEXT NOT NULL, -- 'deposit', 'withdrawal', 'payment', 'earnings'
+    amount BIGINT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'pending', -- 'pending', 'completed', 'failed'
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Checkout Sessions Table (for Virtual Accounts)
+CREATE TABLE IF NOT EXISTS checkout_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    amount BIGINT NOT NULL,
+    reference TEXT UNIQUE NOT NULL,
+    virtual_account_number TEXT,
+    virtual_bank_name TEXT,
+    virtual_account_name TEXT,
+    status TEXT DEFAULT 'pending', -- 'pending', 'completed', 'expired'
+    order_id UUID REFERENCES pharmacy_orders(id),
+    consultation_id UUID REFERENCES consultations(id),
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

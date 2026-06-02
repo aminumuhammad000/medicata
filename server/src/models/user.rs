@@ -78,6 +78,7 @@ pub struct User {
     pub review_count: i32,
     pub verification_documents: Option<serde_json::Value>,
     pub verification_status: Option<String>,
+    pub expo_push_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

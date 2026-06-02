@@ -199,6 +199,29 @@ pub async fn initialize_checkout(
     }))
 }
 
+pub async fn check_session_status(
+    State(state): State<AppState>,
+    claims: Claims,
+    axum::extract::Path(reference): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let session = sqlx::query(
+        "SELECT status FROM checkout_sessions WHERE reference = $1 AND user_id = $2"
+    )
+    .bind(&reference)
+    .bind(claims.sub)
+    .fetch_optional(&state.db)
+    .await?;
+
+    match session {
+        Some(row) => {
+            let status: String = row.get("status");
+            Ok(Json(serde_json::json!({ "status": status })))
+        },
+        None => Err(AppError::NotFound("Session not found".to_string())),
+    }
+}
+
+
 #[derive(Debug, Deserialize)]
 pub struct VTStackWebhookPayload {
     pub event: String,

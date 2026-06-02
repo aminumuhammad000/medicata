@@ -35,3 +35,7 @@ pub struct CreatePharmacyProfileRequest {
     pub state: String,
     pub opening_hours: Option<serde_json::Value>,
 }
+#[derive(Debug, Deserialize)]
+pub struct UpdatePhotoRequest {
+    pub photo_base64: String,
+}

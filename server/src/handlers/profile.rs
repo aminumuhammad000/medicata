@@ -7,7 +7,7 @@ use crate::{
     error::AppError,
     models::{
         user::{User, UserRole},
-        profile::{CreatePatientProfileRequest, CreateDoctorProfileRequest, CreatePharmacyProfileRequest},
+        profile::{CreatePatientProfileRequest, CreateDoctorProfileRequest, CreatePharmacyProfileRequest, UpdatePhotoRequest},
         doctor::DoctorSearchQuery,
     },
     state::AppState,
@@ -187,6 +187,7 @@ pub async fn search_doctors(
 #[derive(Debug, Deserialize)]
 pub struct PharmacySearchQuery {
     pub location: Option<String>,
+    pub drug_name: Option<String>,
 }
 
 pub async fn search_pharmacies(
@@ -194,27 +195,65 @@ pub async fn search_pharmacies(
     Query(params): Query<PharmacySearchQuery>,
 ) -> Result<Json<Vec<serde_json::Value>>, AppError> {
     let location = params.location.unwrap_or_default();
+    let drug_name = params.drug_name.unwrap_or_default();
 
-    let pharmacies = sqlx::query(
-        "SELECT id, full_name, pharmacy_address, phone_number, is_verified 
-         FROM users 
-         WHERE role = 'pharmacy' 
-         AND ($1 = '' OR pharmacy_address ILIKE $2 OR city ILIKE $2 OR state ILIKE $2)"
-    )
-    .bind(&location)
-    .bind(format!("%{}%", location))
-    .fetch_all(&state.db)
-    .await?;
+    let mut query_builder = sqlx::QueryBuilder::new(
+        "SELECT DISTINCT u.id, u.full_name, u.pharmacy_name, u.pharmacy_address, u.phone_number, u.is_verified, u.city, u.opening_hours "
+    );
+    
+    if !drug_name.is_empty() {
+        query_builder.push(", ps.price as drug_price, ps.quantity as drug_quantity ");
+        query_builder.push(" FROM users u ");
+        query_builder.push(" JOIN pharmacy_stock ps ON u.id = ps.pharmacy_id ");
+        query_builder.push(" JOIN drugs d ON ps.drug_id = d.id ");
+    } else {
+        query_builder.push(" FROM users u ");
+    }
+
+    query_builder.push(" WHERE u.role = 'pharmacy' ");
+
+    if !location.is_empty() {
+        query_builder.push(" AND (u.pharmacy_address ILIKE ");
+        query_builder.push_bind(format!("%{}%", location));
+        query_builder.push(" OR u.city ILIKE ");
+        query_builder.push_bind(format!("%{}%", location));
+        query_builder.push(" OR u.state ILIKE ");
+        query_builder.push_bind(format!("%{}%", location));
+        query_builder.push(") ");
+    }
+
+    if !drug_name.is_empty() {
+        query_builder.push(" AND (d.name ILIKE ");
+        query_builder.push_bind(format!("%{}%", drug_name));
+        query_builder.push(" OR d.brand ILIKE ");
+        query_builder.push_bind(format!("%{}%", drug_name));
+        query_builder.push(") AND ps.is_available = TRUE AND ps.quantity > 0 ");
+    }
+
+    let pharmacies = query_builder.build().fetch_all(&state.db).await?;
 
     let result = pharmacies.into_iter().map(|p| {
         use sqlx::Row;
-        serde_json::json!({
+        let mut json = serde_json::json!({
             "id": p.get::<uuid::Uuid, _>("id"),
-            "full_name": p.get::<String, _>("full_name"),
+            "full_name": p.get::<Option<String>, _>("pharmacy_name").unwrap_or(p.get::<String, _>("full_name")),
             "address": p.get::<Option<String>, _>("pharmacy_address"),
             "phone": p.get::<Option<String>, _>("phone_number"),
+            "city": p.get::<Option<String>, _>("city"),
+            "opening_hours": p.get::<Option<String>, _>("opening_hours"),
             "is_verified": p.get::<Option<bool>, _>("is_verified").unwrap_or(false),
-        })
+        });
+
+        if !drug_name.is_empty() {
+            if let Ok(price) = p.try_get::<i64, _>("drug_price") {
+                json.as_object_mut().unwrap().insert("drug_price".to_string(), serde_json::json!(price));
+            }
+            if let Ok(qty) = p.try_get::<i32, _>("drug_quantity") {
+                json.as_object_mut().unwrap().insert("drug_quantity".to_string(), serde_json::json!(qty));
+            }
+        }
+
+        json
     }).collect();
 
     Ok(Json(result))
@@ -285,4 +324,22 @@ pub async fn get_pharmacy_profile(
     } else {
         Err(AppError::NotFound("Pharmacy not found".to_string()))
     }
+}
+pub async fn update_profile_photo(
+    State(state): State<AppState>,
+    axum::Extension(claims): axum::Extension<Claims>,
+    Json(payload): Json<UpdatePhotoRequest>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    sqlx::query(
+        "UPDATE users SET profile_photo = $2, updated_at = NOW() WHERE id = $1"
+    )
+    .bind(claims.sub)
+    .bind(payload.photo_base64)
+    .execute(&state.db)
+    .await?;
+
+    Ok(Json(serde_json::json!({ 
+        "status": "success",
+        "message": "Profile photo updated successfully"
+    })))
 }

@@ -14,6 +14,7 @@ export default function CheckoutScreen() {
   const [timeLeft, setTimeLeft] = useState(1800); // 30 minutes in seconds
 
   const [isVerifying, setIsVerifying] = useState(false);
+  const { order_id, consultation_id } = useLocalSearchParams();
 
   useEffect(() => {
     initializeCheckout();
@@ -27,11 +28,39 @@ export default function CheckoutScreen() {
     return () => clearInterval(timer);
   }, [timeLeft]);
 
+  useEffect(() => {
+    let pollInterval: any;
+
+    if (session?.reference && !isVerifying) {
+      pollInterval = setInterval(async () => {
+        try {
+          const res = await api.checkPaymentStatus(session.reference);
+          if (res.data?.status === 'completed') {
+            clearInterval(pollInterval);
+            Alert.alert(
+              'Payment Received', 
+              'Your transfer has been verified successfully!',
+              [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
+            );
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [session?.reference]);
+
   const initializeCheckout = async () => {
     try {
       const res = await api.initializeCheckout({
         amount: parseInt(amount as string),
         type: type as string,
+        order_id: order_id as string,
+        consultation_id: consultation_id as string,
       });
       if (res.data) {
         setSession(res.data);
@@ -58,17 +87,29 @@ export default function CheckoutScreen() {
   };
 
   const handleConfirmTransfer = async () => {
+    if (!session?.reference) return;
+    
     setIsVerifying(true);
-    // In a real scenario, this would poll the backend or wait for a webhook
-    // For the UI, we'll show a loading state and then redirect to a "Processing" or Home screen
-    setTimeout(() => {
+    try {
+      const res = await api.checkPaymentStatus(session.reference);
+      if (res.data?.status === 'completed') {
+        Alert.alert(
+          'Payment Received', 
+          'Your transfer has been verified successfully!',
+          [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        Alert.alert(
+          'Still Waiting',
+          'We haven\'t received your transfer yet. Transfers can take a few minutes. Please wait a bit longer or try again later.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to verify payment. Please try again.');
+    } finally {
       setIsVerifying(false);
-      Alert.alert(
-        'Payment Received', 
-        'We have detected your transfer. Your consultation is now active!',
-        [{ text: 'Great!', onPress: () => router.push('/(tabs)') }]
-      );
-    }, 2000);
+    }
   };
 
   if (loading) {

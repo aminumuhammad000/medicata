@@ -8,22 +8,7 @@ import { RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 
-// Configure notification behavior safely
-if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -52,37 +37,50 @@ export default function HomeScreen() {
   }, []);
 
   async function registerForPushNotifications() {
-    // Skip if not a physical device or if running in Expo Go
-    if (!Device.isDevice || Constants.appOwnership === 'expo') {
-      console.log('Skipping push notification registration: Not a device or running in Expo Go');
-      return;
-    }
-
     try {
+      // Dynamically import to avoid crashing in Expo Go (SDK 53+)
+      const Device = require('expo-device');
+      const Constants = require('expo-constants').default;
+
+      // Skip if not a real device or running in Expo Go
+      if (!Device.isDevice || Constants.appOwnership === 'expo') {
+        console.log('Skipping push notifications: Expo Go or simulator detected');
+        return;
+      }
+
+      const Notifications = require('expo-notifications');
+
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
+
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
+        console.log('Push notification permission not granted');
         return;
       }
 
-      // Get the token
       const token = (await Notifications.getExpoPushTokenAsync({
         projectId: Constants.expoConfig?.extra?.eas?.projectId,
       })).data;
 
       console.log('Push Token:', token);
-      
-      // Send to backend
       await api.savePushToken(token);
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      console.log('Push notifications not available:', error);
     }
   }
 
@@ -453,6 +451,28 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
+              {['video', 'audio'].includes(recentConsultation.mode?.toLowerCase()) && 
+               ['scheduled', 'accepted', 'admitted'].includes(recentConsultation.status?.toLowerCase()) && (
+                <TouchableOpacity 
+                  style={styles.joinVideoBtn}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push({ 
+                      pathname: '/consultation/video', 
+                      params: { consultationId: recentConsultation.id, mode: recentConsultation.mode } 
+                    } as any);
+                  }}
+                >
+                  <Ionicons 
+                    name={recentConsultation.mode === 'audio' ? "call" : "videocam"} 
+                    size={18} 
+                    color="#FFFFFF" 
+                  />
+                  <Text style={styles.joinVideoBtnText}>
+                    Join {recentConsultation.mode === 'audio' ? 'Audio' : 'Video'} Call
+                  </Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyActivityCard}>
@@ -810,6 +830,28 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
+              {['video', 'audio'].includes(recentConsultation.mode?.toLowerCase()) && 
+               ['scheduled', 'accepted', 'admitted'].includes(recentConsultation.status?.toLowerCase()) && (
+                <TouchableOpacity 
+                  style={styles.joinVideoBtn}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    router.push({ 
+                      pathname: '/consultation/video', 
+                      params: { consultationId: recentConsultation.id, mode: recentConsultation.mode } 
+                    } as any);
+                  }}
+                >
+                  <Ionicons 
+                    name={recentConsultation.mode === 'audio' ? "call" : "videocam"} 
+                    size={18} 
+                    color="#FFFFFF" 
+                  />
+                  <Text style={styles.joinVideoBtnText}>
+                    Join {recentConsultation.mode === 'audio' ? 'Audio' : 'Video'} Call
+                  </Text>
+                </TouchableOpacity>
+              )}
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyActivityCard}>
@@ -1601,6 +1643,22 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#F1F5F9',
+  },
+  joinVideoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4F46E5',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  joinVideoBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
   consultationHeader: {
     flexDirection: 'row',

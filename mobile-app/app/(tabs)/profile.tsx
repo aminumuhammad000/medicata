@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 
 export default function Profile() {
   const router = useRouter();
@@ -25,6 +27,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -143,6 +146,40 @@ export default function Profile() {
     );
   };
 
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setUploading(true);
+        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        
+        const response = await api.updateProfilePhoto(base64Image);
+        
+        if (response.error) {
+          Alert.alert('Error', response.error);
+        } else {
+          // Update local user data
+          const updatedUser = { ...userData, profile_photo: base64Image };
+          setUserData(updatedUser);
+          await AsyncStorage.setItem('user_data', JSON.stringify(updatedUser));
+          Alert.alert('Success', 'Profile photo updated');
+        }
+      }
+    } catch (error) {
+      console.error('Pick image error:', error);
+      Alert.alert('Error', 'Failed to pick image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const renderField = (label: string, value: string, key: string, editable: boolean = true) => (
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -177,9 +214,26 @@ export default function Profile() {
       <ScrollView style={styles.scrollView}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <Ionicons name="person-circle" size={80} color="#4a90e2" />
-          </View>
+          <TouchableOpacity 
+            style={styles.avatarContainer} 
+            onPress={pickImage}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#4a90e2" />
+            ) : (userData?.profile_photo || profileData?.profile_photo) ? (
+              <Image 
+                source={{ uri: userData?.profile_photo || profileData?.profile_photo }} 
+                style={styles.avatarImage} 
+                contentFit="cover"
+              />
+            ) : (
+              <Ionicons name="person-circle" size={100} color="#4a90e2" />
+            )}
+            <View style={styles.editPhotoBadge}>
+              <Ionicons name="camera" size={16} color="#fff" />
+            </View>
+          </TouchableOpacity>
           <Text style={styles.name}>{displayData.full_name || displayData.name || 'User'}</Text>
           <Text style={styles.role}>{userRole ? userRole.charAt(0).toUpperCase() + userRole.slice(1) : 'Patient'}</Text>
           
@@ -311,13 +365,45 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e2e8f0',
   },
   avatarContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: '#eff6ff',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    position: 'relative',
+    borderWidth: 3,
+    borderColor: '#fff',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 55,
+  },
+  editPhotoBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    backgroundColor: '#4a90e2',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   name: {
     fontSize: 24,

@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 // Use machine's IP address for Expo Go on mobile device (localhost won't work on physical devices)
 // If on web, route directly to localhost.
-const API_BASE_URL = Platform.OS === 'web' ? 'http://16.170.212.172:8080/api' : 'http://16.170.212.172:8080/api';
+const API_BASE_URL = Platform.OS === 'web' ? 'http://16.171.134.40:8080/api' : 'http://16.171.134.40:8080/api';
 
 interface ApiResponse<T> {
   data?: T;
@@ -204,6 +204,12 @@ class ApiService {
     gender?: string;
     allergies?: string;
     existing_conditions?: string;
+    bio?: string;
+    blood_group?: string;
+    genotype?: string;
+    height?: number;
+    weight?: number;
+    body_type?: string;
   }) {
     return this.request<any>('/patient/health-info', {
       method: 'POST',
@@ -265,7 +271,6 @@ class ApiService {
     });
   }
 
-  // Pharmacy onboarding endpoint
   async updatePharmacyInfo(data: {
     pharmacy_name: string;
     pharmacy_address: string;
@@ -276,6 +281,13 @@ class ApiService {
     return this.request<any>('/pharmacy/info', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateProfilePhoto(photo_base64: string) {
+    return this.request<any>('/profile/photo', {
+      method: 'POST',
+      body: JSON.stringify({ photo_base64 }),
     });
   }
 
@@ -293,6 +305,10 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async getLiveKitToken(consultationId: string) {
+    return this.request<{ token: string, room_name: string, url: string }>(`/consultations/${consultationId}/join-video`);
   }
 
   async getMyConsultations() {
@@ -437,9 +453,13 @@ class ApiService {
     return this.request<any>(`/pharmacies/${id}`);
   }
 
-  async searchPharmacies(params: { city?: string; state?: string }) {
+  async searchPharmacies(params: { location?: string; drug_name?: string }) {
     const queryParams = new URLSearchParams(params as any).toString();
     return this.request<any[]>(`/pharmacies/search?${queryParams}`);
+  }
+
+  async getAvailability(doctorId: string, date: string) {
+    return this.request<any[]>(`/schedule/${doctorId}/availability/${date}`);
   }
 
   async searchPatients(query: string) {
@@ -713,11 +733,15 @@ class ApiService {
     return this.request<any[]>('/wallet/transactions');
   }
 
-  async initializeCheckout(data: { amount: number, type: string }) {
+  async initializeCheckout(data: { amount: number, type: string, order_id?: string, consultation_id?: string }) {
     return this.request<any>('/wallet/checkout/initialize', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async checkPaymentStatus(reference: string) {
+    return this.request<{ status: string }>(`/wallet/status/${reference}`);
   }
 
   async addMoneyToWallet(amount: number, paymentMethod: string) {
@@ -737,8 +761,8 @@ class ApiService {
   // WebSocket connection URL
   getWebSocketUrl() {
     return Platform.OS === 'web' 
-      ? 'ws://16.170.212.172:8080/ws'
-      : 'ws://16.170.212.172:8080/ws';
+      ? 'ws://16.171.134.40:8080/ws'
+      : 'ws://16.171.134.40:8080/ws';
   }
 }
 

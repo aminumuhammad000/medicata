@@ -15,3 +15,4 @@ pub mod ai_chat;
 pub mod payments;
 pub mod medication;
 pub mod admin;
+pub mod livekit;

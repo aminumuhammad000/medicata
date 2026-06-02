@@ -77,6 +77,7 @@ pub async fn create_notification(
     message: &str,
     n_type: &str,
 ) -> Result<(), AppError> {
+    // 1. Save to database
     sqlx::query(
         "INSERT INTO notifications (user_id, title, message, n_type) VALUES ($1, $2, $3, $4)"
     )
@@ -86,6 +87,36 @@ pub async fn create_notification(
     .bind(n_type)
     .execute(&state.db)
     .await?;
+    
+    // 2. Fetch Expo Push Token
+    let user_row = sqlx::query("SELECT expo_push_token FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_optional(&state.db)
+        .await?;
+
+    if let Some(row) = user_row {
+        use sqlx::Row;
+        if let Some(token) = row.get::<Option<String>, _>("expo_push_token") {
+            if !token.is_empty() {
+                // 3. Send Push Notification via Expo API (in background)
+                let client = reqwest::Client::new();
+                let payload = serde_json::json!({
+                    "to": token,
+                    "title": title,
+                    "body": message,
+                    "data": { "type": n_type },
+                    "sound": "default",
+                });
+
+                tokio::spawn(async move {
+                    let _ = client.post("https://exp.host/--/api/v2/push/send")
+                        .json(&payload)
+                        .send()
+                        .await;
+                });
+            }
+        }
+    }
     
     Ok(())
 }
