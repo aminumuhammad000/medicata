@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -270,6 +271,22 @@ export default function Profile() {
           </View>
         </View>
 
+        {/* Wallet Section */}
+        {!isEditing && (
+          <TouchableOpacity style={styles.walletCard} onPress={() => router.push('/wallet')}>
+            <LinearGradient colors={['#0D1B3A', '#4A90E2']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.walletGradient}>
+               <View style={styles.walletInfo}>
+                  <Text style={styles.walletLabel}>Medicata Wallet</Text>
+                  <Text style={styles.walletBalance}>₦{(profileData?.wallet_balance || 0).toLocaleString()}</Text>
+               </View>
+               <View style={styles.walletAction}>
+                  <Text style={styles.walletLink}>View Wallet</Text>
+                  <Ionicons name="chevron-forward" size={20} color="#fff" />
+               </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
         {/* Basic Info Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Information</Text>
@@ -331,6 +348,32 @@ export default function Profile() {
             {renderField('License', formData.pharmacy_license, 'pharmacy_license')}
             {renderField('Opening Hours', formData.opening_hours, 'opening_hours')}
             {renderField('Contact Info', formData.pharmacy_contact_info, 'pharmacy_contact_info')}
+          </View>
+        )}
+
+        {/* Quick Links Section */}
+        {!isEditing && (
+          <View style={styles.quickLinks}>
+            <TouchableOpacity style={styles.linkItem} onPress={() => router.push('/records')}>
+              <View style={[styles.linkIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="medical" size={20} color="#4A90E2" />
+              </View>
+              <Text style={styles.linkLabel}>Records</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.linkItem} onPress={() => router.push('/orders')}>
+              <View style={[styles.linkIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="cart" size={20} color="#10B981" />
+              </View>
+              <Text style={styles.linkLabel}>Orders</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.linkItem}>
+              <View style={[styles.linkIcon, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="help-circle" size={20} color="#F59E0B" />
+              </View>
+              <Text style={styles.linkLabel}>Support</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -536,6 +579,87 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 16,
     fontWeight: '600',
+  },
+  walletCard: {
+    margin: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#0D1B3A',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  walletGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+  },
+  walletInfo: {
+    flex: 1,
+  },
+  walletLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  walletBalance: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#fff',
+    marginTop: 4,
+  },
+  walletAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 4,
+  },
+  walletLink: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  quickLinks: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  linkItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 6,
+    paddingVertical: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  linkIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  linkLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
   },
 });
 

@@ -1,9 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import Config from '../constants/Config';
 
-// Use machine's IP address for Expo Go on mobile device (localhost won't work on physical devices)
-// If on web, route directly to localhost.
-const API_BASE_URL = Platform.OS === 'web' ? 'http://16.171.134.40:8080/api' : 'http://16.171.134.40:8080/api';
+const API_BASE_URL = Config.API_BASE_URL;
 
 interface ApiResponse<T> {
   data?: T;
@@ -760,9 +758,7 @@ class ApiService {
 
   // WebSocket connection URL
   getWebSocketUrl() {
-    return Platform.OS === 'web' 
-      ? 'ws://16.171.134.40:8080/ws'
-      : 'ws://16.171.134.40:8080/ws';
+    return Config.WS_URL;
   }
 }
 

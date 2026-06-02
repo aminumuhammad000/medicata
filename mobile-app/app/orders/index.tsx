@@ -1,352 +1,141 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '../../services/api';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-export default function OrdersScreen({ isTab = false }: { isTab?: boolean }) {
+export default function OrdersScreen() {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('All');
-
   const [refreshing, setRefreshing] = useState(false);
-  const tabs = ['All', 'Pending', 'Processing', 'Ready', 'Picked Up'];
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
+  const loadOrders = async () => {
     try {
-      const role = await api.getUserRole();
-      setUserRole(role);
-      const response = await api.getMyOrders();
-      const ordersData = response.data || [];
-      console.log(`[DEBUG] Received ${ordersData.length} orders from API`);
-      setOrders(ordersData);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load orders');
+      const res = await api.getMyOrders();
+      setOrders(res.data || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => {
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadData(true);
+    loadOrders();
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'pending': return '#F59E0B';
+      case 'processing': return '#3B82F6';
+      case 'ready': return '#10B981';
+      case 'completed': return '#10B981';
+      case 'cancelled': return '#EF4444';
+      default: return '#64748B';
+    }
   };
 
-  // Map UI tab labels to backend snake_case enum values
-  const tabStatusMap: Record<string, string> = {
-    'Pending': 'pending',
-    'Processing': 'processing',
-    'Ready': 'ready_for_pickup',
-    'Picked Up': 'picked_up',
-  };
-  const filteredOrders = activeTab === 'All'
-    ? orders
-    : orders.filter(o => {
-        const backendStatus = (o.status || '').toLowerCase().replace(/_/g, '');
-        const targetStatus = (tabStatusMap[activeTab] || activeTab).toLowerCase().replace(/_/g, '');
-        return backendStatus === targetStatus;
-      });
-
-  const isPharmacy = userRole?.toLowerCase() === 'pharmacy';
-
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={[styles.card, isPharmacy && styles.pharmacyCard]}
-      onPress={() => router.push({ pathname: '/pharmacy/order/[id]', params: { id: item.id } } as any)}
-    >
-      <View style={styles.cardInfo}>
-        <View style={[styles.iconBg, getStatusIconStyle(item.status)]}>
-          <Ionicons name="cart" size={24} color="#fff" />
-        </View>
-        <View style={styles.details}>
-          <Text style={styles.orderId}>Order #ORD-{item.id.slice(0, 8)}</Text>
-          <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()} • {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-          <Text style={styles.userLabel}>{isPharmacy ? `From: ${item.patient_name || 'Customer'}` : `Pharmacy: ${item.pharmacy_name || 'Partner'}`}</Text>
-        </View>
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0D1B3A" />
       </View>
-      <View style={styles.cardRight}>
-        <View style={[styles.statusBadge, getStatusBadgeStyle(item.status)]}>
-          <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>{item.status}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-      </View>
-    </TouchableOpacity>
-  );
-
-  const getStatusBadgeStyle = (status: string) => {
-    switch (status) {
-      case 'Pending': return styles.badgePending;
-      case 'Processing': return styles.badgeProcessing;
-      case 'Ready': return styles.badgeReady;
-      case 'PickedUp': return styles.badgePickedUp;
-      default: return styles.badgeDefault;
-    }
-  };
-
-  const getStatusTextStyle = (status: string) => {
-    switch (status) {
-      case 'Pending': return { color: '#F59E0B' };
-      case 'Processing': return { color: '#3B82F6' };
-      case 'Ready': return { color: '#10B981' };
-      case 'PickedUp': return { color: '#64748B' };
-      default: return { color: '#64748B' };
-    }
-  };
-
-  const getStatusIconStyle = (status: string) => {
-    switch (status) {
-      case 'Pending': return { backgroundColor: '#F59E0B' };
-      case 'Processing': return { backgroundColor: '#3B82F6' };
-      case 'Ready': return { backgroundColor: '#10B981' };
-      case 'PickedUp': return { backgroundColor: '#94A3B8' };
-      default: return { backgroundColor: '#94A3B8' };
-    }
-  };
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {isPharmacy && (
-        <LinearGradient
-          colors={['#0D1B3A', '#1E3A5F']}
-          style={styles.headerGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-      )}
-      
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={[styles.title, isPharmacy && { color: '#FFF' }]}>
-          {isPharmacy ? 'Order Management' : 'My Orders'}
-        </Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="#1E293B" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Orders</Text>
+        <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.tabsContainer}>
-        {tabs.map(tab => (
-          <TouchableOpacity 
-            key={tab} 
-            onPress={() => setActiveTab(tab)}
-            style={[styles.tab, activeTab === tab && styles.activeTab, isPharmacy && activeTab === tab && styles.pharmacyActiveTab]}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText, isPharmacy && activeTab === tab && { color: '#FFF' }]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {orders.length > 0 ? (
+          orders.map((order, index) => (
+            <Animated.View 
+                key={order.id} 
+                entering={FadeInDown.delay(index * 100)}
+                style={styles.orderCard}
+            >
+              <TouchableOpacity onPress={() => router.push(`/orders/${order.id}`)}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.orderIdent}>
+                    <Text style={styles.orderNo}>Order #{order.id.toString().slice(0, 8).toUpperCase()}</Text>
+                    <Text style={styles.orderDate}>{new Date(order.created_at).toLocaleDateString()}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '15' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>{order.status.toUpperCase()}</Text>
+                  </View>
+                </View>
 
-      <View style={[styles.mainContent, isPharmacy && styles.pharmacyMainContent]}>
-        {loading ? (
-          <ActivityIndicator size="large" color={isPharmacy ? "#FFF" : "#4a90e2"} style={{ marginTop: 40 }} />
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+                <View style={styles.pharmacyRow}>
+                  <Ionicons name="business" size={16} color="#64748B" />
+                  <Text style={styles.pharmacyName}>{order.pharmacy_name || 'Pharmacy'}</Text>
+                </View>
+
+                <View style={styles.cardFooter}>
+                  <Text style={styles.itemCount}>Items: {order.items?.length || 0}</Text>
+                  <Text style={styles.orderTotal}>₦{order.total_amount?.toLocaleString()}</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          ))
         ) : (
-          <FlatList
-            data={filteredOrders}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={isPharmacy ? '#FFFFFF' : '#3B82F6'}
-                colors={['#3B82F6']}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="cart-outline" size={64} color={isPharmacy ? 'rgba(255,255,255,0.2)' : '#E2E8F0'} />
-                <Text style={[styles.emptyText, isPharmacy && { color: '#94A3B8' }]}>
-                  {activeTab === 'All' ? 'No orders yet' : `No ${activeTab} orders`}
-                </Text>
-                {isPharmacy && (
-                  <Text style={styles.emptySubText}>Orders placed by patients will appear here</Text>
-                )}
-              </View>
-            }
-          />
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBg}>
+                <Ionicons name="cart-outline" size={60} color="#94A3B8" />
+            </View>
+            <Text style={styles.emptyTitle}>No Orders Yet</Text>
+            <Text style={styles.emptySubtitle}>When you order medications, they will appear here.</Text>
+            <TouchableOpacity style={styles.shopBtn} onPress={() => router.push('/pharmacy/search')}>
+                <Text style={styles.shopBtnText}>Browse Pharmacies</Text>
+            </TouchableOpacity>
+          </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  headerGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    height: 160,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#0F172A',
-    letterSpacing: -0.5,
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    marginBottom: 20,
-    gap: 8,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  activeTab: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  pharmacyActiveTab: {
-    backgroundColor: '#0D1B3A',
-    borderColor: '#0D1B3A',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  activeTabText: {
-    color: '#FFF',
-  },
-  mainContent: {
-    flex: 1,
-  },
-  pharmacyMainContent: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    backgroundColor: '#F8FAFC',
-    paddingTop: 8,
-  },
-  list: {
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    borderRadius: 24,
-    backgroundColor: '#FFF',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    ...Platform.select({
-      web: { boxShadow: '0 4px 12px rgba(15, 23, 42, 0.05)' },
-      default: { elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.05, shadowRadius: 10 }
-    }),
-  },
-  pharmacyCard: {
-    borderRadius: 28,
-  },
-  cardInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  iconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  details: {
-    flex: 1,
-    gap: 2,
-  },
-  orderId: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  date: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  userLabel: {
-    fontSize: 14,
-    color: '#3B82F6',
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  cardRight: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  badgePending: { backgroundColor: '#FFFBEB' },
-  badgeProcessing: { backgroundColor: '#EFF6FF' },
-  badgeReady: { backgroundColor: '#ECFDF5' },
-  badgePickedUp: { backgroundColor: '#F1F5F9' },
-  badgeDefault: { backgroundColor: '#F8FAFC' },
-  errorContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  errorText: {
-    color: '#EF4444',
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 100,
-    gap: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#CBD5E1',
-  },
-  emptySubText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 4,
-    paddingHorizontal: 40,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  orderCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', ...Platform.select({ ios: { shadowColor: '#0D1B3A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12 }, android: { elevation: 3 } }) },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  orderIdent: { gap: 2 },
+  orderNo: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  orderDate: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  statusText: { fontSize: 11, fontWeight: '800' },
+  pharmacyRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  pharmacyName: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
+  itemCount: { fontSize: 13, color: '#94A3B8', fontWeight: '600' },
+  orderTotal: { fontSize: 18, fontWeight: '900', color: '#0D1B3A' },
+  emptyContainer: { alignItems: 'center', marginTop: 100, paddingHorizontal: 40 },
+  emptyIconBg: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  emptyTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 12 },
+  emptySubtitle: { fontSize: 15, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
+  shopBtn: { backgroundColor: '#4A90E2', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 18 },
+  shopBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
-
