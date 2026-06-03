@@ -37,7 +37,7 @@ pub struct DoctorSearchResult {
     pub clinic_hospital_affiliation: Option<String>,
     pub bio: Option<String>,
     pub languages_spoken: Option<String>,
-    pub rating: Option<f64>,
+    pub rating: Option<f32>,
     pub total_reviews: i64,
     pub consultation_fee: Option<i64>,
     pub is_available_today: bool,
