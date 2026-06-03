@@ -457,7 +457,7 @@ class ApiService {
   }
 
   async getAvailability(doctorId: string, date: string) {
-    return this.request<any[]>(`/schedule/${doctorId}/availability/${date}`);
+    return this.request<any[]>(`/availability/${doctorId}/${date}`);
   }
 
   async searchPatients(query: string) {
