@@ -256,3 +256,47 @@ CREATE TABLE IF NOT EXISTS checkout_sessions (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Doctor Schedules Table (recurring weekly schedule)
+CREATE TABLE IF NOT EXISTS doctor_schedules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    doctor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day_of_week INT NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    slot_duration_minutes INT NOT NULL DEFAULT 30,
+    is_available BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(doctor_id, day_of_week)
+);
+
+-- Doctor Availability Table (specific date/time slots)
+CREATE TABLE IF NOT EXISTS doctor_availability (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    doctor_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_booked BOOLEAN DEFAULT FALSE,
+    consultation_id UUID REFERENCES consultations(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(doctor_id, date, start_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_doctor_availability_date ON doctor_availability(doctor_id, date);
+CREATE INDEX IF NOT EXISTS idx_doctor_schedules_doctor ON doctor_schedules(doctor_id);
+
+-- Pharmacy Stock Table
+CREATE TABLE IF NOT EXISTS pharmacy_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pharmacy_id UUID NOT NULL REFERENCES users(id),
+    drug_id UUID NOT NULL REFERENCES drugs(id),
+    price BIGINT NOT NULL,
+    quantity INT NOT NULL DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE,
+    expiry_date DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(pharmacy_id, drug_id)
+);
