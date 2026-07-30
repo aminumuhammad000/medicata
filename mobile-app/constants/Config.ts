@@ -2,11 +2,11 @@ import Constants from 'expo-constants';
 
 const getApiBaseUrl = () => {
   // Always use the online VPS for both development and production
-  return 'http://16.171.134.40:8080/api';
+  return 'http://api.medicata.ng/api';
 };
 
 const getWsUrl = () => {
-  return 'ws://16.171.134.40:8080/ws';
+  return 'ws://api.medicata.ng/ws';
 };
 
 export default {

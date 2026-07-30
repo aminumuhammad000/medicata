@@ -62,8 +62,8 @@ async fn main() -> anyhow::Result<()> {
     if admin_exists.is_none() {
         let password_hash = crate::auth_utils::hash_password("admin123")?;
         sqlx::query(
-            "INSERT INTO users (full_name, email, password_hash, role, is_verified) 
-             VALUES ('System Administrator', 'admin@medicata.com', $1, $2, TRUE)"
+            "INSERT INTO users (full_name, email, password_hash, phone_number, role, is_verified) 
+             VALUES ('System Administrator', 'admin@medicata.com', $1, '0000000000', $2, TRUE)"
         )
         .bind(password_hash)
         .bind(crate::models::user::UserRole::Admin)
