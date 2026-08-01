@@ -5,29 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { Ionicons } from '@expo/vector-icons';
+
 export default function CompleteScreen() {
   const router = useRouter();
   const { data } = useOnboarding();
 
   const handleFinish = () => {
-    // In a real app, redirect to the relevant dashboard
     router.replace('/(tabs)');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
       <View style={styles.content}>
-        <View style={styles.successIcon}>
-          <Text style={styles.icon}>✓</Text>
-        </View>
-        
         <View style={styles.logoContainer}>
           <Image 
             source={require('../../assets/logo.png')} 
@@ -35,37 +25,53 @@ export default function CompleteScreen() {
             resizeMode="contain"
           />
         </View>
+
+        <View style={styles.successBadge}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+          </View>
+        </View>
         
-        <Text style={styles.title}>All Set!</Text>
-        <Text style={styles.subtitle}>
-          Welcome to Medicata, {data.fullName}. Your account has been verified and you're ready to go.
-        </Text>
+        <View style={styles.textSection}>
+          <Text style={styles.title}>You're all set!</Text>
+          <Text style={styles.subtitle}>
+            Welcome aboard, {data.fullName}. Your account is ready and your healthcare journey begins now.
+          </Text>
+        </View>
         
         <View style={styles.tutorialBox}>
+          <View style={styles.tipBadge}>
+            <Ionicons name="bulb" size={20} color="#2572D9" />
+          </View>
           <Text style={styles.tutorial}>
             {data.userType === 'patient' 
-              ? 'Tip: You can now search for doctors by specialty and book your first consultation.'
+              ? 'Start by searching for top-rated doctors in your area.'
               : data.userType === 'doctor'
-              ? 'Tip: Set your availability and start receiving patient consultations.'
-              : 'Tip: Manage your inventory and start fulfilling prescription orders.'}
+              ? 'Complete your profile bio to help patients find you easily.'
+              : 'Add your first products to start fulfilling local orders.'}
           </Text>
         </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleFinish}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#2572D9', '#4A90E2']}
-          style={styles.buttonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={handleFinish}
+          activeOpacity={0.85}
         >
-          <Text style={styles.buttonText}>Go to Dashboard</Text>
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={['#4A90E2', '#2572D9']}
+            style={styles.buttonGrad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.buttonInner}>
+              <Text style={styles.buttonText}>Get Started</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -73,111 +79,98 @@ export default function CompleteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    backgroundColor: '#FFFFFF',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  successIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    borderWidth: 2,
-    borderColor: '#22c55e',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(34, 197, 94, 0.4)',
-      },
-      default: {
-        shadowColor: '#22c55e',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
-  },
-  icon: {
-    fontSize: 56,
-    color: '#22c55e',
-    fontWeight: 'bold',
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   logoContainer: {
-    marginBottom: 32,
+    marginBottom: 40,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 140,
+    height: 140,
+  },
+  successBadge: {
+    marginBottom: 20,
+  },
+  iconCircle: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textSection: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   title: {
-    fontSize: 42,
+    fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 16,
+    color: '#0F172A',
+    marginBottom: 8,
     letterSpacing: -1,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 32,
+    maxWidth: '85%',
   },
   tutorialBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#F8FAFC',
     padding: 20,
-    borderRadius: 16,
-    maxWidth: 320,
+    borderRadius: 24,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+  },
+  tipBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tutorial: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
+    color: '#475569',
     lineHeight: 20,
+    fontWeight: '600',
+    flex: 1,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 32,
   },
   button: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginHorizontal: 32,
-    marginBottom: 24,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
+    // Removed all shadows as requested
   },
-  buttonGradient: {
-    padding: 18,
+  buttonGrad: {
+    height: 56,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });

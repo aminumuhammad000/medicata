@@ -13,7 +13,7 @@ export default function PharmacyWallet() {
   const [loading, setLoading] = useState(true);
   const [showBankSetup, setShowBankSetup] = useState(false);
   const [savingBank, setSavingBank] = useState(false);
-  
+
   // Bank setup state
   const [bankName, setBankName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
@@ -33,7 +33,7 @@ export default function PharmacyWallet() {
       ]);
       setBalance(balanceRes.data.balance);
       setTransactions(txRes.data || []);
-      
+
       if (meRes.data.bank_name) {
         setBankName(meRes.data.bank_name);
         setAccountNumber(meRes.data.account_number);
@@ -93,7 +93,7 @@ export default function PharmacyWallet() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
-      
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
@@ -139,10 +139,10 @@ export default function PharmacyWallet() {
             transactions.map((tx) => (
               <View key={tx.id} style={styles.txItem}>
                 <View style={[styles.txIcon, tx.transaction_type === 'credit' ? styles.txCredit : styles.txDebit]}>
-                  <Ionicons 
-                    name={tx.transaction_type === 'credit' ? "arrow-down" : "arrow-up"} 
-                    size={20} 
-                    color={tx.transaction_type === 'credit' ? "#10B981" : "#EF4444"} 
+                  <Ionicons
+                    name={tx.transaction_type === 'credit' ? "arrow-down" : "arrow-up"}
+                    size={20}
+                    color={tx.transaction_type === 'credit' ? "#10B981" : "#EF4444"}
                   />
                 </View>
                 <View style={styles.txInfo}>
@@ -172,12 +172,12 @@ export default function PharmacyWallet() {
                 <Ionicons name="close" size={24} color="#0F172A" />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.form}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Bank Name</Text>
-                <TextInput 
-                  style={styles.textInput} 
+                <TextInput
+                  style={styles.textInput}
                   placeholder="e.g. Zenith Bank"
                   value={bankName}
                   onChangeText={setBankName}
@@ -185,8 +185,8 @@ export default function PharmacyWallet() {
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Account Number</Text>
-                <TextInput 
-                  style={styles.textInput} 
+                <TextInput
+                  style={styles.textInput}
                   placeholder="10 digits"
                   keyboardType="numeric"
                   value={accountNumber}
@@ -196,16 +196,16 @@ export default function PharmacyWallet() {
               </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Account Name</Text>
-                <TextInput 
-                  style={styles.textInput} 
+                <TextInput
+                  style={styles.textInput}
                   placeholder="Legal Business Name"
                   value={accountName}
                   onChangeText={setAccountName}
                 />
               </View>
 
-              <TouchableOpacity 
-                style={[styles.saveBankBtn, savingBank && { opacity: 0.6 }]} 
+              <TouchableOpacity
+                style={[styles.saveBankBtn, savingBank && { opacity: 0.6 }]}
                 onPress={handleSaveBank}
                 disabled={savingBank}
               >
@@ -229,18 +229,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: 220,
+    height: 180,
+    backgroundColor: '#0F172A',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: -0.5,
@@ -248,112 +249,113 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   bankBtn: {
     padding: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 40,
   },
   balanceContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 32,
-    padding: 30,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
-    ...Platform.select({
-      web: { boxShadow: '0 8px 30px rgba(15, 23, 42, 0.1)' },
-      default: { elevation: 8, shadowColor: '#0F172A', shadowOpacity: 0.1, shadowRadius: 20 }
-    }),
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   balanceLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
-    color: '#64748B',
+    color: '#94A3B8',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   balanceAmount: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: '900',
     color: '#0F172A',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   payoutBtn: {
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   payoutGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     gap: 8,
+    backgroundColor: '#2563EB',
   },
   payoutBtnText: {
-    color: '#FFF',
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '800',
   },
   statsRow: {
     flexDirection: 'row',
-    marginTop: 16,
-    gap: 16,
+    marginTop: 12,
+    gap: 12,
   },
   statBox: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
   statVal: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0D1B3A',
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0F172A',
   },
   statLab: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '800',
     color: '#94A3B8',
-    marginTop: 4,
+    marginTop: 2,
     textTransform: 'uppercase',
   },
   historySection: {
-    marginTop: 32,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#0D1B3A',
+    color: '#0F172A',
     marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   txItem: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: 14,
     borderRadius: 20,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
   txIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   txCredit: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: '#F0FDF4',
   },
   txDebit: {
     backgroundColor: '#FEF2F2',
@@ -362,18 +364,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   txDesc: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
   },
   txDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
-    marginTop: 2,
-    fontWeight: '600',
+    marginTop: 1,
+    fontWeight: '700',
   },
   txAmount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
   },
   emptyState: {
@@ -382,9 +384,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#CBD5E1',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#94A3B8',
   },
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -393,7 +395,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
@@ -403,46 +405,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '900',
     color: '#0F172A',
   },
   form: {
-    gap: 20,
+    gap: 16,
   },
   inputGroup: {
-    gap: 8,
+    gap: 6,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#475569',
+    color: '#64748B',
     marginLeft: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   textInput: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingVertical: 12,
+    fontSize: 15,
     fontWeight: '600',
     color: '#0F172A',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   saveBankBtn: {
-    backgroundColor: '#0D1B3A',
-    paddingVertical: 18,
-    borderRadius: 20,
+    backgroundColor: '#2563EB',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
   saveBankText: {
-    color: '#FFF',
-    fontSize: 17,
-    fontWeight: '900',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
+import InventoryScreen from '../pharmacy/inventory';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface UnifiedRecord {
   id: string;
@@ -14,10 +17,8 @@ interface UnifiedRecord {
   subtitle?: string;
   status?: string;
   timestamp: number;
+  raw?: any;
 }
-
-import InventoryScreen from '../pharmacy/inventory';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function UnifiedTwoScreen() {
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -26,7 +27,6 @@ export default function UnifiedTwoScreen() {
   useEffect(() => {
     const getRole = async () => {
       let role = await AsyncStorage.getItem('user_role');
-      // Fallback to user_data.role for existing sessions
       if (!role) {
         const userData = await AsyncStorage.getItem('user_data');
         if (userData) {
@@ -42,18 +42,12 @@ export default function UnifiedTwoScreen() {
   }, []);
 
   if (initLoading) return null;
-
-  if (userRole === 'pharmacy') {
-    return <InventoryScreen isTab={true} />;
-  }
-
-  if (userRole === 'doctor') {
-    return <DoctorPatientsScreen />;
-  }
-
+  if (userRole === 'pharmacy') return <InventoryScreen isTab={true} />;
+  if (userRole === 'doctor') return <DoctorPatientsScreen />;
   return <RecordsScreen />;
 }
 
+// ─── Doctor Patient Directory ────────────────────────────────────────────────
 function DoctorPatientsScreen() {
   const router = useRouter();
   const [patients, setPatients] = useState<any[]>([]);
@@ -68,17 +62,16 @@ function DoctorPatientsScreen() {
       if (res.data) {
         const uniquePatients: any[] = [];
         const seenIds = new Set();
-        
         (res.data as any[]).forEach(c => {
           if (c.patient_id && !seenIds.has(c.patient_id)) {
             seenIds.add(c.patient_id);
             uniquePatients.push({
               id: c.patient_id,
               name: c.patient_name || 'Unknown Patient',
-              last_visit: new Date(c.scheduled_at).toLocaleDateString(),
-              reason: c.reason,
+              last_visit: new Date(c.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              reason: c.reason || 'General Consultation',
               consultation_id: c.id,
-              last_status: c.status
+              last_status: c.status,
             });
           }
         });
@@ -94,91 +87,118 @@ function DoctorPatientsScreen() {
   };
 
   useEffect(() => {
-    const filtered = patients.filter(p => 
+    const filtered = patients.filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.reason.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.reason || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
     setFilteredPatients(filtered);
   }, [searchQuery, patients]);
 
-  useEffect(() => {
-    fetchPatients();
-  }, []);
+  useEffect(() => { fetchPatients(); }, []);
 
-  const renderPatient = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.doctorPatientCard} 
-      activeOpacity={0.7}
-      onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: item.consultation_id } })}
-    >
-      <View style={styles.doctorPatientAvatar}>
-        <LinearGradient
-          colors={['#0D1B3A', '#4A90E2']}
-          style={styles.doctorAvatarGradient}
+  const getStatusConfig = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return { label: 'Completed', bg: '#ECFDF5', color: '#059669' };
+      case 'pending': return { label: 'Pending', bg: '#FFF7ED', color: '#D97706' };
+      case 'accepted': return { label: 'Active', bg: '#EFF6FF', color: '#2563EB' };
+      case 'cancelled': return { label: 'Cancelled', bg: '#FEF2F2', color: '#DC2626' };
+      default: return { label: status || 'Unknown', bg: '#F1F5F9', color: '#64748B' };
+    }
+  };
+
+  const renderPatient = ({ item, index }: { item: any; index: number }) => {
+    const statusConfig = getStatusConfig(item.last_status);
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 60)}>
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.7}
+          onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: item.consultation_id } } as any)}
         >
-          <Text style={styles.doctorAvatarText}>{(item.name || 'P').charAt(0)}</Text>
-        </LinearGradient>
-      </View>
-      <View style={styles.details}>
-        <Text style={styles.doctorPatientName}>{item.name}</Text>
-        <View style={styles.doctorPatientMetaRow}>
-          <Ionicons name="calendar-outline" size={12} color="#64748B" />
-          <Text style={styles.doctorPatientMeta}>Last: {item.last_visit}</Text>
-          <View style={styles.dotSeparator} />
-          <Text style={[styles.doctorPatientMeta, { color: item.last_status === 'completed' ? '#22C55E' : '#F59E0B' }]}>
-            {item.last_status.toUpperCase()}
-          </Text>
-        </View>
-        <Text style={styles.doctorPatientReason} numberOfLines={1}>{item.reason}</Text>
-      </View>
-      <View style={styles.doctorPatientAction}>
-        <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
-      </View>
-    </TouchableOpacity>
-  );
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>{(item.name || 'P').charAt(0).toUpperCase()}</Text>
+          </View>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle}>{item.name}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="calendar-outline" size={11} color="#64748B" />
+              <Text style={styles.metaText}>{item.last_visit}</Text>
+              {item.reason ? (
+                <>
+                  <View style={styles.metaDot} />
+                  <Text style={styles.metaText} numberOfLines={1}>{item.reason}</Text>
+                </>
+              ) : null}
+            </View>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   if (loading && !refreshing) {
     return (
-      <View style={styles.doctorLoadingContainer}>
-        <ActivityIndicator size="large" color="#0D1B3A" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Loading patients...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.doctorContainer}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.doctorHeader}>
+    <View style={styles.container}>
+      <View style={styles.header}>
         <SafeAreaView edges={['top']}>
-          <Text style={styles.doctorHeaderTitle}>Patient Directory</Text>
-          <Text style={styles.doctorHeaderSubtitle}>{patients.length} Registered Patients</Text>
-          
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={18} color="rgba(255, 255, 255, 0.5)" />
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.headerTitle}>Patient Directory</Text>
+              <Text style={styles.headerSubtitle}>{patients.length} registered patients</Text>
+            </View>
+            <TouchableOpacity style={styles.headerBtn} onPress={() => { setRefreshing(true); fetchPatients(); }}>
+              <Ionicons name="sync" size={16} color="#0F172A" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={16} color="#94A3B8" />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by name or condition..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              placeholderTextColor="#94A3B8"
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
         </SafeAreaView>
-      </LinearGradient>
-      
+      </View>
+
       <FlatList
         data={filteredPatients}
         renderItem={renderPatient}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.doctorList}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPatients(); }} tintColor="#0D1B3A" />
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPatients(); }} colors={['#2563EB']} />
         }
         ListEmptyComponent={
-          <View style={styles.doctorEmptyContainer}>
-            <Ionicons name="people-outline" size={64} color="#E2E8F0" />
-            <Text style={styles.doctorEmptyTitle}>{searchQuery ? 'No matching patients' : 'No patients found'}</Text>
-            <Text style={styles.doctorEmptySubtitle}>
-              {searchQuery ? 'Try searching for a different name or condition.' : 'Your patient list will grow as you complete consultations.'}
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBg}>
+              <Ionicons name="people-outline" size={30} color="#2563EB" />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No Matching Patients' : 'No Patients Yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? `No patients match "${searchQuery}".`
+                : 'Your patient list grows as you complete consultations.'}
             </Text>
           </View>
         }
@@ -187,10 +207,14 @@ function DoctorPatientsScreen() {
   );
 }
 
+// ─── Patient Medical Records ─────────────────────────────────────────────────
 function RecordsScreen() {
+  const router = useRouter();
   const [records, setRecords] = useState<UnifiedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'Consultation' | 'Prescription' | 'Order'>('all');
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -202,51 +226,50 @@ function RecordsScreen() {
 
       const unified: UnifiedRecord[] = [];
 
-      // Map Consultations
       if (Array.isArray(consultationsRes.data)) {
         consultationsRes.data.forEach((c: any) => {
           unified.push({
             id: c.id,
             type: 'Consultation',
             title: c.reason || 'General Consultation',
-            date: new Date(c.scheduled_at).toLocaleDateString(),
+            date: new Date(c.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             subtitle: c.doctor_name ? `Dr. ${c.doctor_name}` : 'Doctor Assigned',
             status: c.status,
             timestamp: new Date(c.scheduled_at).getTime(),
+            raw: c,
           });
         });
       }
 
-      // Map Prescriptions
       if (Array.isArray(prescriptionsRes.data)) {
         prescriptionsRes.data.forEach((p: any) => {
           unified.push({
             id: p.id,
             type: 'Prescription',
             title: 'Prescription Record',
-            date: new Date(p.created_at).toLocaleDateString(),
-            subtitle: `Verified: ${p.is_verified ? 'Yes' : 'No'}`,
+            date: new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            subtitle: `Verified: ${p.is_verified ? 'Yes' : 'Pending'}`,
             timestamp: new Date(p.created_at).getTime(),
+            raw: p,
           });
         });
       }
 
-      // Map Orders
       if (Array.isArray(ordersRes.data)) {
         ordersRes.data.forEach((o: any) => {
           unified.push({
             id: o.id,
             type: 'Order',
             title: o.pharmacy_name || 'Pharmacy Order',
-            date: new Date(o.created_at).toLocaleDateString(),
+            date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
             subtitle: `Status: ${o.status}`,
             status: o.status,
             timestamp: new Date(o.created_at).getTime(),
+            raw: o,
           });
         });
       }
 
-      // Sort by date descending
       unified.sort((a, b) => b.timestamp - a.timestamp);
       setRecords(unified);
     } catch (err) {
@@ -257,76 +280,202 @@ function RecordsScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  const onRefresh = () => { setRefreshing(true); fetchRecords(); };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchRecords();
+  const filteredRecords = records.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.subtitle || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = activeFilter === 'all' || item.type === activeFilter;
+    return matchesSearch && matchesFilter;
+  });
+
+  const typeConfig = (type: string) => {
+    switch (type) {
+      case 'Consultation': return { icon: 'calendar-outline', color: '#2563EB', bg: '#EFF6FF' };
+      case 'Prescription': return { icon: 'medical-outline', color: '#7C3AED', bg: '#F5F3FF' };
+      case 'Order': return { icon: 'bag-outline', color: '#059669', bg: '#ECFDF5' };
+      default: return { icon: 'document-outline', color: '#64748B', bg: '#F1F5F9' };
+    }
   };
 
-  const renderRecord = ({ item }: { item: UnifiedRecord }) => (
-    <TouchableOpacity style={styles.card}>
-      <View style={[
-        styles.iconBox, 
-        { backgroundColor: item.type === 'Consultation' ? '#E3F2FD' : item.type === 'Prescription' ? '#F3E5F5' : '#E8F5E9' }
-      ]}>
-        <Ionicons 
-          name={item.type === 'Consultation' ? 'calendar' : item.type === 'Prescription' ? 'medical' : 'cart'} 
-          size={24} 
-          color={item.type === 'Consultation' ? '#2196F3' : item.type === 'Prescription' ? '#9C27B0' : '#4CAF50'} 
-        />
-      </View>
-      <View style={styles.details}>
-        <View style={styles.recordHeader}>
-          <Text style={[
-            styles.type, 
-            { color: item.type === 'Consultation' ? '#2196F3' : item.type === 'Prescription' ? '#9C27B0' : '#4CAF50' }
-          ]}>{item.type}</Text>
-          {item.status && (
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{item.status}</Text>
+  const statusConfig = (status?: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return { label: 'Completed', bg: '#ECFDF5', color: '#059669' };
+      case 'pending': return { label: 'Pending', bg: '#FFF7ED', color: '#D97706' };
+      case 'accepted': return { label: 'Active', bg: '#EFF6FF', color: '#2563EB' };
+      case 'cancelled': return { label: 'Cancelled', bg: '#FEF2F2', color: '#DC2626' };
+      default: return null;
+    }
+  };
+
+  const filters: { key: 'all' | 'Consultation' | 'Prescription' | 'Order'; label: string; icon: string }[] = [
+    { key: 'all', label: 'All', icon: 'layers-outline' },
+    { key: 'Consultation', label: 'Visits', icon: 'calendar-outline' },
+    { key: 'Prescription', label: 'Prescriptions', icon: 'medical-outline' },
+    { key: 'Order', label: 'Orders', icon: 'bag-outline' },
+  ];
+
+  const stats = {
+    total: records.length,
+    consultations: records.filter(r => r.type === 'Consultation').length,
+    prescriptions: records.filter(r => r.type === 'Prescription').length,
+    orders: records.filter(r => r.type === 'Order').length,
+  };
+
+  const renderRecord = ({ item, index }: { item: UnifiedRecord; index: number }) => {
+    const tc = typeConfig(item.type);
+    const sc = statusConfig(item.status);
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 50)}>
+        <TouchableOpacity
+          style={styles.card}
+          activeOpacity={0.7}
+          onPress={() => {
+            if (item.type === 'Consultation') {
+              router.push({ pathname: '/consultations/desk/[id]', params: { id: item.id } } as any);
+            }
+          }}
+        >
+          <View style={[styles.typeIconBg, { backgroundColor: tc.bg }]}>
+            <Ionicons name={tc.icon as any} size={18} color={tc.color} />
+          </View>
+
+          <View style={styles.cardInfo}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+              {sc && (
+                <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
+                  <Text style={[styles.statusText, { color: sc.color }]}>{sc.label}</Text>
+                </View>
+              )}
             </View>
-          )}
-        </View>
-        <Text style={styles.titleText}>{item.title}</Text>
-        <Text style={styles.meta}>{item.date} {item.subtitle ? `• ${item.subtitle}` : ''}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#ccc" />
-    </TouchableOpacity>
-  );
+            <Text style={styles.cardSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+            <View style={styles.metaRow}>
+              <View style={[styles.typePill, { backgroundColor: tc.bg }]}>
+                <Text style={[styles.typePillText, { color: tc.color }]}>{item.type}</Text>
+              </View>
+              <Text style={styles.metaDate}>{item.date}</Text>
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0D1B3A" />
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Loading health records...</Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Medical Records</Text>
-        <Text style={styles.headerSubtitle}>History of your consultations and orders</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Medical Records</Text>
+            <Text style={styles.headerSubtitle}>Your unified health history</Text>
+          </View>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => { setRefreshing(true); fetchRecords(); }}>
+            <Ionicons name="sync" size={16} color="#0F172A" />
+          </TouchableOpacity>
+        </View>
       </View>
-      
+
+      {/* Stats Bar */}
+      <View style={styles.statsBar}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{stats.total}</Text>
+          <Text style={styles.statLabel}>Total</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: '#2563EB' }]}>{stats.consultations}</Text>
+          <Text style={styles.statLabel}>Visits</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: '#7C3AED' }]}>{stats.prescriptions}</Text>
+          <Text style={styles.statLabel}>Prescriptions</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={[styles.statValue, { color: '#059669' }]}>{stats.orders}</Text>
+          <Text style={styles.statLabel}>Orders</Text>
+        </View>
+      </View>
+
+      {/* Search */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchBar}>
+          <Ionicons name="search-outline" size={16} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search records..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Filters */}
+      <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {filters.map(f => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
+              onPress={() => setActiveFilter(f.key)}
+            >
+              <Ionicons name={f.icon as any} size={12} color={activeFilter === f.key ? '#FFFFFF' : '#64748B'} />
+              <Text style={[styles.filterText, activeFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* List */}
       <FlatList
-        data={records}
+        data={filteredRecords}
         renderItem={renderRecord}
         keyExtractor={(item) => `${item.type}-${item.id}`}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D1B3A']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={64} color="rgba(13, 27, 58, 0.1)" />
-            <Text style={styles.emptyTitle}>No records found</Text>
-            <Text style={styles.emptySubtitle}>Your medical history will appear here once you book consultations or order medicine.</Text>
+            <View style={styles.emptyIconBg}>
+              <Ionicons name="shield-checkmark-outline" size={30} color="#2563EB" />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No Matching Records' : 'Health Ledger Empty'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {searchQuery
+                ? `No records match "${searchQuery}".`
+                : 'Your consultations, prescriptions, and pharmacy orders will appear here once you start using Medicata.'}
+            </Text>
+            {!searchQuery && (
+              <TouchableOpacity style={styles.ctaButton} onPress={() => router.push('/bookings/search' as any)}>
+                <Ionicons name="search-outline" size={15} color="#FFFFFF" />
+                <Text style={styles.ctaButtonText}>Find a Doctor</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -334,257 +483,77 @@ function RecordsScreen() {
   );
 }
 
+// ─── Shared Styles ────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  doctorContainer: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  doctorLoadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  doctorHeader: {
-    paddingBottom: 24,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 48,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  dotSeparator: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#CBD5E1',
-    marginHorizontal: 6,
-  },
-  doctorHeaderTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 20,
-  },
-  doctorHeaderSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  doctorList: {
-    padding: 24,
-  },
-  doctorPatientCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 24,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  doctorPatientAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    marginRight: 16,
-  },
-  doctorAvatarGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  doctorAvatarText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  doctorPatientName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  doctorPatientMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
-  doctorPatientMeta: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  doctorPatientReason: {
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  doctorPatientAction: {
-    marginLeft: 'auto',
-  },
-  doctorEmptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 100,
-  },
-  doctorEmptyTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginTop: 16,
-  },
-  doctorEmptySubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 40,
-    lineHeight: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#64748B', fontWeight: '600' },
+
+  // Header
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#0D1B3A',
-    letterSpacing: -1,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: 'rgba(13, 27, 58, 0.5)',
-    marginTop: 4,
-  },
-  list: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    ...(Platform.select({
-      web: {
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 2,
-      }
-    }) as any),
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  iconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  details: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  recordHeader: {
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginTop: 10,
+    marginBottom: 12,
   },
-  type: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  statusBadge: {
-    backgroundColor: 'rgba(13, 27, 58, 0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#0D1B3A',
-    textTransform: 'uppercase',
-  },
-  titleText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  meta: {
-    fontSize: 13,
-    color: 'rgba(0, 0, 0, 0.4)',
-    fontWeight: '500',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0D1B3A',
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: 'rgba(13, 27, 58, 0.5)',
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 22,
-  },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  headerBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+
+  // Search
+  searchSection: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderColor: '#E2E8F0' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 12, borderRadius: 10, height: 40, gap: 8 },
+  searchInput: { flex: 1, fontSize: 13, color: '#0F172A', fontWeight: '600', padding: 0 },
+
+  // Stats
+  statsBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingVertical: 14, paddingHorizontal: 20, borderBottomWidth: 1, borderColor: '#E2E8F0' },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  statLabel: { fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  statDivider: { width: 1, height: 28, backgroundColor: '#E2E8F0' },
+
+  // Filters
+  filterRow: { backgroundColor: '#FFFFFF', paddingVertical: 10, borderBottomWidth: 1, borderColor: '#E2E8F0' },
+  filterScroll: { paddingHorizontal: 16, gap: 8 },
+  filterChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F1F5F9', gap: 5, marginRight: 6 },
+  filterChipActive: { backgroundColor: '#2563EB' },
+  filterText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+  filterTextActive: { color: '#FFFFFF' },
+
+  // List
+  listContent: { padding: 16, paddingBottom: 40 },
+
+  // Card (shared)
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  avatarContainer: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { fontSize: 18, fontWeight: '800', color: '#2563EB' },
+  typeIconBg: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  cardInfo: { flex: 1 },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: '#0F172A', flex: 1, marginRight: 6 },
+  cardSubtitle: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 6 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  statusText: { fontSize: 10, fontWeight: '800' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  metaText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  metaDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#CBD5E1' },
+  typePill: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 5 },
+  typePillText: { fontSize: 10, fontWeight: '800' },
+  metaDate: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+
+  // Empty
+  emptyContainer: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 24 },
+  emptyIconBg: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginBottom: 18 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
+  emptySubtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 19, fontWeight: '500', marginBottom: 28 },
+  ctaButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563EB', paddingHorizontal: 22, paddingVertical: 13, borderRadius: 12, gap: 8 },
+  ctaButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 });

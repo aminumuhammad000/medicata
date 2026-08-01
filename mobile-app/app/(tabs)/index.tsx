@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import { RefreshControl } from 'react-native';
+// RefreshControl is now imported from react-native above
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -38,6 +38,11 @@ export default function HomeScreen() {
 
   async function registerForPushNotifications() {
     try {
+      if (Platform.OS === 'web') {
+        console.log('Push notifications are not supported on web.');
+        return;
+      }
+      
       // Dynamically import to avoid crashing in Expo Go (SDK 53+)
       const Device = require('expo-device');
       const Constants = require('expo-constants').default;
@@ -235,6 +240,44 @@ export default function HomeScreen() {
 
   // Patient Dashboard
   const PatientDashboard = () => {
+    const [showCalendar, setShowCalendar] = React.useState(false);
+    const [selectedDate, setSelectedDate] = React.useState(new Date());
+    const [calendarMonth, setCalendarMonth] = React.useState(new Date());
+
+    const [activeTab, setActiveTab] = useState<'activity' | 'consults' | 'orders' | 'prescriptions' | 'reminders'>('activity');
+
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const dayNames = ['S','M','T','W','T','F','S'];
+    const today = new Date();
+
+    const getCalendarDays = () => {
+      const year = calendarMonth.getFullYear();
+      const month = calendarMonth.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const days: (number | null)[] = [];
+      for (let i = 0; i < firstDay; i++) days.push(null);
+      for (let d = 1; d <= daysInMonth; d++) days.push(d);
+      return days;
+    };
+
+    const prevMonth = () => setCalendarMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+    const nextMonth = () => setCalendarMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+
+    const isToday = (d: number) => {
+      return d === today.getDate() && calendarMonth.getMonth() === today.getMonth() && calendarMonth.getFullYear() === today.getFullYear();
+    };
+    const isSelected = (d: number) => {
+      return d === selectedDate.getDate() && calendarMonth.getMonth() === selectedDate.getMonth() && calendarMonth.getFullYear() === selectedDate.getFullYear();
+    };
+
+    const hasAppointment = (d: number) => {
+      if (!recentConsultation?.scheduled_at) return false;
+      const apptDate = new Date(recentConsultation.scheduled_at);
+      return d === apptDate.getDate() && calendarMonth.getMonth() === apptDate.getMonth() && calendarMonth.getFullYear() === apptDate.getFullYear();
+    };
+
+
     const categories = [
       { id: 1, name: 'General', icon: 'medical' },
       { id: 2, name: 'Cardiology', icon: 'heart' },
@@ -255,119 +298,192 @@ export default function HomeScreen() {
       }
     };
 
+    const dashboardTabs = [
+      { id: 'activity', name: 'Activity', icon: 'flash' },
+      { id: 'consults', name: 'Waitlist', icon: 'people' },
+      { id: 'orders', name: 'Orders', icon: 'cart' },
+      { id: 'prescriptions', name: 'Scripts', icon: 'receipt' },
+      { id: 'reminders', name: 'Alerts', icon: 'notifications' },
+    ];
+
     return (
-      <>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.subGreeting}>Welcome back,</Text>
-            <Text style={styles.greeting}>{userData?.full_name?.split(' ')[0] || 'Patient'}</Text>
+      <View style={{ flex: 1 }}>
+
+        {/* Calendar Modal */}
+        {showCalendar && (
+          <View style={styles.calendarOverlay}>
+            <TouchableOpacity style={styles.calendarBackdrop} onPress={() => setShowCalendar(false)} />
+            <View style={styles.calendarSheet}>
+              <View style={styles.calendarHandle} />
+              <View style={styles.calendarNav}>
+                <TouchableOpacity onPress={prevMonth} style={styles.calNavBtn}>
+                  <Ionicons name="chevron-back" size={20} color="#0F172A" />
+                </TouchableOpacity>
+                <Text style={styles.calendarMonthTitle}>
+                  {monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}
+                </Text>
+                <TouchableOpacity onPress={nextMonth} style={styles.calNavBtn}>
+                  <Ionicons name="chevron-forward" size={20} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.calDayRow}>
+                {dayNames.map((d, i) => (
+                  <Text key={i} style={styles.calDayName}>{d}</Text>
+                ))}
+              </View>
+              <View style={styles.calGrid}>
+                {getCalendarDays().map((d, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.calDayCell}
+                    onPress={() => {
+                      if (d) {
+                        setSelectedDate(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), d));
+                        setShowCalendar(false);
+                      }
+                    }}
+                    disabled={!d}
+                  >
+                    {d ? (
+                      <View style={[
+                        styles.calDayNum,
+                        isSelected(d) && styles.calDaySelected,
+                        !isSelected(d) && isToday(d) && styles.calDayToday,
+                      ]}>
+                        <Text style={[
+                          styles.calDayText,
+                          isSelected(d) && styles.calDayTextSelected,
+                          !isSelected(d) && isToday(d) && styles.calDayTextToday,
+                        ]}>{d}</Text>
+                        {hasAppointment(d) && !isSelected(d) && <View style={styles.calApptDot} />}
+                      </View>
+                    ) : <View style={styles.calDayNum} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {recentConsultation?.scheduled_at && (
+                <View style={styles.calLegend}>
+                  <View style={styles.calLegendDot} />
+                  <Text style={styles.calLegendText}>Upcoming appointment</Text>
+                </View>
+              )}
+              <TouchableOpacity style={styles.calTodayBtn} onPress={() => { setCalendarMonth(new Date()); setSelectedDate(new Date()); setShowCalendar(false); }}>
+                <Text style={styles.calTodayBtnText}>Go to Today</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            <TouchableOpacity 
-              style={styles.notifBtn}
+        )}
+
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Hi, {userData?.full_name?.split(' ')[0] || 'there'} 👋</Text>
+            <Text style={styles.greetingDate}>{today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+          </View>
+          <View style={styles.headerRightClose}>
+            <TouchableOpacity
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/bookings/search')}
+            >
+              <Ionicons name="search" size={16} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.notifBtnSmall}
               onPress={() => router.push('/notifications' as any)}
             >
-              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+              <Ionicons name="notifications" size={16} color="#0F172A" />
               {unreadNotifications > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                <View style={styles.notifBadgeSmall}>
+                  <Text style={styles.notifBadgeTextSmall}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.profilePic}
-              onPress={() => router.push('/profile' as any)}
+            <TouchableOpacity
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/pharmacy/cart' as any)}
             >
-              <LinearGradient
-                colors={['#e3f2fd', '#f8f9fa']}
-                style={styles.profilePicGradient}
-              >
-                <Ionicons name="person" size={24} color="#4a90e2" />
-              </LinearGradient>
+              <Ionicons name="cart" size={18} color="#0F172A" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Patient Stats */}
-        <View style={styles.patientStatsRow}>
-          <View style={styles.patientStatCard}>
-            <View style={[styles.statIconBg, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="calendar" size={20} color="#4F46E5" />
-            </View>
-            <Text style={styles.patientStatValue}>{stats.pendingOrders || 0}</Text>
-            <Text style={styles.patientStatLabel}>Pending Orders</Text>
-          </View>
-          <View style={styles.patientStatCard}>
-            <View style={[styles.statIconBg, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="document-text" size={20} color="#10B981" />
-            </View>
-            <Text style={styles.patientStatValue}>{stats.activePrescriptions || 0}</Text>
-            <Text style={styles.patientStatLabel}>Active Scripts</Text>
-          </View>
-        </View>
- 
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#4a90e2" />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Search doctors, clinics..." 
-            placeholderTextColor="#999"
-          />
-        </View>
- 
+        {/* Main Services Icons */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Main Services</Text>
-          <View style={styles.actionsGrid}>
+          <View style={styles.servicesRow}>
             <TouchableOpacity 
-              style={styles.actionCard}
+              style={styles.serviceItem}
               onPress={() => router.push('/bookings/search')}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#EBF4FF' }]}>
-                <Ionicons name="add-circle" size={28} color="#2563EB" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F0F7FF' }]}>
+                <Ionicons name="medical" size={18} color="#2563EB" />
               </View>
-              <Text style={styles.actionLabel}>Book Appointment</Text>
-              <Text style={styles.actionSubLabel}>Find a doctor</Text>
+              <Text style={styles.serviceLabel}>Book</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/explore')}
+              style={styles.serviceItem}
+              onPress={() => router.push('/orders')}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="document-text" size={28} color="#059669" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                {stats.pendingOrders > 0 && (
+                  <View style={styles.serviceBadge}>
+                    <Text style={styles.serviceBadgeText}>{stats.pendingOrders}</Text>
+                  </View>
+                )}
+                <Ionicons name="cart" size={18} color="#16A34A" />
               </View>
-              <Text style={styles.actionLabel}>Health Records</Text>
-              <Text style={styles.actionSubLabel}>View history</Text>
+              <Text style={styles.serviceLabel}>Orders</Text>
             </TouchableOpacity>
+
             <TouchableOpacity 
-              style={styles.actionCard}
+              style={styles.serviceItem}
+              onPress={() => router.push('/prescriptions')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}>
+                {stats.activePrescriptions > 0 && (
+                  <View style={styles.serviceBadge}>
+                    <Text style={styles.serviceBadgeText}>{stats.activePrescriptions}</Text>
+                  </View>
+                )}
+                <Ionicons name="receipt" size={18} color="#4F46E5" />
+              </View>
+              <Text style={styles.serviceLabel}>Prescription</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.serviceItem}
               onPress={() => router.push('/medi-chat')}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#FFFBEB' }]}>
-                <Ionicons name="sparkles" size={28} color="#D97706" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FFFBEB' }]}>
+                <Ionicons name="sparkles" size={18} color="#D97706" />
               </View>
-              <Text style={styles.actionLabel}>Medi AI</Text>
-              <Text style={styles.actionSubLabel}>AI assistance</Text>
+              <Text style={styles.serviceLabel}>AI Hub</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={styles.actionCard}
+              style={styles.serviceItem}
+              onPress={() => router.push('/wallet')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="wallet" size={18} color="#9333EA" />
+              </View>
+              <Text style={styles.serviceLabel}>Wallet</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.serviceItem}
               onPress={() => router.push('/patient/reminders')}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#FDF2F8' }]}>
-                <Ionicons name="notifications" size={28} color="#DB2777" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="alarm" size={18} color="#DC2626" />
               </View>
-              <Text style={styles.actionLabel}>Reminders</Text>
-              <Text style={styles.actionSubLabel}>Meds & health</Text>
+              <Text style={styles.serviceLabel}>Alerts</Text>
             </TouchableOpacity>
           </View>
         </View>
  
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Consultation Categories</Text>
-            <TouchableOpacity><Text style={styles.seeAll}>See All</Text></TouchableOpacity>
-          </View>
+        {/* Horizontal Category Chips */}
+        <View style={styles.sectionCompact}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
             {categories.map((cat) => (
               <TouchableOpacity 
@@ -376,280 +492,334 @@ export default function HomeScreen() {
                 onPress={() => router.push({ pathname: '/bookings/search', params: { specialty: cat.name } })}
               >
                 <View style={styles.catIconBg}>
-                  <Ionicons name={cat.icon as any} size={20} color="#4a90e2" />
+                  <Ionicons name={cat.icon as any} size={14} color="#3B82F6" />
                 </View>
                 <Text style={styles.categoryName}>{cat.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
- 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          {recentConsultation ? (
-            <TouchableOpacity 
-              style={styles.activityCard}
-              onPress={() => router.push('/explore')}
-            >
-              <View style={styles.activityStatusIndicator} />
-              <View style={styles.activityInfo}>
-                <Text style={styles.activityType}>
-                  {recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending' ? 'Upcoming Appointment' : 'Latest Session'}
-                </Text>
-                <Text style={styles.activityDetail}>
-                  {recentConsultation.doctor_name || 'Doctor'} • {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Date TBD'} at {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyActivityCard}>
-              <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
-              <Text style={styles.emptyActivityText}>No recent activity yet</Text>
-            </View>
-          )}
-        </View>
 
-        {/* My Consultations Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Consultations</Text>
-            <TouchableOpacity onPress={() => router.push('/explore' as any)}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentConsultation ? (
-            <TouchableOpacity 
-              style={styles.consultationCard}
-              onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
-            >
-              <View style={styles.consultationHeader}>
-                <View style={[styles.consultationIconBg, { backgroundColor: '#EEF2FF' }]}>
-                  <Ionicons name="medical" size={20} color="#4F46E5" />
-                </View>
-                <View style={styles.consultationInfo}>
-                  <Text style={styles.consultationDoctor}>{recentConsultation.doctor_name || 'Doctor'}</Text>
-                  <Text style={styles.consultationSpecialty}>{recentConsultation.specialty || 'General'}</Text>
-                </View>
-                <View style={[styles.consultationStatusBadge, { backgroundColor: recentConsultation.status === 'completed' ? '#ECFDF5' : '#FFFBEB' }]}>
-                  <Text style={[styles.consultationStatusText, { color: recentConsultation.status === 'completed' ? '#10B981' : '#F59E0B' }]}>
-                    {recentConsultation.status?.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.consultationFooter}>
-                <View style={styles.consultationDetail}>
-                  <Ionicons name="calendar" size={14} color="#64748B" />
-                  <Text style={styles.consultationDetailText}>
-                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Date TBD'}
-                  </Text>
-                </View>
-                <View style={styles.consultationDetail}>
-                  <Ionicons name="time" size={14} color="#64748B" />
-                  <Text style={styles.consultationDetailText}>
-                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
-                  </Text>
-                </View>
-              </View>
-              {['video', 'audio'].includes(recentConsultation.mode?.toLowerCase()) && 
-               ['scheduled', 'accepted', 'admitted'].includes(recentConsultation.status?.toLowerCase()) && (
-                <TouchableOpacity 
-                  style={styles.joinVideoBtn}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    router.push({ 
-                      pathname: '/consultation/video', 
-                      params: { consultationId: recentConsultation.id, mode: recentConsultation.mode } 
-                    } as any);
-                  }}
-                >
-                  <Ionicons 
-                    name={recentConsultation.mode === 'audio' ? "call" : "videocam"} 
-                    size={18} 
-                    color="#FFFFFF" 
-                  />
-                  <Text style={styles.joinVideoBtnText}>
-                    Join {recentConsultation.mode === 'audio' ? 'Audio' : 'Video'} Call
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyActivityCard}>
-              <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
-              <Text style={styles.emptyActivityText}>No consultations yet</Text>
-              <TouchableOpacity 
-                style={styles.orderNowBtn}
-                onPress={() => router.push('/bookings/search')}
+        {/* Inner Dashboard Navigation System */}
+        <View style={styles.dashboardNavContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dashboardNavScroll}>
+            {dashboardTabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.dashboardNavTab, activeTab === tab.id && styles.dashboardNavTabActive]}
+                onPress={() => setActiveTab(tab.id as any)}
               >
-                <Text style={styles.orderNowBtnText}>Book a Doctor</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* My Prescriptions Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Prescriptions</Text>
-            <TouchableOpacity onPress={() => router.push('/prescriptions' as any)}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentPrescription ? (
-            <TouchableOpacity 
-              style={styles.prescriptionCard}
-              onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: recentPrescription.id } } as any)}
-            >
-              <View style={styles.prescriptionHeader}>
-                <View style={[styles.prescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
-                  <Ionicons name="document-text" size={20} color="#10B981" />
-                </View>
-                <View style={styles.prescriptionInfo}>
-                  <Text style={styles.prescriptionDoctor}>{recentPrescription.doctor_name || 'Dr. Unknown'}</Text>
-                  <Text style={styles.prescriptionDate}>
-                    Issued: {new Date(recentPrescription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </Text>
-                </View>
-                {new Date(recentPrescription.expiry_date) < new Date() ? (
-                  <View style={[styles.prescriptionBadge, { backgroundColor: '#FEF2F2' }]}>
-                    <Text style={[styles.prescriptionBadgeText, { color: '#EF4444' }]}>EXPIRED</Text>
-                  </View>
-                ) : (
-                  <View style={[styles.prescriptionBadge, { backgroundColor: '#ECFDF5' }]}>
-                    <Text style={[styles.prescriptionBadgeText, { color: '#10B981' }]}>ACTIVE</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.prescriptionFooter}>
-                <Text style={styles.prescriptionExpiry}>
-                  {new Date(recentPrescription.expiry_date) < new Date() 
-                    ? 'Expired on: ' 
-                    : 'Expires: '}
-                  {new Date(recentPrescription.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                <Ionicons 
+                  name={tab.icon as any} 
+                  size={14} 
+                  color={activeTab === tab.id ? '#FFFFFF' : '#64748B'} 
+                />
+                <Text style={[styles.dashboardNavTabText, activeTab === tab.id && styles.dashboardNavTabTextActive]}>
+                  {tab.name}
                 </Text>
-                {new Date(recentPrescription.expiry_date) < new Date() && (
-                  <TouchableOpacity style={styles.buyAgainBtn}>
-                    <Text style={styles.buyAgainBtnText}>Buy Again</Text>
-                  </TouchableOpacity>
-                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Dynamic Content Display */}
+        <View style={styles.tabContentContainer}>
+          {activeTab === 'activity' && (
+            <View>
+              <View style={styles.sectionHeaderCompact}>
+                <Text style={styles.sectionTitle}>Recent Activity</Text>
               </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyActivityCard}>
-              <Ionicons name="document-text-outline" size={32} color="#E2E8F0" />
-              <Text style={styles.emptyActivityText}>No prescriptions yet</Text>
+              {recentConsultation ? (
+                <TouchableOpacity
+                  style={styles.appointmentCard}
+                  activeOpacity={0.85}
+                  onPress={() => router.push('/explore')}
+                >
+                  <View style={[
+                    styles.appointmentAccent,
+                    { backgroundColor: (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') ? '#3B82F6' : '#10B981' }
+                  ]} />
+                  <View style={styles.appointmentBody}>
+                    <View style={styles.appointmentTopRow}>
+                      <View style={[styles.appointmentAvatarCircle, { backgroundColor: '#EFF6FF' }]}>
+                        <Text style={[styles.appointmentAvatarText, { color: '#3B82F6' }]}>
+                          {(recentConsultation.doctor_name || 'D').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentInfo}>
+                        <Text style={styles.appointmentPatientName}>
+                          {recentConsultation.doctor_name ? `Dr. ${recentConsultation.doctor_name}` : 'Doctor'}
+                        </Text>
+                        <Text style={styles.appointmentReason} numberOfLines={1}>
+                          {recentConsultation.reason || 'General Consultation'}
+                        </Text>
+                      </View>
+                      <View style={[styles.appointmentStatusBadge, {
+                        backgroundColor: (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') ? '#EFF6FF' : '#ECFDF5'
+                      }]}>
+                        <Text style={[styles.appointmentStatusText, {
+                          color: (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') ? '#1D4ED8' : '#059669'
+                        }]}>
+                          {(recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') ? '● Upcoming' : '● Done'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.appointmentChipsRow}>
+                      <View style={styles.appointmentChip}>
+                        <Ionicons name="calendar-outline" size={12} color="#64748B" />
+                        <Text style={styles.appointmentChipText}>
+                          {recentConsultation.scheduled_at
+                            ? new Date(recentConsultation.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                            : 'Date TBD'}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentChip}>
+                        <Ionicons name="time-outline" size={12} color="#64748B" />
+                        <Text style={styles.appointmentChipText}>
+                          {recentConsultation.scheduled_at
+                            ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : 'Time TBD'}
+                        </Text>
+                      </View>
+                      {recentConsultation.mode && (
+                        <View style={styles.appointmentChip}>
+                          <Ionicons
+                            name={recentConsultation.mode === 'video' ? 'videocam-outline' : recentConsultation.mode === 'audio' ? 'call-outline' : 'chatbubbles-outline'}
+                            size={12}
+                            color="#64748B"
+                          />
+                          <Text style={styles.appointmentChipText}>
+                            {recentConsultation.mode?.charAt(0).toUpperCase() + recentConsultation.mode?.slice(1)}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <View style={{ justifyContent: 'center', paddingRight: 14 }}>
+                    <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.emptyActivityCard}>
+                  <Ionicons name="flash-outline" size={32} color="#E2E8F0" />
+                  <Text style={styles.emptyActivityText}>No recent activity yet</Text>
+                </View>
+              )}
             </View>
           )}
-        </View>
 
-        {/* Upcoming Reminders */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Reminders</Text>
-            <TouchableOpacity onPress={() => router.push('/notifications' as any)}>
-              <Text style={styles.seeAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.remindersCard}>
-            {recentConsultation && (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') && (
-              <View style={styles.reminderItem}>
-                <View style={[styles.reminderIcon, { backgroundColor: '#EEF2FF' }]}>
-                  <Ionicons name="calendar" size={18} color="#4F46E5" />
-                </View>
-                <View style={styles.reminderInfo}>
-                  <Text style={styles.reminderTitle}>Upcoming Appointment</Text>
-                  <Text style={styles.reminderText}>
-                    {recentConsultation.doctor_name || 'Doctor'} at {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
-                  </Text>
-                </View>
+          {activeTab === 'consults' && (
+            <View>
+              <View style={styles.sectionHeaderCompact}>
+                <Text style={styles.sectionTitle}>Consultations</Text>
+                <TouchableOpacity onPress={() => router.push('/explore' as any)}>
+                  <Text style={styles.seeAll}>History</Text>
+                </TouchableOpacity>
               </View>
-            )}
-            {recentPrescription && new Date(recentPrescription.expiry_date) > new Date() && new Date(recentPrescription.expiry_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && (
-              <View style={styles.reminderItem}>
-                <View style={[styles.reminderIcon, { backgroundColor: '#FEF3C7' }]}>
-                  <Ionicons name="alert-circle" size={18} color="#D97706" />
-                </View>
-                <View style={styles.reminderInfo}>
-                  <Text style={styles.reminderTitle}>Prescription Expiring Soon</Text>
-                  <Text style={styles.reminderText}>
-                    Expires in {Math.ceil((new Date(recentPrescription.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
-                  </Text>
-                </View>
-              </View>
-            )}
-            {recentOrder && ['pending', 'processing', 'ready_for_pickup'].includes(recentOrder.status?.toLowerCase()) && (
-              <View style={styles.reminderItem}>
-                <View style={[styles.reminderIcon, { backgroundColor: '#ECFDF5' }]}>
-                  <Ionicons name="cube" size={18} color="#10B981" />
-                </View>
-                <View style={styles.reminderInfo}>
-                  <Text style={styles.reminderTitle}>Order Update</Text>
-                  <Text style={styles.reminderText}>
-                    Order status: {recentOrder.status?.replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              </View>
-            )}
-            {(!recentConsultation || recentConsultation.status === 'completed') && (!recentPrescription || new Date(recentPrescription.expiry_date) > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) && (!recentOrder || !['pending', 'processing', 'ready_for_pickup'].includes(recentOrder.status?.toLowerCase())) && (
-              <View style={styles.emptyReminder}>
-                <Ionicons name="notifications-off-outline" size={24} color="#CBD5E1" />
-                <Text style={styles.emptyReminderText}>No upcoming reminders</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* My Orders Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>My Orders</Text>
-            <TouchableOpacity onPress={() => router.push('/orders' as any)}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentOrder ? (
-            <TouchableOpacity 
-              style={styles.orderCard}
-              onPress={() => router.push({ pathname: '/pharmacy/order/[id]', params: { id: recentOrder.id } } as any)}
-            >
-              <View style={styles.orderCardHeader}>
-                <View style={styles.orderPharmacyInfo}>
-                  <View style={[styles.orderIconBg, { backgroundColor: '#EEF2FF' }]}>
-                    <Ionicons name="medical" size={20} color="#4F46E5" />
+              {recentConsultation ? (
+                <TouchableOpacity
+                  style={styles.appointmentCard}
+                  activeOpacity={0.85}
+                  onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
+                >
+                  <View style={[
+                    styles.appointmentAccent,
+                    { backgroundColor: recentConsultation.status === 'completed' ? '#10B981' : '#F59E0B' }
+                  ]} />
+                  <View style={styles.appointmentBody}>
+                    <View style={styles.appointmentTopRow}>
+                      <View style={[styles.appointmentAvatarCircle, { backgroundColor: '#EEF2FF' }]}>
+                        <Text style={[styles.appointmentAvatarText, { color: '#4F46E5' }]}>
+                          {(recentConsultation.doctor_name || 'D').charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentInfo}>
+                        <Text style={styles.appointmentPatientName}>
+                          {recentConsultation.doctor_name ? `Dr. ${recentConsultation.doctor_name}` : 'Doctor'}
+                        </Text>
+                        <Text style={styles.appointmentReason} numberOfLines={1}>
+                          {recentConsultation.specialty || recentConsultation.reason || 'General Consultation'}
+                        </Text>
+                      </View>
+                      <View style={[styles.appointmentStatusBadge, {
+                        backgroundColor: recentConsultation.status === 'completed' ? '#ECFDF5' : '#FFFBEB'
+                      }]}>
+                        <Text style={[styles.appointmentStatusText, {
+                          color: recentConsultation.status === 'completed' ? '#059669' : '#D97706'
+                        }]}>
+                          {recentConsultation.status === 'completed' ? '● Done' : '● Pending'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.appointmentChipsRow}>
+                      <View style={styles.appointmentChip}>
+                        <Ionicons name="calendar-outline" size={12} color="#64748B" />
+                        <Text style={styles.appointmentChipText}>
+                          {recentConsultation.scheduled_at
+                            ? new Date(recentConsultation.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                            : 'Date TBD'}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentChip}>
+                        <Ionicons name="time-outline" size={12} color="#64748B" />
+                        <Text style={styles.appointmentChipText}>
+                          {recentConsultation.scheduled_at
+                            ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                            : 'Time TBD'}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.orderPharmacyName}>{recentOrder.pharmacy_name || 'Pharmacy'}</Text>
-                    <Text style={styles.orderDate}>
-                      {new Date(recentOrder.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  <View style={{ justifyContent: 'center', paddingRight: 14 }}>
+                    <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.emptyActivityCard}>
+                  <Ionicons name="calendar-outline" size={32} color="#E2E8F0" />
+                  <Text style={styles.emptyActivityText}>No pending consults</Text>
+                  <TouchableOpacity 
+                    style={styles.orderNowBtn}
+                    onPress={() => router.push('/bookings/search')}
+                  >
+                    <Text style={styles.orderNowBtnText}>Book Now</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'orders' && (
+            <View>
+              <View style={styles.sectionHeaderCompact}>
+                <Text style={styles.sectionTitle}>My Orders</Text>
+                <TouchableOpacity onPress={() => router.push('/orders' as any)}>
+                  <Text style={styles.seeAll}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              {recentOrder ? (
+                <TouchableOpacity 
+                  style={styles.orderCard}
+                  onPress={() => router.push({ pathname: '/pharmacy/order/[id]', params: { id: recentOrder.id } } as any)}
+                >
+                  <View style={styles.orderCardHeader}>
+                    <View style={styles.orderPharmacyInfo}>
+                      <View style={[styles.orderIconBg, { backgroundColor: '#EEF2FF' }]}>
+                        <Ionicons name="medical" size={20} color="#4F46E5" />
+                      </View>
+                      <View>
+                        <Text style={styles.orderPharmacyName}>{recentOrder.pharmacy_name || 'Pharmacy'}</Text>
+                        <Text style={styles.orderDate}>
+                          {new Date(recentOrder.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.orderStatusBadge, { backgroundColor: getStatusStyle(recentOrder.status).bg }]}>
+                      <Text style={[styles.orderStatusText, { color: getStatusStyle(recentOrder.status).text }]}>
+                        {recentOrder.status?.replace(/_/g, ' ')}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.orderCardFooter}>
+                    <Text style={styles.orderTotalLabel}>Total</Text>
+                    <Text style={styles.orderTotalValue}>₦{(recentOrder.total_amount || 0).toLocaleString()}</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.emptyActivityCard}>
+                  <Ionicons name="cart-outline" size={32} color="#E2E8F0" />
+                  <Text style={styles.emptyActivityText}>No orders yet</Text>
+                  <TouchableOpacity 
+                    style={styles.orderNowBtn}
+                    onPress={() => router.push('/pharmacy/search')}
+                  >
+                    <Text style={styles.orderNowBtnText}>Start Shopping</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'prescriptions' && (
+            <View>
+              <View style={styles.sectionHeaderCompact}>
+                <Text style={styles.sectionTitle}>Prescriptions</Text>
+                <TouchableOpacity onPress={() => router.push('/prescriptions' as any)}>
+                  <Text style={styles.seeAll}>History</Text>
+                </TouchableOpacity>
+              </View>
+              {recentPrescription ? (
+                <TouchableOpacity 
+                  style={styles.prescriptionCard}
+                  onPress={() => router.push({ pathname: '/prescriptions/[id]', params: { id: recentPrescription.id } } as any)}
+                >
+                  <View style={styles.prescriptionHeader}>
+                    <View style={[styles.prescriptionIconBg, { backgroundColor: '#ECFDF5' }]}>
+                      <Ionicons name="document-text" size={20} color="#10B981" />
+                    </View>
+                    <View style={styles.prescriptionInfo}>
+                      <Text style={styles.prescriptionDoctor}>{recentPrescription.doctor_name || 'Dr. Unknown'}</Text>
+                      <Text style={styles.prescriptionDate}>
+                        Issued: {new Date(recentPrescription.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.prescriptionFooter}>
+                    <Text style={styles.prescriptionExpiry}>
+                      Expires: {new Date(recentPrescription.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
                   </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.emptyActivityCard}>
+                  <Ionicons name="document-text-outline" size={32} color="#E2E8F0" />
+                  <Text style={styles.emptyActivityText}>No scripts found</Text>
                 </View>
-                <View style={[styles.orderStatusBadge, { backgroundColor: getStatusStyle(recentOrder.status).bg }]}>
-                  <Text style={[styles.orderStatusText, { color: getStatusStyle(recentOrder.status).text }]}>
-                    {recentOrder.status?.replace(/_/g, ' ')}
-                  </Text>
-                </View>
+              )}
+            </View>
+          )}
+
+          {activeTab === 'reminders' && (
+            <View>
+              <View style={styles.sectionHeaderCompact}>
+                <Text style={styles.sectionTitle}>Upcoming Alerts</Text>
               </View>
-              <View style={styles.orderCardFooter}>
-                <Text style={styles.orderTotalLabel}>Total</Text>
-                <Text style={styles.orderTotalValue}>₦{(recentOrder.total_amount || 0).toLocaleString()}</Text>
+              <View style={styles.remindersCard}>
+                {recentConsultation && (recentConsultation.status === 'scheduled' || recentConsultation.status === 'pending') && (
+                  <View style={styles.reminderItem}>
+                    <View style={[styles.reminderIcon, { backgroundColor: '#EEF2FF' }]}>
+                      <Ionicons name="calendar" size={18} color="#4F46E5" />
+                    </View>
+                    <View style={styles.reminderInfo}>
+                      <Text style={styles.reminderTitle}>Appointment</Text>
+                      <Text style={styles.reminderText}>
+                        {recentConsultation.doctor_name || 'Doctor'} at {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'TBD'}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {recentPrescription && new Date(recentPrescription.expiry_date) > new Date() && new Date(recentPrescription.expiry_date) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && (
+                  <View style={styles.reminderItem}>
+                    <View style={[styles.reminderIcon, { backgroundColor: '#FEF3C7' }]}>
+                      <Ionicons name="alert-circle" size={18} color="#D97706" />
+                    </View>
+                    <View style={styles.reminderInfo}>
+                      <Text style={styles.reminderTitle}>Expiring Script</Text>
+                      <Text style={styles.reminderText}>Expires in {Math.ceil((new Date(recentPrescription.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days</Text>
+                    </View>
+                  </View>
+                )}
+                {(!recentConsultation || recentConsultation.status === 'completed') && (!recentPrescription || new Date(recentPrescription.expiry_date) > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) && (
+                  <View style={styles.emptyReminder}>
+                    <Ionicons name="notifications-off-outline" size={24} color="#CBD5E1" />
+                    <Text style={styles.emptyReminderText}>No alerts</Text>
+                  </View>
+                )}
               </View>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.emptyActivityCard}>
-              <Ionicons name="cart-outline" size={32} color="#E2E8F0" />
-              <Text style={styles.emptyActivityText}>No orders yet</Text>
-              <TouchableOpacity 
-                style={styles.orderNowBtn}
-                onPress={() => router.push('/pharmacy/search')}
-              >
-                <Text style={styles.orderNowBtnText}>Order Medications</Text>
-              </TouchableOpacity>
             </View>
           )}
         </View>
-      </>
+      </View>
     );
   };
 
@@ -659,40 +829,40 @@ export default function HomeScreen() {
       { label: 'Today', value: stats.today || '0', icon: 'today', color: '#3B82F6', bg: '#EFF6FF' },
       { label: 'Pending', value: stats.pending || '0', icon: 'time', color: '#F59E0B', bg: '#FFF7ED' },
       { label: 'Total Appts', value: stats.total || '0', icon: 'calendar', color: '#8B5CF6', bg: '#F5F3FF' },
-      { label: 'Earnings', value: `₦${(stats.earnings || 0).toLocaleString()}`, icon: 'wallet', color: '#10B981', bg: '#ECFDF5' },
     ];
 
     return (
       <View style={{ flex: 1 }}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.subGreeting}>Medical Portal</Text>
-            <Text style={styles.greeting}>Dr. {userData?.full_name?.split(' ')[0] || 'Doctor'}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Hi, Dr. {userData?.full_name?.split(' ')[0] || 'Doctor'}</Text>
           </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={styles.headerRightClose}>
             <TouchableOpacity 
-              style={styles.notifBtn}
-              onPress={() => router.push('/notifications' as any)}
+              style={[styles.notifBtnSmall, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 4 }]}
+              onPress={() => router.push('/wallet' as any)}
             >
-              <Ionicons name="notifications-outline" size={24} color="#1E293B" />
-              {unreadNotifications > 0 && (
-                <View style={styles.notifBadge}>
-                  <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
-                </View>
-              )}
+              <Ionicons name="wallet-outline" size={16} color="#10B981" />
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>
+                ₦{(stats.earnings || 0).toLocaleString()}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.profilePic}
-              onPress={() => router.push('/profile' as any)}
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/bookings/search')}
             >
-              <LinearGradient
-                colors={['#4A90E2', '#2572D9']}
-                style={styles.profilePicGradient}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>
-                  {(userData?.full_name || 'D').charAt(0)}
-                </Text>
-              </LinearGradient>
+              <Ionicons name="search" size={16} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/notifications' as any)}
+            >
+              <Ionicons name="notifications" size={16} color="#0F172A" />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadgeSmall}>
+                  <Text style={styles.notifBadgeTextSmall}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -748,7 +918,7 @@ export default function HomeScreen() {
               onPress={() => s.label === 'Earnings' && router.push('/wallet' as any)}
             >
               <View style={[styles.doctorStatIconBg, { backgroundColor: s.bg }]}>
-                <Ionicons name={s.icon as any} size={22} color={s.color} />
+                <Ionicons name={s.icon as any} size={18} color={s.color} />
               </View>
               <Text style={styles.doctorStatValue}>{s.value}</Text>
               <Text style={styles.doctorStatLabel}>{s.label}</Text>
@@ -756,8 +926,14 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* Wallet Quick Access for Doctors */}
-        <View style={styles.section}>
+        {/* Upcoming Appointments Section */}
+        <View style={styles.sectionCompact}>
+          <View style={styles.sectionHeaderCompact}>
+            <Text style={styles.sectionTitle}>Agenda for Today</Text>
+            <TouchableOpacity onPress={() => router.push('/bookings/search')}>
+              <Text style={styles.seeAll}>Schedule</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity 
             style={styles.walletQuickCard}
             onPress={() => router.push('/wallet' as any)}
@@ -770,16 +946,77 @@ export default function HomeScreen() {
             >
               <View style={styles.walletLeft}>
                 <View style={styles.walletIconCircle}>
-                  <Ionicons name="wallet" size={24} color="#FFF" />
+                  <Ionicons name="wallet" size={18} color="#FFF" />
                 </View>
                 <View>
                   <Text style={styles.walletTitle}>My Wallet</Text>
                   <Text style={styles.walletSubtitle}>Manage earnings & withdrawals</Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="#FFF" opacity={0.8} />
+              <Ionicons name="chevron-forward" size={18} color="#FFF" opacity={0.6} />
             </LinearGradient>
           </TouchableOpacity>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionSmallTitle}>Medical Tools</Text>
+          <View style={styles.servicesRow}>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/doctor/schedule/manage')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F0F9FF' }]}>
+                <Ionicons name="calendar-clear" size={18} color="#0EA5E9" />
+              </View>
+              <Text style={styles.serviceLabel}>Schedule</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/explore')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F5F3FF' }]}>
+                <Ionicons name="calendar" size={18} color="#8B5CF6" />
+              </View>
+              <Text style={styles.serviceLabel}>Appointments</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/messages')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FFFBEB' }]}>
+                <Ionicons name="chatbubbles" size={18} color="#D97706" />
+              </View>
+              <Text style={styles.serviceLabel}>Chats</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/medi-chat')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="sparkles" size={18} color="#9333EA" />
+              </View>
+              <Text style={styles.serviceLabel}>AI Tools</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/doctor/prescription/create')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="document" size={18} color="#22C55E" />
+              </View>
+              <Text style={styles.serviceLabel}>New Rx</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.serviceItem}
+              onPress={() => router.push('/explore')}
+            >
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="people" size={18} color="#F59E0B" />
+              </View>
+              <Text style={styles.serviceLabel}>Patients</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Today's Schedule */}
@@ -790,68 +1027,100 @@ export default function HomeScreen() {
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
-          
+
           {recentConsultation && recentConsultation.status !== 'completed' ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.appointmentCard}
+              activeOpacity={0.85}
               onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: recentConsultation.id } } as any)}
             >
-              <View style={styles.appointmentHeader}>
-                <View style={[styles.appointmentAvatar, { backgroundColor: '#F1F5F9' }]}>
-                  <Text style={styles.appointmentAvatarText}>
-                    {(recentConsultation.patient_name || 'P').charAt(0)}
-                  </Text>
-                </View>
-                <View style={styles.appointmentInfo}>
-                  <Text style={styles.appointmentPatientName}>{recentConsultation.patient_name || 'Patient'}</Text>
-                  <Text style={styles.appointmentReason} numberOfLines={1}>{recentConsultation.reason || 'Consultation'}</Text>
-                </View>
-                <View style={[styles.appointmentStatusBadge, { 
-                  backgroundColor: recentConsultation.status === 'scheduled' ? '#DCFCE7' : '#FEF3C7' 
-                }]}>
-                  <Text style={[styles.appointmentStatusText, { 
-                    color: recentConsultation.status === 'scheduled' ? '#166534' : '#92400E' 
+              {/* Left accent stripe */}
+              <View style={[
+                styles.appointmentAccent,
+                { backgroundColor: recentConsultation.status === 'scheduled' ? '#10B981' : '#F59E0B' }
+              ]} />
+
+              <View style={styles.appointmentBody}>
+                {/* Top row: avatar + name + status */}
+                <View style={styles.appointmentTopRow}>
+                  <View style={styles.appointmentAvatarCircle}>
+                    <Text style={styles.appointmentAvatarText}>
+                      {(recentConsultation.patient_name || 'P').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentInfo}>
+                    <Text style={styles.appointmentPatientName}>
+                      {recentConsultation.patient_name || 'Patient'}
+                    </Text>
+                    <Text style={styles.appointmentReason} numberOfLines={1}>
+                      {recentConsultation.reason || 'General Consultation'}
+                    </Text>
+                  </View>
+                  <View style={[styles.appointmentStatusBadge, {
+                    backgroundColor: recentConsultation.status === 'scheduled' ? '#DCFCE7' : '#FEF3C7'
                   }]}>
-                    {recentConsultation.status?.toUpperCase()}
-                  </Text>
+                    <Text style={[styles.appointmentStatusText, {
+                      color: recentConsultation.status === 'scheduled' ? '#166534' : '#92400E'
+                    }]}>
+                      {recentConsultation.status === 'scheduled' ? '● Scheduled' : '● Pending'}
+                    </Text>
+                  </View>
                 </View>
+
+                {/* Meta chips row */}
+                <View style={styles.appointmentChipsRow}>
+                  <View style={styles.appointmentChip}>
+                    <Ionicons name="time-outline" size={12} color="#64748B" />
+                    <Text style={styles.appointmentChipText}>
+                      {recentConsultation.scheduled_at
+                        ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : 'TBD'}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentChip}>
+                    <Ionicons
+                      name={recentConsultation.mode === 'video' ? 'videocam-outline' : recentConsultation.mode === 'audio' ? 'call-outline' : 'chatbubbles-outline'}
+                      size={12}
+                      color="#64748B"
+                    />
+                    <Text style={styles.appointmentChipText}>
+                      {recentConsultation.mode?.charAt(0).toUpperCase() + (recentConsultation.mode?.slice(1) || '') || 'Video'}
+                    </Text>
+                  </View>
+                  <View style={styles.appointmentChip}>
+                    <Ionicons name="calendar-outline" size={12} color="#64748B" />
+                    <Text style={styles.appointmentChipText}>
+                      {recentConsultation.scheduled_at
+                        ? new Date(recentConsultation.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })
+                        : 'Today'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Join button */}
+                {['video', 'audio'].includes(recentConsultation.mode?.toLowerCase()) &&
+                 ['scheduled', 'accepted', 'admitted'].includes(recentConsultation.status?.toLowerCase()) && (
+                  <TouchableOpacity
+                    style={styles.joinVideoBtn}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push({
+                        pathname: '/consultation/video',
+                        params: { consultationId: recentConsultation.id, mode: recentConsultation.mode }
+                      } as any);
+                    }}
+                  >
+                    <Ionicons
+                      name={recentConsultation.mode === 'audio' ? 'call' : 'videocam'}
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                    <Text style={styles.joinVideoBtnText}>
+                      Join {recentConsultation.mode === 'audio' ? 'Audio' : 'Video'} Call
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              <View style={styles.appointmentFooter}>
-                <View style={styles.appointmentDetail}>
-                  <Ionicons name="time-outline" size={14} color="#64748B" />
-                  <Text style={styles.appointmentDetailText}>
-                    {recentConsultation.scheduled_at ? new Date(recentConsultation.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBD'}
-                  </Text>
-                </View>
-                <View style={styles.appointmentDetail}>
-                  <Ionicons name={recentConsultation.mode === 'video' ? 'videocam-outline' : 'chatbubbles-outline'} size={14} color="#64748B" />
-                  <Text style={styles.appointmentDetailText}>
-                    {recentConsultation.mode?.toUpperCase() || 'VIDEO'}
-                  </Text>
-                </View>
-              </View>
-              {['video', 'audio'].includes(recentConsultation.mode?.toLowerCase()) && 
-               ['scheduled', 'accepted', 'admitted'].includes(recentConsultation.status?.toLowerCase()) && (
-                <TouchableOpacity 
-                  style={styles.joinVideoBtn}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    router.push({ 
-                      pathname: '/consultation/video', 
-                      params: { consultationId: recentConsultation.id, mode: recentConsultation.mode } 
-                    } as any);
-                  }}
-                >
-                  <Ionicons 
-                    name={recentConsultation.mode === 'audio' ? "call" : "videocam"} 
-                    size={18} 
-                    color="#FFFFFF" 
-                  />
-                  <Text style={styles.joinVideoBtnText}>
-                    Join {recentConsultation.mode === 'audio' ? 'Audio' : 'Video'} Call
-                  </Text>
-                </TouchableOpacity>
-              )}
             </TouchableOpacity>
           ) : (
             <View style={styles.emptyActivityCard}>
@@ -859,34 +1128,6 @@ export default function HomeScreen() {
               <Text style={styles.emptyActivityText}>No appointments for today</Text>
             </View>
           )}
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={[styles.actionsGrid, { marginTop: 16 }]}>
-             <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/doctor/schedule/manage')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#F0F9FF' }]}>
-                <Ionicons name="calendar" size={28} color="#0EA5E9" />
-              </View>
-              <Text style={styles.actionLabel}>Manage</Text>
-              <Text style={styles.actionSubLabel}>Set availability</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/doctor/prescription/create')}
-            >
-              <View style={[styles.iconBg, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="medical" size={28} color="#22C55E" />
-              </View>
-              <Text style={styles.actionLabel}>New Rx</Text>
-              <Text style={styles.actionSubLabel}>Write script</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     );
@@ -904,34 +1145,40 @@ export default function HomeScreen() {
     ];
 
     return (
-      <View style={styles.pharmacyDashboard}>
-        <LinearGradient
-          colors={['#0D1B3A', '#1E3A5F']}
-          style={styles.pharmacyHeaderGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        />
-
+      <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={[styles.subGreeting, { color: 'rgba(255,255,255,0.7)' }]}>Welcome back,</Text>
-            <Text style={[styles.greeting, { color: '#FFFFFF' }]}>{userData?.pharmacy_name || userData?.full_name || 'Pharmacy'}</Text>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Hi, {userData?.pharmacy_name?.split(' ')[0] || userData?.full_name?.split(' ')[0] || 'Pharmacy'}</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.profilePic, { borderColor: 'rgba(255,255,255,0.2)' }]}
-            onPress={() => router.push('/profile' as any)}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
-              style={styles.profilePicGradient}
+          <View style={styles.headerRightClose}>
+            <TouchableOpacity 
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/explore' as any)}
             >
-              <Ionicons name="business-outline" size={24} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <Ionicons name="search" size={16} color="#0F172A" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/notifications' as any)}
+            >
+              <Ionicons name="notifications" size={16} color="#0F172A" />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadgeSmall}>
+                  <Text style={styles.notifBadgeTextSmall}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.notifBtnSmall}
+              onPress={() => router.push('/profile' as any)}
+            >
+              <Ionicons name="business" size={18} color="#0F172A" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Profile Completion Prompt — User Friendly setup */}
+        {/* Profile Completion Prompt */}
         {isProfileIncomplete && (
           <TouchableOpacity 
             style={styles.setupCard}
@@ -942,13 +1189,13 @@ export default function HomeScreen() {
               style={styles.setupGradient}
             >
               <View style={styles.setupIconBg}>
-                <Ionicons name="rocket-outline" size={24} color="#F59E0B" />
+                <Ionicons name="rocket-outline" size={22} color="#F59E0B" />
               </View>
               <View style={styles.setupInfo}>
                 <Text style={styles.setupTitle}>Complete your setup</Text>
                 <Text style={styles.setupSubTitle}>Fill in your business details to start receiving orders.</Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color="#F59E0B" />
+              <Ionicons name="arrow-forward" size={18} color="#F59E0B" />
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -958,7 +1205,7 @@ export default function HomeScreen() {
           {pharmacyStats.map((s, i) => (
             <View key={i} style={[styles.statCard, styles.pharmacyStatCard]}>
               <View style={[styles.statIconCircle, { backgroundColor: `${s.color}22` }]}>
-                <Ionicons name={s.icon as any} size={20} color={s.color} />
+                <Ionicons name={s.icon as any} size={18} color={s.color} />
               </View>
               <Text style={styles.statValue}>{s.value}</Text>
               <Text style={styles.statLabel}>{s.label}</Text>
@@ -966,7 +1213,7 @@ export default function HomeScreen() {
           ))}
         </View>
 
-        {/* New Prescriptions — Step 2: "View new prescriptions sent by doctors/patients" */}
+        {/* New Prescriptions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>New Prescriptions</Text>
@@ -981,7 +1228,7 @@ export default function HomeScreen() {
             >
               <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pharmacyActivityGradient}>
                 <View style={[styles.statIconCircle, { backgroundColor: '#EEF2FF', marginRight: 16 }]}>
-                  <Ionicons name="document-text-outline" size={22} color="#4F46E5" />
+                  <Ionicons name="document-text-outline" size={20} color="#4F46E5" />
                 </View>
                 <View style={styles.activityInfo}>
                   <Text style={styles.activityDetail}>From: {recentOrder.patient_name || 'Customer'}</Text>
@@ -1002,52 +1249,48 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Quick Actions — Step 3 & 4 shortcuts */}
+        {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
+          <Text style={styles.sectionSmallTitle}>Business Tools</Text>
+          <View style={styles.servicesRow}>
             <TouchableOpacity
-              style={[styles.actionCard, styles.pharmacyActionCard]}
+              style={styles.serviceItem}
               onPress={() => router.push('/explore' as any)}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#EEF2FF' }]}>
-                <Ionicons name="cart-outline" size={26} color="#4F46E5" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="cart" size={18} color="#4F46E5" />
               </View>
-              <Text style={styles.actionLabel}>Orders</Text>
-              <Text style={styles.actionSubLabel}>Manage queue</Text>
+              <Text style={styles.serviceLabel}>Orders</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionCard, styles.pharmacyActionCard]}
+              style={styles.serviceItem}
               onPress={() => router.push('/(tabs)/scan' as any)}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons name="qr-code-outline" size={26} color="#10B981" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="qr-code" size={18} color="#10B981" />
               </View>
-              <Text style={styles.actionLabel}>Dispense</Text>
-              <Text style={styles.actionSubLabel}>Scan QR code</Text>
+              <Text style={styles.serviceLabel}>Dispense</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionCard, styles.pharmacyActionCard]}
+              style={styles.serviceItem}
               onPress={() => router.push('/(tabs)/two' as any)}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons name="cube-outline" size={26} color="#F59E0B" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="cube" size={18} color="#F59E0B" />
               </View>
-              <Text style={styles.actionLabel}>Stock</Text>
-              <Text style={styles.actionSubLabel}>Inventory</Text>
+              <Text style={styles.serviceLabel}>Stock</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionCard, styles.pharmacyActionCard]}
+              style={styles.serviceItem}
               onPress={() => router.push('/(tabs)/reputation' as any)}
             >
-              <View style={[styles.iconBg, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="stats-chart-outline" size={26} color="#7C3AED" />
+              <View style={[styles.serviceIconCircle, { backgroundColor: '#F5F3FF' }]}>
+                <Ionicons name="bar-chart" size={18} color="#7C3AED" />
               </View>
-              <Text style={styles.actionLabel}>Insights</Text>
-              <Text style={styles.actionSubLabel}>Performance</Text>
+              <Text style={styles.serviceLabel}>Insights</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1100,6 +1343,7 @@ export default function HomeScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1118,23 +1362,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 16,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  welcomeBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   greeting: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
   },
   subGreeting: {
-    fontSize: 16,
+    fontSize: 10,
     color: '#64748B',
-    fontWeight: '500',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   profilePic: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
@@ -1148,9 +1410,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 32,
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     ...Platform.select({
@@ -1167,31 +1429,48 @@ const styles = StyleSheet.create({
     }),
   },
   searchInput: {
-    marginLeft: 12,
-    fontSize: 16,
+    marginLeft: 10,
+    fontSize: 14,
     flex: 1,
     color: '#0F172A',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   section: {
-    marginBottom: 36,
+    marginBottom: 28,
+  },
+  sectionCompact: {
+    marginBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  sectionHeaderCompact: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
+  },
+  sectionSmallTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
   },
   seeAll: {
-    color: '#3B82F6',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#2563EB',
+    fontSize: 13,
+    fontWeight: '800',
   },
   actionsGrid: {
     flexDirection: 'row',
@@ -1220,53 +1499,149 @@ const styles = StyleSheet.create({
       }
     }),
   },
-  iconBg: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+  servicesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    flexWrap: 'wrap',
+    rowGap: 16,
+  },
+  serviceItem: {
+    alignItems: 'center',
+    width: '32%', // Allow wrapping to 3 columns if needed, but flex will try to fit
+
+  },
+  serviceIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F8FAFC',
+  },
+  serviceLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#334155',
+    textAlign: 'center',
+  },
+  serviceBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    zIndex: 10,
+  },
+  serviceBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  dashboardNavContainer: {
+    marginBottom: 20,
+  },
+  dashboardNavScroll: {
+    paddingRight: 24,
+    gap: 8,
+  },
+  dashboardNavTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dashboardNavTabActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  dashboardNavTabText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  dashboardNavTabTextActive: {
+    color: '#FFFFFF',
+  },
+  tabContentContainer: {
+    minHeight: 120,
+  },
+  iconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   actionLabel: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
   },
   actionSubLabel: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#94A3B8',
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   categoriesScroll: {
     marginLeft: -24,
     paddingLeft: 24,
   },
   categoryCard: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    marginRight: 12,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  catIconBg: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
-  catIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#F0F9FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   categoryName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#CBD5E1',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#334155',
   },
   pharmacyNameRow: {
     flexDirection: 'row',
@@ -1498,9 +1873,9 @@ const styles = StyleSheet.create({
   },
   // Patient Dashboard Styles
   notifBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
@@ -1542,29 +1917,29 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
   },
   statIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   patientStatValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '900',
     color: '#0F172A',
   },
   patientStatLabel: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#94A3B8',
     marginTop: 4,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   // Order Card Styles
   orderCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
@@ -1572,75 +1947,76 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   orderPharmacyInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   orderIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   orderPharmacyName: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '800',
     color: '#0F172A',
   },
   orderDate: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
   },
   orderStatusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   orderStatusText: {
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'capitalize',
+    fontSize: 9,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   orderCardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F8FAFC',
   },
   orderTotalLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   orderTotalValue: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0D1B3A',
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   orderNowBtn: {
-    marginTop: 16,
-    backgroundColor: '#0D1B3A',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    marginTop: 12,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 12,
+    alignItems: 'center',
   },
   orderNowBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   // Consultation Card Styles
   consultationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
@@ -1648,135 +2024,137 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4F46E5',
-    paddingVertical: 10,
+    backgroundColor: '#2563EB',
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 12,
-    marginTop: 16,
-    gap: 8,
+    marginTop: 14,
+    gap: 6,
   },
   joinVideoBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   consultationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   consultationIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   consultationInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
   consultationDoctor: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '800',
     color: '#0F172A',
   },
   consultationSpecialty: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
   },
   consultationStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   consultationStatusText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
+    textTransform: 'uppercase',
   },
   consultationFooter: {
     flexDirection: 'row',
-    gap: 16,
-    paddingTop: 16,
+    gap: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F8FAFC',
   },
   consultationDetail: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   consultationDetailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   // Prescription Card Styles
   prescriptionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
   prescriptionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   prescriptionIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   prescriptionInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
   prescriptionDoctor: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: '#0F172A',
   },
   prescriptionDate: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 2,
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
   },
   prescriptionBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
   },
   prescriptionBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   prescriptionFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F8FAFC',
   },
   prescriptionExpiry: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   buyAgainBtn: {
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#2563EB',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   buyAgainBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
   },
   // Reminders Styles
@@ -1861,101 +2239,129 @@ const styles = StyleSheet.create({
   // Doctor Dashboard Styles
   doctorStatsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
     marginBottom: 24,
     justifyContent: 'space-between',
   },
   doctorStatCard: {
-    width: '48%',
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
+    padding: 12,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    marginBottom: 4,
   },
   doctorStatIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
   doctorStatValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: '#0F172A',
   },
   doctorStatLabel: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#94A3B8',
     marginTop: 4,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   walletQuickCard: {
     marginTop: 8,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 70, 229, 0.1)',
+    ...Platform.select({
+      web: { boxShadow: '0 4px 10px rgba(79, 70, 229, 0.15)' },
+      default: {
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 3,
+      }
+    }),
   },
   walletGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   walletLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   walletIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   walletTitle: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: -0.3,
   },
   walletSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 12,
+    fontWeight: '600',
   },
   // Appointment Card Styles
   appointmentCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E8EEFB',
+    flexDirection: 'row',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: { boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' },
+      default: {
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+      }
+    }),
   },
-  appointmentHeader: {
+  appointmentAccent: {
+    width: 4,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+  },
+  appointmentBody: {
+    flex: 1,
+    padding: 14,
+  },
+  appointmentTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  appointmentAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+  appointmentAvatarCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   appointmentAvatarText: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
     color: '#4F46E5',
   },
@@ -1964,28 +2370,52 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   appointmentPatientName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
+    letterSpacing: -0.2,
   },
   appointmentReason: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
     marginTop: 2,
+    fontWeight: '500',
   },
   appointmentStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
   },
   appointmentStatusText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
+    letterSpacing: 0.1,
+  },
+  appointmentChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  appointmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  appointmentChipText: {
+    fontSize: 11,
+    color: '#475569',
+    fontWeight: '700',
   },
   appointmentFooter: {
     flexDirection: 'row',
     gap: 16,
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
@@ -1995,7 +2425,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   appointmentDetailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
     fontWeight: '600',
   },
@@ -2125,5 +2555,187 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     marginTop: 2,
+  },
+  headerRightClose: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  notifBtnSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notifBadgeSmall: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  notifBadgeTextSmall: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  greetingDate: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  calendarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
+  calendarBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  calendarSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  calendarHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  calendarNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarMonthTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  calDayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  calDayName: {
+    width: 38,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
+  },
+  calGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 8,
+  },
+  calDayCell: {
+    width: '14.28%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calDayNum: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  calDaySelected: {
+    backgroundColor: '#2563EB',
+  },
+  calDayToday: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+  },
+  calDayText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  calDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  calDayTextToday: {
+    color: '#2563EB',
+    fontWeight: '800',
+  },
+  calApptDot: {
+    position: 'absolute',
+    bottom: 4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#2563EB',
+  },
+  calLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  calLegendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2563EB',
+  },
+  calLegendText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  calTodayBtn: {
+    marginTop: 20,
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  calTodayBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

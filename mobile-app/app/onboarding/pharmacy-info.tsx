@@ -73,25 +73,29 @@ export default function PharmacyInfoScreen() {
           <View style={styles.form}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Pharmacy Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: HealthPlus Pharmacy"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                value={pharmacyName}
-                onChangeText={setPharmacyName}
-              />
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="HealthPlus Pharmacy"
+                  placeholderTextColor="#94A3B8"
+                  value={pharmacyName}
+                  onChangeText={setPharmacyName}
+                />
+              </View>
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Pharmacy Address</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Enter your pharmacy address"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                multiline
-                numberOfLines={3}
-                value={pharmacyAddress}
-                onChangeText={setPharmacyAddress}
-              />
+              <View style={styles.textAreaBox}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Enter your pharmacy address"
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={3}
+                  value={pharmacyAddress}
+                  onChangeText={setPharmacyAddress}
+                />
+              </View>
             </View>
           </View>
         );
@@ -100,13 +104,15 @@ export default function PharmacyInfoScreen() {
           <View style={styles.form}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Pharmacy License Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: PH-12345678"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                value={pharmacyLicense}
-                onChangeText={setPharmacyLicense}
-              />
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="PH-12345678"
+                  placeholderTextColor="#94A3B8"
+                  value={pharmacyLicense}
+                  onChangeText={setPharmacyLicense}
+                />
+              </View>
               <Text style={styles.helperText}>This helps us verify your business for user trust.</Text>
             </View>
           </View>
@@ -116,25 +122,29 @@ export default function PharmacyInfoScreen() {
           <View style={styles.form}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Public Contact Info</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ex: +234 800 000 0000, email@example.com"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                value={pharmacyContactInfo}
-                onChangeText={setPharmacyContactInfo}
-              />
+              <View style={styles.inputBox}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="+234 800 000 0000"
+                  placeholderTextColor="#94A3B8"
+                  value={pharmacyContactInfo}
+                  onChangeText={setPharmacyContactInfo}
+                />
+              </View>
             </View>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Opening Hours</Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Ex: Mon-Fri: 8AM-8PM, Sat: 9AM-5PM"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                multiline
-                numberOfLines={2}
-                value={openingHours}
-                onChangeText={setOpeningHours}
-              />
+              <View style={styles.textAreaBox}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Mon-Fri: 8AM-8PM, Sat: 9AM-5PM"
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={2}
+                  value={openingHours}
+                  onChangeText={setOpeningHours}
+                />
+              </View>
             </View>
           </View>
         );
@@ -145,20 +155,24 @@ export default function PharmacyInfoScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ProgressBar currentStep={step + 4} totalSteps={8} label="Business Profile" />
-          <View style={styles.header}>
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={step === 1 ? () => router.back() : handleBack} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#0F172A" />
+            </TouchableOpacity>
+            <ProgressBar currentStep={step + 4} totalSteps={8} label="Business Profile" />
+          </View>
+
+          <View style={styles.titleSection}>
+            <View style={styles.iconBadge}>
+              <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.iconGrad}>
+                <Ionicons name="business-outline" size={24} color="#fff" />
+              </LinearGradient>
+            </View>
             <Text style={styles.title}>
               {step === 1 ? 'Basic Details' : step === 2 ? 'Verification' : 'Operations'}
             </Text>
@@ -172,54 +186,49 @@ export default function PharmacyInfoScreen() {
           {renderStep()}
 
           {error && (
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {step === 1 && (
+            <TouchableOpacity 
+              style={styles.skipButton} 
+              onPress={() => router.push('/onboarding/terms')}
+              disabled={loading}
+            >
+              <Text style={styles.skipButtonText}>Skip for now</Text>
+            </TouchableOpacity>
           )}
         </ScrollView>
 
         <View style={styles.footer}>
-          {step > 1 && (
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={handleBack}
-              disabled={loading}
-            >
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity 
-            style={[styles.button, (!isStepValid() || loading) && styles.buttonDisabled, { flex: 1 }]} 
+            style={[styles.button, (!isStepValid() || loading) && styles.buttonDisabled]} 
             onPress={handleNext}
             disabled={!isStepValid() || loading}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#2572D9', '#4A90E2']}
-              style={styles.buttonGradient}
+              colors={isStepValid() ? ['#4A90E2', '#2572D9'] : ['#CBD5E1', '#CBD5E1']}
+              style={styles.buttonGrad}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>
-                  {step === totalSteps ? 'Complete Setup' : 'Next Step'}
-                </Text>
+                <View style={styles.buttonInner}>
+                  <Text style={styles.buttonText}>
+                    {step === totalSteps ? 'Complete Setup' : 'Next Step'}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </View>
               )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        {step === 1 && (
-          <TouchableOpacity 
-            style={styles.skipButton} 
-            onPress={() => router.push('/pharmacy/dashboard')}
-            disabled={loading}
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -228,131 +237,158 @@ export default function PharmacyInfoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
   },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  content: {
+  scroll: {
     flexGrow: 1,
-    paddingHorizontal: 32,
-    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
   },
-  header: {
-    marginBottom: 32,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 8,
+    marginBottom: 8,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleSection: {
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  iconGrad: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -1,
+    color: '#0F172A',
+    letterSpacing: -0.8,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 24,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'left',
+    lineHeight: 20,
+    maxWidth: '90%',
   },
   form: {
-    gap: 24,
+    gap: 18,
   },
   inputGroup: {
     gap: 8,
   },
-  helperText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.4)',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
   label: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#1E293B',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputBox: {
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    fontSize: 15,
+    color: '#0F172A',
+  },
+  textAreaBox: {
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     borderRadius: 16,
-    padding: 18,
-    fontSize: 16,
-    color: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    minHeight: 100,
   },
   textArea: {
-    height: 100,
+    fontSize: 15,
+    color: '#0F172A',
     textAlignVertical: 'top',
   },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 14,
+  helperText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: -4,
+    fontStyle: 'italic',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
     marginTop: 16,
-    textAlign: 'center',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
   },
   footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingBottom: 24,
-    gap: 16,
-    alignItems: 'center',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 18,
-    gap: 8,
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    paddingTop: 8,
   },
   button: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
-  },
-  skipButton: {
-    marginHorizontal: 32,
-    marginBottom: 24,
-    padding: 12,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.75,
   },
-  buttonGradient: {
-    padding: 18,
+  buttonGrad: {
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  skipButton: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

@@ -438,9 +438,9 @@ class ApiService {
   }
 
   // Search endpoints
-  async searchDoctors(params: { specialty?: string; min_rating?: number; available_date?: string }) {
+  async searchDoctors(params: { specialty?: string; min_rating?: number; available_date?: string; name?: string }) {
     const queryParams = new URLSearchParams(params as any).toString();
-    return this.request<any[]>(`/doctors/search?${queryParams}`);
+    return this.request<any>(`/doctors/search?${queryParams}`);
   }
 
   async getDoctorById(id: string) {

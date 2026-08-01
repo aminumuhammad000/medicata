@@ -10,6 +10,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -22,6 +24,10 @@ export interface PushNotification {
 // Register for push notifications
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   let token: string | null = null;
+  
+  if (Platform.OS === 'web') {
+    return null;
+  }
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -64,10 +70,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     
     // Send token to backend
     try {
-      await api.request('/notifications/register-token', {
-        method: 'POST',
-        body: JSON.stringify({ token, platform: Platform.OS }),
-      });
+      await api.savePushToken(token);
     } catch (err) {
       console.error('Failed to register push token:', err);
     }
@@ -85,6 +88,7 @@ export async function scheduleLocalNotification(
   data?: any,
   seconds: number = 0
 ): Promise<string> {
+  const trigger = seconds > 0 ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, repeats: false } as const : null;
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -92,7 +96,7 @@ export async function scheduleLocalNotification(
       data,
       sound: true,
     },
-    trigger: seconds > 0 ? { seconds } : null,
+    trigger,
   });
   return id;
 }
@@ -127,25 +131,8 @@ export function addNotificationResponseListener(
 }
 
 // Remove notification listener
-export function removeNotificationListener(subscription: Notifications.Subscription): void {
-  Notifications.removeNotificationSubscription(subscription);
-}
-
-// Present local notification immediately
-export async function presentLocalNotification(
-  title: string,
-  body: string,
-  data?: any
-): Promise<void> {
-  await Notifications.presentNotificationAsync({
-    content: {
-      title,
-      body,
-      data,
-      sound: true,
-    },
-    trigger: null,
-  });
+export function removeNotificationListener(subscription: Notifications.EventSubscription): void {
+  subscription.remove();
 }
 
 // Set badge count

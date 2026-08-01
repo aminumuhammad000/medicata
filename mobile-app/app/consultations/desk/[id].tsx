@@ -308,25 +308,25 @@ export default function ConsultationDesk() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.topSection}>
+      <View style={styles.topSection}>
         <SafeAreaView edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
-              <Ionicons name="chevron-back" size={24} color="#fff" />
+              <Ionicons name="chevron-back" size={20} color="#0F172A" />
             </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
               <Text style={styles.headerTitle}>Clinical Desk</Text>
-              <Text style={styles.headerSubtitle}>Consultation Details & Records</Text>
+              <Text style={styles.headerSubtitle}>Details & Records</Text>
             </View>
             <TouchableOpacity 
-              onPress={() => router.push({ pathname: '/consultations/chat/[id]', params: { id } })}
-              style={[styles.headerBtn, { backgroundColor: '#4A90E2' }]}
+              onPress={() => router.push({ pathname: '/consultations/chat/[id]', params: { id } } as any)}
+              style={styles.headerBtn}
             >
-              <Ionicons name="chatbubbles" size={20} color="#fff" />
+              <Ionicons name="chatbubbles-outline" size={18} color="#0F172A" />
             </TouchableOpacity>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         {!isAccepted && isDoctor ? (
@@ -353,12 +353,10 @@ export default function ConsultationDesk() {
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.patientProfileCard}>
               <View style={styles.profileMain}>
-                <View style={styles.profileAvatar}>
-                  <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.avatarGradient}>
-                    <Text style={styles.avatarText}>
-                      {(isDoctor ? consultation?.patient_name : consultation?.doctor_name || 'A').charAt(0)}
-                    </Text>
-                  </LinearGradient>
+                <View style={[styles.profileAvatar, { backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Text style={styles.avatarText}>
+                    {(isDoctor ? consultation?.patient_name : consultation?.doctor_name || 'A').charAt(0).toUpperCase()}
+                  </Text>
                 </View>
                 <View style={styles.profileDetails}>
                   <Text style={styles.profileName}>
@@ -464,16 +462,12 @@ export default function ConsultationDesk() {
                 </View>
 
                 {isPending && !isDoctor && (
-                  <TouchableOpacity style={styles.checkoutBtn} onPress={handleDirectCheckout}>
-                    <LinearGradient
-                      colors={['#4F46E5', '#7C3AED']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.checkoutGradient}
-                    >
-                      <Ionicons name="shield-checkmark" size={20} color="#FFF" />
-                      <Text style={styles.checkoutBtnText}>Secure Checkout (Direct Pay)</Text>
-                    </LinearGradient>
+                  <TouchableOpacity 
+                    style={[styles.checkoutBtn, { backgroundColor: '#2563EB', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, gap: 10, borderRadius: 16 }]} 
+                    onPress={handleDirectCheckout}
+                  >
+                    <Ionicons name="shield-checkmark-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.checkoutBtnText}>Secure Checkout (Direct Pay)</Text>
                   </TouchableOpacity>
                 )}
 
@@ -506,134 +500,619 @@ export default function ConsultationDesk() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  topSection: { paddingBottom: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 10 },
-  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.15)', justifyContent: 'center', alignItems: 'center' },
-  headerTitleContainer: { alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSubtitle: { fontSize: 11, color: 'rgba(255, 255, 255, 0.7)', fontWeight: '600' },
-  pendingOverlay: { flex: 1, justifyContent: 'center', padding: 24 },
-  pendingCard: { backgroundColor: '#fff', borderRadius: 30, padding: 30, alignItems: 'center', ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20 }, android: { elevation: 10 } }) },
-  pendingIconBg: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  pendingTitle: { fontSize: 22, fontWeight: '800', color: '#1E293B', marginBottom: 12 },
-  pendingSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  pendingActions: { flexDirection: 'row', gap: 12 },
-  approvalBtn: { flex: 1, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  declineBtn: { backgroundColor: '#F1F5F9' },
-  acceptBtn: { backgroundColor: '#0D1B3A', flex: 2 },
-  declineBtnText: { color: '#64748B', fontWeight: '700' },
-  acceptBtnText: { color: '#fff', fontWeight: '700' },
-  scrollContent: { padding: 20 },
-  patientProfileCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  profileMain: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-  profileAvatar: { width: 60, height: 60, borderRadius: 20, overflow: 'hidden' },
-  avatarGradient: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  profileDetails: { flex: 1 },
-  profileName: { fontSize: 18, fontWeight: '800', color: '#1E293B', marginBottom: 4 },
-  profileMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  profileMeta: { fontSize: 12, color: '#64748B', fontWeight: '600' },
-  profileFooter: { borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
-  reasonTag: { gap: 4 },
-  reasonLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
-  reasonValue: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
-  clinicalSections: { gap: 20 },
-  clinicalSection: { backgroundColor: '#fff', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#F1F5F9' },
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  clinicalSectionTitle: { fontSize: 15, fontWeight: '800', color: '#0D1B3A' },
-  clinicalInput: { fontSize: 15, color: '#1E293B', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  clinicalTextArea: { fontSize: 14, color: '#1E293B', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, height: 120, textAlignVertical: 'top', borderWidth: 1, borderColor: '#F1F5F9' },
-  quickActionsGrid: { flexDirection: 'row', gap: 12 },
-  gridActionBtn: { flex: 1, backgroundColor: '#fff', borderRadius: 18, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  gridIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  gridActionLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
-  bottomActions: { padding: 20, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  submitBtn: { backgroundColor: '#4A90E2', height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-  submitBtnDisabled: { backgroundColor: '#CBD5E1' },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC' 
+  },
+  topSection: { 
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 16, 
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 20, 
+    paddingTop: 10 
+  },
+  headerBtn: { 
+    width: 38, 
+    height: 38, 
+    borderRadius: 12, 
+    backgroundColor: '#F8FAFC', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  headerTitleContainer: { 
+    alignItems: 'center' 
+  },
+  headerTitle: { 
+    fontSize: 16, 
+    fontWeight: '900', 
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: { 
+    fontSize: 11, 
+    color: '#64748B', 
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pendingOverlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    padding: 24 
+  },
+  pendingCard: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 24, 
+    padding: 24, 
+    alignItems: 'center', 
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  pendingIconBg: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#FFF7ED', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  pendingTitle: { 
+    fontSize: 20, 
+    fontWeight: '900', 
+    color: '#0F172A', 
+    marginBottom: 8 
+  },
+  pendingSubtitle: { 
+    fontSize: 14, 
+    color: '#64748B', 
+    textAlign: 'center', 
+    lineHeight: 20, 
+    marginBottom: 24,
+    fontWeight: '500',
+  },
+  pendingActions: { 
+    flexDirection: 'row', 
+    gap: 12 
+  },
+  approvalBtn: { 
+    flex: 1, 
+    height: 52, 
+    borderRadius: 14, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  declineBtn: { 
+    backgroundColor: '#F1F5F9' 
+  },
+  acceptBtn: { 
+    backgroundColor: '#0F172A', 
+    flex: 2 
+  },
+  declineBtnText: { 
+    color: '#64748B', 
+    fontWeight: '800' 
+  },
+  acceptBtnText: { 
+    color: '#FFFFFF', 
+    fontWeight: '800' 
+  },
+  scrollContent: { 
+    padding: 20 
+  },
+  patientProfileCard: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 24, 
+    padding: 20, 
+    marginBottom: 20, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  profileMain: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 16, 
+    marginBottom: 16 
+  },
+  profileAvatar: { 
+    width: 56, 
+    height: 56, 
+    borderRadius: 18, 
+    overflow: 'hidden' 
+  },
+  avatarGradient: { 
+    width: '100%', 
+    height: '100%', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+  },
+  avatarText: { 
+    fontSize: 22, 
+    fontWeight: '900', 
+    color: '#2563EB' 
+  },
+  profileDetails: { 
+    flex: 1 
+  },
+  profileName: { 
+    fontSize: 17, 
+    fontWeight: '900', 
+    color: '#0F172A', 
+    marginBottom: 2 
+  },
+  profileMetaRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8 
+  },
+  profileMeta: { 
+    fontSize: 11, 
+    color: '#64748B', 
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  profileFooter: { 
+    borderTopWidth: 1, 
+    borderTopColor: '#F8FAFC', 
+    paddingTop: 14 
+  },
+  reasonTag: { 
+    gap: 4 
+  },
+  reasonLabel: { 
+    fontSize: 10, 
+    fontWeight: '800', 
+    color: '#94A3B8', 
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  reasonValue: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: '#0F172A',
+    lineHeight: 18,
+  },
+  clinicalSections: { 
+    gap: 16 
+  },
+  clinicalSection: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 20, 
+    padding: 16, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  sectionHeaderRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8, 
+    marginBottom: 12 
+  },
+  clinicalSectionTitle: { 
+    fontSize: 14, 
+    fontWeight: '900', 
+    color: '#0F172A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  clinicalInput: { 
+    fontSize: 14, 
+    color: '#0F172A', 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 12, 
+    padding: 12, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9',
+    fontWeight: '500',
+  },
+  clinicalTextArea: { 
+    fontSize: 14, 
+    color: '#0F172A', 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 12, 
+    padding: 12, 
+    height: 100, 
+    textAlignVertical: 'top', 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9',
+    fontWeight: '500',
+  },
+  quickActionsGrid: { 
+    flexDirection: 'row', 
+    gap: 10 
+  },
+  gridActionBtn: { 
+    flex: 1, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 18, 
+    padding: 14, 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  gridIconBg: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 6 
+  },
+  gridActionLabel: { 
+    fontSize: 12, 
+    fontWeight: '800', 
+    color: '#0F172A' 
+  },
+  bottomActions: { 
+    padding: 20, 
+    backgroundColor: '#FFFFFF', 
+    borderTopWidth: 1, 
+    borderTopColor: '#F1F5F9' 
+  },
+  submitBtn: { 
+    backgroundColor: '#2563EB', 
+    height: 56, 
+    borderRadius: 18, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  submitBtnDisabled: { 
+    backgroundColor: '#E2E8F0' 
+  },
+  submitBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: '900' 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#F8FAFC' 
+  },
   patientViewContent: {
     paddingHorizontal: 20,
     marginTop: 20,
-    gap: 20
+    gap: 16
   },
   checkoutBtn: {
-    marginTop: 20,
+    marginTop: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
   },
   checkoutGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 14,
+    gap: 10,
+    backgroundColor: '#2563EB',
   },
   checkoutBtnText: {
-    color: '#FFF',
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '900',
   },
   instructionCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F0F9FF', padding: 16, borderRadius: 18, borderWidth: 1, borderColor: '#B9E6FE' },
-  instructionText: { flex: 1, fontSize: 13, color: '#0369A1', fontWeight: '600', lineHeight: 18 },
-  doctorNotesSection: { backgroundColor: '#fff', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  notesContainer: { marginTop: 12, minHeight: 100, justifyContent: 'center' },
-  notesContent: { fontSize: 15, color: '#1E293B', lineHeight: 24 },
-  waitingContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  waitingText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
-  sectionCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  sectionIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#1E293B' },
-  sectionSubtitle: { fontSize: 13, color: '#64748B', marginTop: 2 },
-  prescriptionCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  prescriptionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  prescriptionIdBadge: { backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  prescriptionIdText: { fontSize: 12, fontWeight: '700', color: '#4338CA' },
-  prescriptionDate: { fontSize: 12, color: '#64748B' },
-  medicationsList: { gap: 10 },
-  medicationItem: { flexDirection: 'row', gap: 10 },
-  medicationDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4A90E2', marginTop: 6 },
-  medicationInfo: { flex: 1 },
-  medicationName: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
-  medicationDetails: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  medicationNote: { fontSize: 11, color: '#4A90E2', fontStyle: 'italic', marginTop: 2 },
-  prescriptionStatus: { marginTop: 12, alignItems: 'flex-start' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  statusBadgeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-  labTestCard: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  labTestHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  requisitionCode: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
-  requestedDate: { fontSize: 12, color: '#64748B', marginTop: 2 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  instructionsBox: { flexDirection: 'row', gap: 8, backgroundColor: '#EFF6FF', padding: 10, borderRadius: 10, marginBottom: 12, alignItems: 'flex-start' },
-  instructionsText: { flex: 1, fontSize: 12, color: '#3B82F6', lineHeight: 18 },
-  testsList: { gap: 8 },
-  testItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  testCategoryTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  testCategoryText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  testName: { fontSize: 14, color: '#1E293B', fontWeight: '500' },
-  waitingForPatient: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  waitingForPatientText: { fontSize: 12, color: '#64748B', fontStyle: 'italic' },
-  labTestActions: { flexDirection: 'row', gap: 12, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  labActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0' },
-  labActionText: { fontSize: 12, fontWeight: '600', color: '#4A90E2' },
-  resultsBox: { backgroundColor: '#F0FDF4', padding: 12, borderRadius: 10, marginTop: 12, borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  resultsLabel: { fontSize: 11, fontWeight: '700', color: '#166534', marginBottom: 4 },
-  resultsText: { fontSize: 13, color: '#1E293B', lineHeight: 20 },
-  emptyLabState: { alignItems: 'center', padding: 30, backgroundColor: '#F8FAFC', borderRadius: 16, borderStyle: 'dashed', borderWidth: 2, borderColor: '#E2E8F0' },
-  emptyLabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
-  emptyLabSubtext: { fontSize: 12, color: '#94A3B8', marginTop: 4 },
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 10, 
+    backgroundColor: '#F0F9FF', 
+    padding: 14, 
+    borderRadius: 16, 
+    borderWidth: 1, 
+    borderColor: '#B9E6FE' 
+  },
+  instructionText: { 
+    flex: 1, 
+    fontSize: 12, 
+    color: '#0369A1', 
+    fontWeight: '700', 
+    lineHeight: 18 
+  },
+  doctorNotesSection: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 24, 
+    padding: 20, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  notesContainer: { 
+    marginTop: 12, 
+    minHeight: 80, 
+    justifyContent: 'center' 
+  },
+  notesContent: { 
+    fontSize: 14, 
+    color: '#0F172A', 
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  waitingContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: 8 
+  },
+  waitingText: { 
+    fontSize: 13, 
+    color: '#94A3B8', 
+    fontWeight: '700' 
+  },
+  sectionCard: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 24, 
+    padding: 20, 
+    marginBottom: 20, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 12, 
+    marginBottom: 16 
+  },
+  sectionIconBg: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 12, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  sectionTitle: { 
+    fontSize: 15, 
+    fontWeight: '900', 
+    color: '#0F172A',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionSubtitle: { 
+    fontSize: 12, 
+    color: '#94A3B8', 
+    marginTop: 2,
+    fontWeight: '800',
+  },
+  prescriptionCard: { 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 16, 
+    padding: 14, 
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  prescriptionHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 10 
+  },
+  prescriptionIdBadge: { 
+    backgroundColor: '#EEF2FF', 
+    paddingHorizontal: 8, 
+    paddingVertical: 3, 
+    borderRadius: 6 
+  },
+  prescriptionIdText: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: '#4338CA' 
+  },
+  prescriptionDate: { 
+    fontSize: 11, 
+    color: '#94A3B8',
+    fontWeight: '700',
+  },
+  medicationsList: { 
+    gap: 8 
+  },
+  medicationItem: { 
+    flexDirection: 'row', 
+    gap: 8 
+  },
+  medicationDot: { 
+    width: 6, 
+    height: 6, 
+    borderRadius: 3, 
+    backgroundColor: '#2563EB', 
+    marginTop: 5 
+  },
+  medicationInfo: { 
+    flex: 1 
+  },
+  medicationName: { 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: '#0F172A' 
+  },
+  medicationDetails: { 
+    fontSize: 12, 
+    color: '#64748B', 
+    marginTop: 1,
+    fontWeight: '600',
+  },
+  medicationNote: { 
+    fontSize: 11, 
+    color: '#2563EB', 
+    fontStyle: 'italic', 
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  prescriptionStatus: { 
+    marginTop: 10, 
+    alignItems: 'flex-start' 
+  },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 5, 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+    borderRadius: 20 
+  },
+  statusBadgeText: { 
+    fontSize: 10, 
+    fontWeight: '900', 
+    textTransform: 'uppercase' 
+  },
+  labTestCard: { 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 16, 
+    padding: 14, 
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  labTestHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: 10 
+  },
+  requisitionCode: { 
+    fontSize: 14, 
+    fontWeight: '900', 
+    color: '#0F172A' 
+  },
+  requestedDate: { 
+    fontSize: 11, 
+    color: '#94A3B8', 
+    marginTop: 1,
+    fontWeight: '700',
+  },
+  statusDot: { 
+    width: 5, 
+    height: 5, 
+    borderRadius: 2.5 
+  },
+  instructionsBox: { 
+    flexDirection: 'row', 
+    gap: 6, 
+    backgroundColor: '#F0F9FF', 
+    padding: 10, 
+    borderRadius: 10, 
+    marginBottom: 10, 
+    alignItems: 'flex-start' 
+  },
+  instructionsText: { 
+    flex: 1, 
+    fontSize: 11, 
+    color: '#0369A1', 
+    lineHeight: 16,
+    fontWeight: '700',
+  },
+  testsList: { 
+    gap: 6 
+  },
+  testItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8 
+  },
+  testCategoryTag: { 
+    paddingHorizontal: 6, 
+    paddingVertical: 2, 
+    borderRadius: 4 
+  },
+  testCategoryText: { 
+    fontSize: 9, 
+    fontWeight: '900', 
+    textTransform: 'uppercase' 
+  },
+  testName: { 
+    fontSize: 13, 
+    color: '#0F172A', 
+    fontWeight: '600' 
+  },
+  waitingForPatient: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    paddingVertical: 6 
+  },
+  waitingForPatientText: { 
+    fontSize: 11, 
+    color: '#94A3B8', 
+    fontStyle: 'italic',
+    fontWeight: '700',
+  },
+  labTestActions: { 
+    flexDirection: 'row', 
+    gap: 10, 
+    marginTop: 12, 
+    paddingTop: 10, 
+    borderTopWidth: 1, 
+    borderTopColor: '#F1F5F9' 
+  },
+  labActionBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    paddingHorizontal: 10, 
+    paddingVertical: 6, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9' 
+  },
+  labActionText: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: '#2563EB' 
+  },
+  resultsBox: { 
+    backgroundColor: '#F0FDF4', 
+    padding: 10, 
+    borderRadius: 8, 
+    marginTop: 10, 
+    borderLeftWidth: 3, 
+    borderLeftColor: '#22C55E' 
+  },
+  resultsLabel: { 
+    fontSize: 10, 
+    fontWeight: '900', 
+    color: '#166534', 
+    marginBottom: 4 
+  },
+  resultsText: { 
+    fontSize: 12, 
+    color: '#0F172A', 
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  emptyLabState: { 
+    alignItems: 'center', 
+    padding: 24, 
+    backgroundColor: '#F8FAFC', 
+    borderRadius: 16, 
+    borderStyle: 'dashed', 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0' 
+  },
+  emptyLabText: { 
+    fontSize: 13, 
+    fontWeight: '800', 
+    color: '#64748B' 
+  },
+  emptyLabSubtext: { 
+    fontSize: 11, 
+    color: '#94A3B8', 
+    marginTop: 3,
+    fontWeight: '600',
+  },
   actionButtonsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     marginTop: 8,
   },
   sessionActionBtn: {
@@ -641,13 +1120,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
     gap: 8,
   },
   sessionActionLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

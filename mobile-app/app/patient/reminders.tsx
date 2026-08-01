@@ -1,10 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Alert, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  FlatList,
+  Alert,
+  Switch,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function MedicationReminders() {
   const router = useRouter();
@@ -12,9 +24,48 @@ export default function MedicationReminders() {
   const [reminders, setReminders] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newMedName, setNewMedName] = useState('');
+  const [newDosage, setNewDosage] = useState('');
+  const [newFrequency, setNewFrequency] = useState('Daily');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     fetchReminders();
   }, []);
+
+  const handleAddReminder = async () => {
+    if (!newMedName.trim()) {
+      Alert.alert('Required', 'Please enter a medication name');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const times = newFrequency === 'Twice Daily' ? ['08:00', '20:00'] : ['08:00'];
+      
+      const res = await api.createReminder({
+        medication_name: newMedName,
+        dosage: newDosage,
+        frequency: newFrequency,
+        times: times,
+        start_date: new Date().toISOString().split('T')[0],
+      });
+      
+      if (res.data) {
+        setReminders([res.data, ...reminders]);
+        setShowAddModal(false);
+        setNewMedName('');
+        setNewDosage('');
+        setNewFrequency('Daily');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to add reminder');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const fetchReminders = async () => {
     try {
@@ -33,93 +84,90 @@ export default function MedicationReminders() {
   const toggleReminder = async (id: string, currentStatus: boolean) => {
     try {
       await api.updateReminderStatus(id, !currentStatus);
-      setReminders(reminders.map(r => r.id === id ? { ...r, is_active: !currentStatus } : r));
+      setReminders(reminders.map((r) => (r.id === id ? { ...r, is_active: !currentStatus } : r)));
     } catch (error) {
       Alert.alert('Error', 'Failed to update reminder status');
     }
   };
 
   const deleteReminder = (id: string) => {
-    Alert.alert(
-      'Delete Reminder',
-      'Are you sure you want to delete this medication reminder?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.deleteReminder(id);
-              setReminders(reminders.filter(r => r.id !== id));
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete reminder');
-            }
+    Alert.alert('Delete Reminder', 'Are you sure you want to delete this medication reminder?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.deleteReminder(id);
+            setReminders(reminders.filter((r) => r.id !== id));
+          } catch (error) {
+            Alert.alert('Error', 'Failed to delete reminder');
           }
-        }
-      ]
-    );
+        },
+      },
+    ]);
   };
 
   const renderReminder = ({ item }: { item: any }) => (
     <View style={[styles.reminderCard, !item.is_active && styles.inactiveCard]}>
       <View style={styles.cardHeader}>
         <View style={styles.medicationInfo}>
-          <View style={[styles.iconBg, { backgroundColor: item.is_active ? '#E0F2FE' : '#F1F5F9' }]}>
-            <Ionicons name="medical" size={20} color={item.is_active ? '#0EA5E9' : '#94A3B8'} />
+          <View style={[styles.iconBg, { backgroundColor: item.is_active ? '#EFF6FF' : '#F1F5F9' }]}>
+            <Ionicons name="medical" size={20} color={item.is_active ? '#2563EB' : '#94A3B8'} />
           </View>
-          <View>
-            <Text style={[styles.medName, !item.is_active && styles.inactiveText]}>{item.medication_name}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.medName, !item.is_active && styles.inactiveText]} numberOfLines={1}>
+              {item.medication_name}
+            </Text>
             <Text style={styles.medDosage}>{item.dosage || 'No dosage specified'}</Text>
           </View>
         </View>
         <Switch
           value={item.is_active}
           onValueChange={() => toggleReminder(item.id, item.is_active)}
-          trackColor={{ false: '#CBD5E1', true: '#0EA5E9' }}
-          thumbColor="#fff"
+          trackColor={{ false: '#E2E8F0', true: '#BFDBFE' }}
+          thumbColor={item.is_active ? '#2563EB' : '#94A3B8'}
+          style={styles.switch}
         />
       </View>
 
       <View style={styles.cardDetails}>
-        <View style={styles.detailItem}>
-          <Ionicons name="repeat" size={14} color="#64748B" />
+        <View style={styles.detailChip}>
+          <Ionicons name="repeat" size={13} color="#64748B" />
           <Text style={styles.detailText}>{item.frequency}</Text>
         </View>
-        <View style={styles.detailItem}>
-          <Ionicons name="time-outline" size={14} color="#64748B" />
+        <View style={styles.detailChip}>
+          <Ionicons name="time-outline" size={13} color="#64748B" />
           <Text style={styles.detailText}>{item.times.join(', ')}</Text>
         </View>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.deleteBtn}
         onPress={() => deleteReminder(item.id)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+        <Ionicons name="trash-outline" size={16} color="#CBD5E1" />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#4A90E2', '#357ABD']} style={styles.header}>
-        <SafeAreaView edges={['top']}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.headerTitle}>Medication Reminders</Text>
-              <Text style={styles.headerSubtitle}>Never miss a dose</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Reminders</Text>
+        <View style={styles.headerBtn} />
+      </View>
 
+      {/* Main Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Loading reminders...</Text>
         </View>
       ) : (
         <FlatList
@@ -129,28 +177,81 @@ export default function MedicationReminders() {
           contentContainerStyle={styles.listContent}
           onRefresh={fetchReminders}
           refreshing={refreshing}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="notifications-off-outline" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No medication reminders set.</Text>
-              <TouchableOpacity 
-                style={styles.addBtn}
-                onPress={() => router.push('/(tabs)')}
-              >
-                <Text style={styles.addBtnText}>Go to Home to Add</Text>
-              </TouchableOpacity>
+              <View style={styles.emptyIconBg}>
+                <Ionicons name="notifications-outline" size={32} color="#94A3B8" />
+              </View>
+              <Text style={styles.emptyTitle}>No Reminders</Text>
+              <Text style={styles.emptyText}>You don't have any active medication reminders set up yet.</Text>
             </View>
           }
         />
       )}
 
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => Alert.alert('Coming Soon', 'Manual reminder creation will be added in the next update. For now, reminders are created from prescriptions.')}
-      >
-        <Ionicons name="add" size={30} color="#fff" />
-      </TouchableOpacity>
-    </View>
+      {/* Add FAB */}
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.8}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Ionicons name="add" size={20} color="#FFFFFF" />
+          <Text style={styles.fabText}>New Reminder</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Add Modal */}
+      <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowAddModal(false)} activeOpacity={1} />
+          
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>New Reminder</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)} style={styles.modalClose}>
+                <Ionicons name="close" size={20} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Medication Name *</Text>
+              <TextInput style={styles.input} placeholder="e.g. Amoxicillin" placeholderTextColor="#94A3B8" value={newMedName} onChangeText={setNewMedName} />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Dosage (Optional)</Text>
+              <TextInput style={styles.input} placeholder="e.g. 500mg" placeholderTextColor="#94A3B8" value={newDosage} onChangeText={setNewDosage} />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Frequency</Text>
+              <View style={styles.freqRow}>
+                {['Daily', 'Twice Daily'].map(f => (
+                  <TouchableOpacity 
+                    key={f} 
+                    style={[styles.freqChip, newFrequency === f && styles.freqChipActive]}
+                    onPress={() => setNewFrequency(f)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.freqChipText, newFrequency === f && styles.freqChipTextActive]}>{f}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.submitBtn, (!newMedName.trim() || isSubmitting) && styles.submitBtnDisabled]}
+              onPress={handleAddReminder}
+              disabled={!newMedName.trim() || isSubmitting}
+            >
+              {isSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Save Reminder</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
@@ -159,48 +260,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  
+  // Header
   header: {
-    paddingBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  backButton: {
-    marginRight: 16,
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  listContent: {
-    padding: 20,
-    paddingBottom: 100,
-  },
+
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
+  loadingText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+
+  // List
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  
+  // Card
   reminderCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -210,18 +323,19 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   medicationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 10,
   },
   iconBg: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
@@ -229,75 +343,200 @@ const styles = StyleSheet.create({
   },
   medName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3,
   },
   inactiveText: {
-    color: '#94A3B8',
+    color: '#64748B',
   },
   medDosage: {
     fontSize: 13,
     color: '#64748B',
+    fontWeight: '500',
+  },
+  switch: {
+    transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
   },
   cardDetails: {
     flexDirection: 'row',
-    gap: 16,
-    paddingTop: 12,
+    gap: 8,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  detailItem: {
+  detailChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     gap: 6,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#475569',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   deleteBtn: {
     position: 'absolute',
-    bottom: 12,
-    right: 12,
-    padding: 8,
+    top: 14,
+    right: 14,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 30,
-    right: 30,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#4A90E2',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
+
+  // Empty State
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 100,
+    paddingTop: 80,
+    paddingHorizontal: 20,
+  },
+  emptyIconBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
   },
   emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#94A3B8',
+    fontSize: 14,
+    color: '#64748B',
     textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Footer / FAB
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingBottom: 32,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  fab: {
+    flexDirection: 'row',
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fabText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalClose: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formGroup: {
     marginBottom: 20,
   },
-  addBtn: {
-    backgroundColor: '#E0F2FE',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
   },
-  addBtnText: {
-    color: '#0EA5E9',
+  input: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    height: 52,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#0F172A',
+  },
+  freqRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  freqChip: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  freqChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 2,
+  },
+  freqChipText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#64748B',
+  },
+  freqChipTextActive: {
+    color: '#2563EB',
+    fontWeight: '700',
+  },
+  submitBtn: {
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#2563EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  submitBtnDisabled: {
+    opacity: 0.5,
+  },
+  submitBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

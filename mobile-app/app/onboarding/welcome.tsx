@@ -11,12 +11,8 @@ export default function WelcomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      {/* Background gradient removed for light theme */}
+
       
       <View style={styles.content}>
         <View style={styles.logoContainer}>
@@ -64,7 +60,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
   },
   gradient: {
     position: 'absolute',
@@ -92,7 +88,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#0F172A',
     textAlign: 'center',
     lineHeight: 52,
     letterSpacing: -1,
@@ -103,7 +99,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 28,
     paddingHorizontal: 16,
@@ -116,18 +112,6 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 16,
     overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
   },
   buttonGradient: {
     padding: 18,
@@ -146,7 +130,7 @@ const styles = StyleSheet.create({
   },
   loginText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
   },
   loginHighlight: {
     color: '#4A90E2',

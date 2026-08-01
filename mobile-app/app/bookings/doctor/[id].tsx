@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
-
-const { width } = Dimensions.get('window');
+import DoctorAvatar from '../../../components/DoctorAvatar';
 
 export default function DoctorProfileScreen() {
   const router = useRouter();
@@ -23,6 +31,8 @@ export default function DoctorProfileScreen() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [isFavourited, setIsFavourited] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
 
   useEffect(() => {
     loadDoctor();
@@ -58,25 +68,24 @@ export default function DoctorProfileScreen() {
   };
 
   const modes = [
-    { id: 'video', name: 'Video', icon: 'videocam', color: '#7C3AED' },
-    { id: 'audio', name: 'Audio', icon: 'mic', color: '#10B981' },
-    { id: 'chat', name: 'Chat', icon: 'chatbubbles', color: '#3B82F6' },
+    { id: 'video', name: 'Video', icon: 'videocam-outline', activeIcon: 'videocam', color: '#7C3AED', bg: '#F5F3FF' },
+    { id: 'audio', name: 'Voice', icon: 'mic-outline', activeIcon: 'mic', color: '#059669', bg: '#ECFDF5' },
+    { id: 'chat', name: 'Chat', icon: 'chatbubble-outline', activeIcon: 'chatbubble', color: '#2563EB', bg: '#EFF6FF' },
   ];
 
   const handleBook = async () => {
     if (!reason || !selectedSlot) return;
-    
     setLoading(true);
     try {
       const scheduledAt = new Date(selectedDate);
       const [hours, minutes] = selectedSlot.start_time.split(':');
       scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-      
+
       const response = await api.bookConsultation({
         doctor_id: id as string,
         scheduled_at: scheduledAt.toISOString(),
-        mode: mode,
-        reason: reason,
+        mode,
+        reason,
         symptoms: reason,
       });
 
@@ -84,7 +93,7 @@ export default function DoctorProfileScreen() {
         alert('Booking request sent successfully!');
         router.replace('/(tabs)');
       } else {
-          alert('Failed to book appointment. Please try again.');
+        alert('Failed to book appointment. Please try again.');
       }
     } catch (err: any) {
       alert(err.message || 'Failed to book consultation');
@@ -94,208 +103,853 @@ export default function DoctorProfileScreen() {
   };
 
   const onDateChange = (event: any, date?: Date) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (date) {
-      setSelectedDate(date);
+    if (date) setTempDate(date);
+    // On Android the picker auto-dismisses on selection
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (date) setSelectedDate(date);
     }
   };
+
+  const confirmIOSDate = () => {
+    setSelectedDate(tempDate);
+    setShowDatePicker(false);
+  };
+
+  const openDatePicker = () => {
+    setTempDate(selectedDate); // reset temp to current
+    setShowDatePicker(true);
+  };
+
+  const canBook = !!reason.trim() && !!selectedSlot && !loading;
 
   if (pageLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0D1B3A" />
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.headerSection}>
-        <SafeAreaView edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
-              <Ionicons name="chevron-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Doctor Profile</Text>
-            <TouchableOpacity style={styles.headerBtn}>
-              <Ionicons name="heart-outline" size={20} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.profileBrief}>
-              <View style={styles.avatarContainer}>
-                  <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.avatarGradient}>
-                    <Text style={styles.avatarText}>{(doctor?.full_name || 'D').charAt(0)}</Text>
-                  </LinearGradient>
-                  <View style={styles.verifiedBadge}>
-                      <Ionicons name="checkmark" size={12} color="#fff" />
-                  </View>
-              </View>
-              <View style={styles.briefInfo}>
-                  <Text style={styles.name}>{doctor?.full_name}</Text>
-                  <Text style={styles.specialty}>{doctor?.specialty || 'Medical Specialist'}</Text>
-                  <View style={styles.ratingRow}>
-                      <Ionicons name="star" size={14} color="#F59E0B" />
-                      <Text style={styles.ratingText}>{doctor?.rating || '4.9'} ({doctor?.review_count || 48} reviews)</Text>
-                  </View>
-              </View>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
-          <Text style={styles.sectionTitle}>About Doctor</Text>
-          <Text style={styles.aboutText}>{doctor?.bio || "Dr. " + (doctor?.full_name || "Specialist") + " is a highly experienced medical professional dedicated to providing exceptional patient care with modern clinical approaches."}</Text>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose Consultation Mode</Text>
-          <View style={styles.modesRow}>
-            {modes.map((m) => (
-              <TouchableOpacity 
-                key={m.id} 
-                style={[styles.modeCard, mode === m.id && { borderColor: m.color, backgroundColor: m.color + '10' }]}
-                onPress={() => setMode(m.id)}
-              >
-                <View style={[styles.modeIconBg, { backgroundColor: mode === m.id ? m.color : '#F1F5F9' }]}>
-                    <Ionicons name={m.icon as any} size={20} color={mode === m.id ? '#fff' : '#64748B'} />
-                </View>
-                <Text style={[styles.modeName, mode === m.id && { color: m.color, fontWeight: '800' }]}>{m.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionTitle}>Availability</Text>
-            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerBtn}>
-               <Ionicons name="calendar-outline" size={16} color="#4A90E2" />
-               <Text style={styles.datePickerBtnText}>
-                  {selectedDate.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
-               </Text>
-            </TouchableOpacity>
-          </View>
-          
-          {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="default"
-              onChange={onDateChange}
-              minimumDate={new Date()}
-            />
-          )}
-
-          <View style={styles.slotsContainer}>
-            {slotsLoading ? (
-               <ActivityIndicator color="#4A90E2" size="small" />
-            ) : slots.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotsScroll}>
-                    {slots.map((slot) => (
-                        <TouchableOpacity 
-                            key={slot.id}
-                            disabled={slot.is_booked}
-                            style={[
-                                styles.slotChip, 
-                                selectedSlot?.id === slot.id && styles.activeSlotChip,
-                                slot.is_booked && styles.bookedSlotChip
-                            ]}
-                            onPress={() => setSelectedSlot(slot)}
-                        >
-                            <Text style={[
-                                styles.slotText, 
-                                selectedSlot?.id === slot.id && styles.activeSlotText,
-                                slot.is_booked && styles.bookedSlotText
-                            ]}>
-                                {slot.start_time.substring(0, 5)}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            ) : (
-                <Text style={styles.noSlotsText}>No available slots for this date.</Text>
-            )}
-          </View>
-        </Animated.View>
-
-        <Animated.View entering={FadeInDown.delay(400)} style={styles.section}>
-          <Text style={styles.sectionTitle}>Reason for Appointment</Text>
-          <TextInput
-            style={styles.textArea}
-            placeholder="Tell the doctor what's bothering you..."
-            placeholderTextColor="#94A3B8"
-            multiline
-            numberOfLines={4}
-            value={reason}
-            onChangeText={setReason}
-          />
-        </Animated.View>
-        
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <View style={styles.feeInfo}>
-            <Text style={styles.feeLabel}>Total Fee</Text>
-            <Text style={styles.feeValue}>₦{doctor?.consultation_fee?.toLocaleString() || '15,000'}</Text>
-        </View>
-        <TouchableOpacity 
-          style={[styles.bookBtn, (!reason || !selectedSlot || loading) && styles.bookBtnDisabled]} 
-          onPress={handleBook}
-          disabled={!reason || !selectedSlot || loading}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ── Top Navigation Bar ── */}
+      <View style={styles.navbar}>
+        <TouchableOpacity style={styles.navBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>Doctor Profile</Text>
+        <TouchableOpacity
+          style={[styles.navBtn, isFavourited && styles.navBtnFav]}
+          onPress={() => setIsFavourited((prev) => !prev)}
+          activeOpacity={0.7}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.bookBtnText}>Book Now</Text>}
+          <Ionicons
+            name={isFavourited ? 'heart' : 'heart-outline'}
+            size={20}
+            color={isFavourited ? '#EF4444' : '#0F172A'}
+          />
         </TouchableOpacity>
       </View>
-    </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={90}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Doctor Card ── */}
+          <View style={styles.doctorCard}>
+            {/* Avatar */}
+            <DoctorAvatar
+              imageUrl={doctor?.profile_photo}
+              name={doctor?.full_name || 'Doctor'}
+              size={92}
+              radius={26}
+              verified={!!doctor?.is_verified}
+              style={{ marginBottom: 14 }}
+            />
+
+            {/* Name & Specialty */}
+            <Text style={styles.doctorName}>
+              Dr. {doctor?.full_name || 'Medical Specialist'}
+            </Text>
+            <View style={styles.specialtyPill}>
+              <Text style={styles.specialtyText}>
+                {doctor?.specialty || 'General Practice'}
+              </Text>
+            </View>
+
+            {/* Rating + Experience + Patients row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Ionicons name="star" size={16} color="#F59E0B" />
+                <Text style={styles.statValue}>{doctor?.rating || '4.9'}</Text>
+                <Text style={styles.statLabel}>Rating</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons name="people-outline" size={16} color="#2563EB" />
+                <Text style={styles.statValue}>{doctor?.review_count || '48'}+</Text>
+                <Text style={styles.statLabel}>Reviews</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Ionicons name="time-outline" size={16} color="#10B981" />
+                <Text style={styles.statValue}>{doctor?.experience || '5'}yr</Text>
+                <Text style={styles.statLabel}>Experience</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* ── About ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIconBg}>
+                <Ionicons name="person-outline" size={16} color="#2563EB" />
+              </View>
+              <Text style={styles.cardTitle}>About</Text>
+            </View>
+            <Text style={styles.aboutText}>
+              {doctor?.bio ||
+                `Dr. ${doctor?.full_name || 'Specialist'} is a highly experienced medical professional dedicated to providing exceptional patient care with modern clinical approaches.`}
+            </Text>
+          </View>
+
+          {/* ── Consultation Mode ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIconBg}>
+                <Ionicons name="options-outline" size={16} color="#2563EB" />
+              </View>
+              <Text style={styles.cardTitle}>Consultation Type</Text>
+            </View>
+            <View style={styles.modesGrid}>
+              {modes.map((m) => {
+                const isActive = mode === m.id;
+                return (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[
+                      styles.modeCard,
+                      isActive && { borderColor: m.color, backgroundColor: m.bg },
+                    ]}
+                    onPress={() => setMode(m.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.modeIconCircle,
+                        { backgroundColor: isActive ? m.color : '#F1F5F9' },
+                      ]}
+                    >
+                      <Ionicons
+                        name={(isActive ? m.activeIcon : m.icon) as any}
+                        size={20}
+                        color={isActive ? '#fff' : '#64748B'}
+                      />
+                    </View>
+                    <Text
+                      style={[
+                        styles.modeName,
+                        isActive && { color: m.color, fontWeight: '700' },
+                      ]}
+                    >
+                      {m.name}
+                    </Text>
+                    {isActive && (
+                      <View style={[styles.modeCheck, { backgroundColor: m.color }]}>
+                        <Ionicons name="checkmark" size={10} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── Availability ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIconBg}>
+                <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+              </View>
+              <Text style={styles.cardTitle}>Select Date & Time</Text>
+              <TouchableOpacity
+                style={styles.dateBtn}
+                onPress={openDatePicker}
+              >
+                <Ionicons name="calendar" size={14} color="#2563EB" />
+                <Text style={styles.dateBtnText}>
+                  {selectedDate.toLocaleDateString([], {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </Text>
+                <Ionicons name="chevron-down" size={13} color="#2563EB" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Date Picker — Modal on iOS, inline on Android */}
+            {Platform.OS === 'ios' ? (
+              <Modal
+                visible={showDatePicker}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <TouchableOpacity
+                  style={styles.pickerBackdrop}
+                  activeOpacity={1}
+                  onPress={() => setShowDatePicker(false)}
+                />
+                <View style={styles.pickerSheet}>
+                  <View style={styles.pickerHandle} />
+                  <View style={styles.pickerHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={styles.pickerCancel}>Cancel</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.pickerTitle}>Select Date</Text>
+                    <TouchableOpacity onPress={confirmIOSDate}>
+                      <Text style={styles.pickerDone}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={tempDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={onDateChange}
+                    minimumDate={new Date()}
+                    style={{ width: '100%' }}
+                  />
+                </View>
+              </Modal>
+            ) : (
+              showDatePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="default"
+                  onChange={onDateChange}
+                  minimumDate={new Date()}
+                />
+              )
+            )}
+
+            {/* Slots */}
+            <View style={styles.slotsArea}>
+              {slotsLoading ? (
+                <View style={styles.slotsLoader}>
+                  <ActivityIndicator color="#2563EB" size="small" />
+                  <Text style={styles.slotsLoaderText}>Loading slots…</Text>
+                </View>
+              ) : slots.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.slotsScroll}
+                >
+                  {slots.map((slot) => {
+                    const isSelected = selectedSlot?.id === slot.id;
+                    const isBooked = slot.is_booked;
+                    return (
+                      <TouchableOpacity
+                        key={slot.id}
+                        disabled={isBooked}
+                        style={[
+                          styles.slotChip,
+                          isSelected && styles.slotChipActive,
+                          isBooked && styles.slotChipBooked,
+                        ]}
+                        onPress={() => setSelectedSlot(slot)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons
+                          name="time-outline"
+                          size={12}
+                          color={isSelected ? '#fff' : isBooked ? '#CBD5E1' : '#64748B'}
+                          style={{ marginBottom: 2 }}
+                        />
+                        <Text
+                          style={[
+                            styles.slotText,
+                            isSelected && styles.slotTextActive,
+                            isBooked && styles.slotTextBooked,
+                          ]}
+                        >
+                          {slot.start_time.substring(0, 5)}
+                        </Text>
+                        {isBooked && (
+                          <Text style={styles.slotBooked}>Full</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <View style={styles.noSlots}>
+                  <Ionicons name="calendar-clear-outline" size={32} color="#CBD5E1" />
+                  <Text style={styles.noSlotsText}>No available slots for this date</Text>
+                  <TouchableOpacity onPress={openDatePicker}>
+                    <Text style={styles.noSlotsCta}>Pick another date</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* ── Reason ── */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIconBg}>
+                <Ionicons name="document-text-outline" size={16} color="#2563EB" />
+              </View>
+              <Text style={styles.cardTitle}>Reason for Visit</Text>
+            </View>
+            <TextInput
+              style={styles.textArea}
+              placeholder="Describe your symptoms or reason for the appointment…"
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={4}
+              value={reason}
+              onChangeText={setReason}
+              textAlignVertical="top"
+            />
+            {reason.length > 0 && (
+              <Text style={styles.charCount}>{reason.length} / 500</Text>
+            )}
+          </View>
+
+          {/* ── Booking Summary ── */}
+          {selectedSlot && (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Booking Summary</Text>
+              <View style={styles.summaryRow}>
+                <Ionicons name="calendar-outline" size={15} color="#64748B" />
+                <Text style={styles.summaryText}>
+                  {selectedDate.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+                </Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Ionicons name="time-outline" size={15} color="#64748B" />
+                <Text style={styles.summaryText}>{selectedSlot.start_time.substring(0, 5)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Ionicons
+                  name={
+                    mode === 'video'
+                      ? 'videocam-outline'
+                      : mode === 'audio'
+                      ? 'mic-outline'
+                      : 'chatbubble-outline'
+                  }
+                  size={15}
+                  color="#64748B"
+                />
+                <Text style={styles.summaryText}>
+                  {modes.find((m) => m.id === mode)?.name}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* ── Sticky Footer ── */}
+      <View style={styles.footer}>
+        <View style={styles.feeBlock}>
+          <Text style={styles.feeLabel}>Consultation Fee</Text>
+          <Text style={styles.feeAmount}>
+            ₦{(doctor?.consultation_fee || 15000).toLocaleString()}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.bookBtn, !canBook && styles.bookBtnDisabled]}
+          onPress={handleBook}
+          disabled={!canBook}
+          activeOpacity={0.85}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.bookBtnText}>Book Appointment</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  headerSection: { paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
-  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.12)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  profileBrief: { flexDirection: 'row', paddingHorizontal: 24, marginTop: 24, alignItems: 'center', gap: 16 },
-  avatarContainer: { position: 'relative' },
-  avatarGradient: { width: 70, height: 70, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  verifiedBadge: { position: 'absolute', bottom: -4, right: -4, width: 20, height: 20, borderRadius: 10, backgroundColor: '#22C55E', borderWidth: 2, borderColor: '#0D1B3A', justifyContent: 'center', alignItems: 'center' },
-  briefInfo: { flex: 1 },
-  name: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  specialty: { fontSize: 13, color: 'rgba(255, 255, 255, 0.7)', fontWeight: '600', marginTop: 2 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  ratingText: { fontSize: 12, color: '#fff', fontWeight: 'bold' },
-  content: { flex: 1, padding: 24 },
-  section: { marginBottom: 32 },
-  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#1E293B', marginBottom: 16 },
-  aboutText: { fontSize: 14, color: '#64748B', lineHeight: 22 },
-  modesRow: { flexDirection: 'row', gap: 12 },
-  modeCard: { flex: 1, alignItems: 'center', padding: 12, borderRadius: 20, borderWidth: 2, borderColor: '#F1F5F9', backgroundColor: '#fff' },
-  modeIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  modeName: { fontSize: 13, color: '#64748B', fontWeight: '700' },
-  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  datePickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#EFF6FF', borderRadius: 12 },
-  datePickerBtnText: { fontSize: 13, fontWeight: '700', color: '#4A90E2' },
-  slotsContainer: { minHeight: 60, justifyContent: 'center' },
-  slotsScroll: { gap: 12 },
-  slotChip: { paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
-  activeSlotChip: { backgroundColor: '#0D1B3A', borderColor: '#0D1B3A' },
-  bookedSlotChip: { backgroundColor: '#F1F5F9', opacity: 0.5 },
-  slotText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
-  activeSlotText: { color: '#fff' },
-  bookedSlotText: { color: '#94A3B8', textDecorationLine: 'line-through' },
-  noSlotsText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', fontStyle: 'italic' },
-  textArea: { backgroundColor: '#fff', borderRadius: 20, padding: 16, fontSize: 14, color: '#1E293B', minHeight: 120, textAlignVertical: 'top', borderWidth: 1, borderColor: '#F1F5F9' },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  feeInfo: { flex: 1 },
-  feeLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase' },
-  feeValue: { fontSize: 22, fontWeight: '900', color: '#1E293B' },
-  bookBtn: { flex: 1.5, height: 56, borderRadius: 18, backgroundColor: '#4A90E2', justifyContent: 'center', alignItems: 'center', marginLeft: 20, shadowColor: '#4A90E2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  bookBtnDisabled: { backgroundColor: '#CBD5E1', shadowOpacity: 0 },
-  bookBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+
+  // ── Navbar ───────────────────────────────────────────────
+  navbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  navBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  navTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+
+  // ── Doctor Card ──────────────────────────────────────────
+  doctorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#BFDBFE',
+  },
+  avatarText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#10B981',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  doctorName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  specialtyPill: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 20,
+  },
+  specialtyText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#E2E8F0',
+  },
+
+  // ── Generic Card ─────────────────────────────────────────
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  cardIconBg: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.2,
+  },
+
+  // ── About ────────────────────────────────────────────────
+  aboutText: {
+    fontSize: 14,
+    color: '#475569',
+    lineHeight: 22,
+  },
+
+  // ── Consultation Mode ────────────────────────────────────
+  modesGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  modeCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    position: 'relative',
+  },
+  modeIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modeName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  modeCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── Date Button ──────────────────────────────────────────
+  dateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  dateBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+
+  // ── Slots ────────────────────────────────────────────────
+  slotsArea: {
+    minHeight: 70,
+  },
+  slotsLoader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  slotsLoaderText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  slotsScroll: {
+    gap: 10,
+    paddingVertical: 4,
+  },
+  slotChip: {
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    minWidth: 64,
+  },
+  slotChipActive: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  slotChipBooked: {
+    backgroundColor: '#F1F5F9',
+    borderColor: '#F1F5F9',
+    opacity: 0.6,
+  },
+  slotText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  slotTextActive: {
+    color: '#FFFFFF',
+  },
+  slotTextBooked: {
+    color: '#94A3B8',
+    textDecorationLine: 'line-through',
+  },
+  slotBooked: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 2,
+    textTransform: 'uppercase',
+  },
+  noSlots: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 6,
+  },
+  noSlotsText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  noSlotsCta: {
+    fontSize: 13,
+    color: '#2563EB',
+    fontWeight: '700',
+    marginTop: 4,
+  },
+
+  // ── Reason TextArea ──────────────────────────────────────
+  textArea: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 14,
+    color: '#0F172A',
+    minHeight: 110,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    lineHeight: 22,
+  },
+  charCount: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'right',
+    marginTop: 6,
+  },
+
+  // ── Summary Card ─────────────────────────────────────────
+  summaryCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    gap: 8,
+  },
+  summaryTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1D4ED8',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#334155',
+    fontWeight: '500',
+  },
+
+  // ── Footer ───────────────────────────────────────────────
+  footer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  feeBlock: {
+    flex: 1,
+  },
+  feeLabel: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  feeAmount: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
+  },
+  bookBtn: {
+    flex: 2,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#2563EB',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bookBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  bookBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // ── Favourite button ─────────────────────────────────────
+  navBtnFav: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+
+  // ── Date Picker Modal (iOS) ──────────────────────────────
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  pickerSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
+    alignItems: 'center' as const,
+  },
+  pickerHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  pickerHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    width: '100%' as const,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  pickerCancel: {
+    fontSize: 15,
+    color: '#94A3B8',
+    fontWeight: '600' as const,
+  },
+  pickerTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#0F172A',
+  },
+  pickerDone: {
+    fontSize: 15,
+    color: '#2563EB',
+    fontWeight: '700' as const,
+  },
 });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, Dimensions, Image } from 'react-native';
+
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { api } from '../services/api';
@@ -17,6 +18,14 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const validateEmail = (text: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+  };
+
+  const emailStatus = email.length === 0 ? 'none' : validateEmail(email) ? 'valid' : 'invalid';
+  const passwordStatus = password.length === 0 ? 'none' : password.length >= 6 ? 'valid' : 'invalid';
+
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -41,10 +50,8 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#16213E', '#1B262C']}
-        style={styles.gradient}
-      />
+      {/* Background gradient removed for clean white theme */}
+
       
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView 
@@ -56,15 +63,21 @@ export default function LoginScreen() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            <TouchableOpacity 
+              style={styles.topBackButton}
+              onPress={() => router.replace('/onboarding/welcome')}
+            >
+              <Ionicons name="arrow-back" size={24} color="#0F172A" />
+            </TouchableOpacity>
+            
             <View style={styles.content}>
               <View style={styles.headerSection}>
                 <View style={styles.logoContainer}>
-                  <LinearGradient
-                    colors={['#4A90E2', '#2572D9']}
-                    style={styles.logoGradient}
-                  >
-                    <Ionicons name="medical" size={40} color="#fff" />
-                  </LinearGradient>
+                  <Image 
+                    source={require('../assets/logo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
                 </View>
                 <Text style={styles.title}>Medicata</Text>
                 <Text style={styles.subtitle}>Your Health, Our Priority. Login to access your portal.</Text>
@@ -75,13 +88,15 @@ export default function LoginScreen() {
                   <Text style={styles.label}>Email Address</Text>
                   <View style={[
                     styles.inputContainer,
-                    emailFocused && styles.inputFocused
+                    emailFocused && styles.inputFocused,
+                    emailStatus === 'valid' && styles.inputValid,
+                    emailStatus === 'invalid' && styles.inputInvalid
                   ]}>
-                    <Ionicons name="mail-outline" size={20} color={emailFocused ? '#4A90E2' : 'rgba(255, 255, 255, 0.4)'} />
+                    <Ionicons name="mail-outline" size={20} color={emailFocused ? '#4A90E2' : '#94A3B8'} />
                     <TextInput
                       style={styles.input}
                       placeholder="john@example.com"
-                      placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                      placeholderTextColor="#94A3B8"
                       keyboardType="email-address"
                       autoCapitalize="none"
                       value={email}
@@ -96,18 +111,20 @@ export default function LoginScreen() {
                   <View style={styles.labelRow}>
                     <Text style={styles.label}>Password</Text>
                     <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-                      <Text style={styles.forgotText}>Forgot?</Text>
+                      <Text style={styles.forgotText}>Forgot Password?</Text>
                     </TouchableOpacity>
                   </View>
                   <View style={[
                     styles.inputContainer,
-                    passwordFocused && styles.inputFocused
+                    passwordFocused && styles.inputFocused,
+                    passwordStatus === 'valid' && styles.inputValid,
+                    passwordStatus === 'invalid' && styles.inputInvalid
                   ]}>
-                    <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? '#4A90E2' : 'rgba(255, 255, 255, 0.4)'} />
+                    <Ionicons name="lock-closed-outline" size={20} color={passwordFocused ? '#4A90E2' : '#94A3B8'} />
                     <TextInput
                       style={styles.input}
                       placeholder="••••••••"
-                      placeholderTextColor="rgba(255, 255, 255, 0.3)"
+                      placeholderTextColor="#94A3B8"
                       secureTextEntry={!showPassword}
                       value={password}
                       onChangeText={setPassword}
@@ -118,7 +135,7 @@ export default function LoginScreen() {
                       <Ionicons 
                         name={showPassword ? "eye-off-outline" : "eye-outline"} 
                         size={20} 
-                        color="rgba(255, 255, 255, 0.4)" 
+                        color="#94A3B8" 
                       />
                     </TouchableOpacity>
                   </View>
@@ -172,32 +189,24 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
   },
   content: {
-    flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 40,
-    paddingBottom: 40,
+    paddingVertical: 24,
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
+    width: 160,
+    height: 160,
+    borderRadius: 32,
     overflow: 'hidden',
     marginBottom: 20,
     ...Platform.select({
@@ -212,22 +221,20 @@ const styles = StyleSheet.create({
       }
     })
   },
-  logoGradient: {
+  logo: {
     width: '100%',
     height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   title: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#0F172A',
     letterSpacing: -1,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 22,
@@ -246,7 +253,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#1E293B',
     textTransform: 'uppercase',
     letterSpacing: 1,
     opacity: 0.7,
@@ -254,22 +261,30 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: '#E2E8F0',
     borderRadius: 18,
     paddingHorizontal: 16,
     height: 60,
   },
   inputFocused: {
     borderColor: '#4A90E2',
-    backgroundColor: 'rgba(74, 144, 226, 0.05)',
+    backgroundColor: '#F1F5F9',
+  },
+  inputValid: {
+    borderColor: '#22C55E',
+    backgroundColor: '#F0FDF4',
+  },
+  inputInvalid: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
   },
   input: {
     flex: 1,
     paddingHorizontal: 12,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#0F172A',
     height: '100%',
   },
   forgotText: {
@@ -299,12 +314,12 @@ const styles = StyleSheet.create({
     ...Platform.select({
       ios: {
         shadowColor: '#2572D9',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
-        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 8,
+        elevation: 4,
       }
     }),
   },
@@ -312,7 +327,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonGradient: {
-    height: 64,
+    height: 54,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -335,11 +350,18 @@ const styles = StyleSheet.create({
   },
   signupText: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: '#64748B',
   },
   signupHighlight: {
     fontSize: 15,
     color: '#4A90E2',
     fontWeight: '800',
+  },
+  topBackButton: {
+    padding: 16,
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10,
   },
 });

@@ -92,14 +92,14 @@ export default function PharmacySearchScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.headerSection}>
+      <View style={styles.headerSection}>
         <SafeAreaView edges={['top']}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="chevron-back" size={24} color="#fff" />
+              <Ionicons name="chevron-back" size={22} color="#0F172A" />
             </TouchableOpacity>
-            <Text style={styles.title}>Pharmacies</Text>
-            <View style={{ width: 40 }} />
+            <Text style={styles.title}>Find Pharmacy</Text>
+            <View style={{ width: 38 }} />
           </View>
 
           <View style={styles.searchContainer}>
@@ -108,23 +108,23 @@ export default function PharmacySearchScreen() {
                 style={[styles.tab, searchType === 'drug' && styles.activeTab]} 
                 onPress={() => setSearchType('drug')}
               >
-                <Ionicons name="medical" size={16} color={searchType === 'drug' ? '#0D1B3A' : '#fff'} />
+                <Ionicons name="medical" size={14} color={searchType === 'drug' ? '#0F172A' : '#64748B'} />
                 <Text style={[styles.tabText, searchType === 'drug' && styles.activeTabText]}>Find Drug</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.tab, searchType === 'location' && styles.activeTab]} 
                 onPress={() => setSearchType('location')}
               >
-                <Ionicons name="location" size={16} color={searchType === 'location' ? '#0D1B3A' : '#fff'} />
+                <Ionicons name="location" size={14} color={searchType === 'location' ? '#0F172A' : '#64748B'} />
                 <Text style={[styles.tabText, searchType === 'location' && styles.activeTabText]}>By Location</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchBox}>
-              <Ionicons name="search" size={20} color="#94A3B8" />
+              <Ionicons name="search" size={18} color="#94A3B8" />
               <TextInput 
                 style={styles.input}
-                placeholder={searchType === 'drug' ? "Search for medicine name..." : "Enter city or state..."}
+                placeholder={searchType === 'drug' ? "Search medicine name..." : "Enter city or state..."}
                 placeholderTextColor="#94A3B8"
                 value={query}
                 onChangeText={setQuery}
@@ -133,17 +133,17 @@ export default function PharmacySearchScreen() {
               />
               {query.length > 0 && (
                 <TouchableOpacity onPress={() => { setQuery(''); loadPharmacies(); }}>
-                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                  <Ionicons name="close-circle" size={18} color="#CBD5E1" />
                 </TouchableOpacity>
               )}
             </View>
           </View>
         </SafeAreaView>
-      </LinearGradient>
+      </View>
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#4A90E2" />
+          <ActivityIndicator size="small" color="#2563EB" />
         </View>
       ) : error ? (
         <View style={styles.centerContainer}>
@@ -179,9 +179,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   headerSection: {
-    paddingBottom: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    backgroundColor: '#FFFFFF',
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   header: {
     flexDirection: 'row',
@@ -191,121 +192,121 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
   searchContainer: {
     paddingHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 16,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 12,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 8,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   activeTab: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
+    color: '#64748B',
   },
   activeTabText: {
-    color: '#0D1B3A',
+    color: '#0F172A',
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    height: 56,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   input: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
+    marginLeft: 10,
+    fontSize: 14,
     color: '#1E293B',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   list: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   info: {
     flex: 1,
   },
   name: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#1E293B',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
   address: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: 3,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   inventoryRow: {
     flexDirection: 'row',
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
@@ -313,60 +314,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priceLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#94A3B8',
     textTransform: 'uppercase',
     fontWeight: '800',
+    letterSpacing: 0.3,
   },
   priceValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '900',
-    color: '#1E293B',
-    marginTop: 2,
+    color: '#0F172A',
+    marginTop: 1,
   },
   stockContainer: {
     flex: 1,
     alignItems: 'flex-end',
   },
   stockLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#94A3B8',
     textTransform: 'uppercase',
     fontWeight: '800',
+    letterSpacing: 0.1,
   },
   stockValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4CAF50',
-    marginTop: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#10B981',
+    marginTop: 1,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F8FAFC',
   },
   footerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   footerText: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '700',
   },
   viewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   viewButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    color: '#4A90E2',
+    color: '#2563EB',
   },
   centerContainer: {
     flex: 1,
@@ -376,32 +379,34 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#EF4444',
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
     marginTop: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   retryBtn: {
-    marginTop: 20,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: '#0D1B3A',
-    borderRadius: 12,
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
   },
   retryText: {
-    color: '#fff',
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
   emptyText: {
-    color: '#1E293B',
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 16,
+    color: '#0F172A',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 12,
   },
   emptySubtext: {
     color: '#94A3B8',
-    fontSize: 14,
-    marginTop: 8,
+    fontSize: 13,
+    marginTop: 6,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });

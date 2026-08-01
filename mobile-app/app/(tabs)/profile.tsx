@@ -126,6 +126,16 @@ export default function Profile() {
   };
 
   const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to logout?');
+      if (confirmed) {
+        await api.logout();
+        await AsyncStorage.multiRemove(['auth_token', 'user_data', 'user_role']);
+        router.replace('/login');
+      }
+      return;
+    }
+
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -135,6 +145,7 @@ export default function Profile() {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
+            await api.logout(); // Clear the API service token cleanly
             await AsyncStorage.multiRemove([
               'auth_token',
               'user_data',
@@ -221,7 +232,7 @@ export default function Profile() {
             disabled={uploading}
           >
             {uploading ? (
-              <ActivityIndicator color="#4a90e2" />
+              <ActivityIndicator color="#2563EB" />
             ) : (userData?.profile_photo || profileData?.profile_photo) ? (
               <Image 
                 source={{ uri: userData?.profile_photo || profileData?.profile_photo }} 
@@ -229,10 +240,10 @@ export default function Profile() {
                 contentFit="cover"
               />
             ) : (
-              <Ionicons name="person-circle" size={100} color="#4a90e2" />
+              <Ionicons name="person-circle" size={80} color="#CBD5E1" />
             )}
             <View style={styles.editPhotoBadge}>
-              <Ionicons name="camera" size={16} color="#fff" />
+              <Ionicons name="camera" size={14} color="#fff" />
             </View>
           </TouchableOpacity>
           <Text style={styles.name}>{displayData.full_name || displayData.name || 'User'}</Text>
@@ -248,7 +259,7 @@ export default function Profile() {
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Ionicons name={isEditing ? 'checkmark' : 'pencil'} size={18} color="#fff" />
+                  <Ionicons name={isEditing ? 'checkmark' : 'pencil'} size={16} color="#fff" />
                   <Text style={styles.editButtonText}>
                     {isEditing ? 'Save' : 'Edit Profile'}
                   </Text>
@@ -264,7 +275,7 @@ export default function Profile() {
                   loadUserData();
                 }}
               >
-                <Ionicons name="close" size={18} color="#64748b" />
+                <Ionicons name="close" size={16} color="#64748b" />
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             )}
@@ -274,14 +285,13 @@ export default function Profile() {
         {/* Wallet Section */}
         {!isEditing && (
           <TouchableOpacity style={styles.walletCard} onPress={() => router.push('/wallet')}>
-            <LinearGradient colors={['#0D1B3A', '#4A90E2']} start={{x: 0, y: 0}} end={{x: 1, y: 0}} style={styles.walletGradient}>
+            <LinearGradient colors={['#2563EB', '#1D4ED8']} start={{x: 0, y: 0}} end={{x: 1, y: 1}} style={styles.walletGradient}>
                <View style={styles.walletInfo}>
                   <Text style={styles.walletLabel}>Medicata Wallet</Text>
                   <Text style={styles.walletBalance}>₦{(profileData?.wallet_balance || 0).toLocaleString()}</Text>
                </View>
                <View style={styles.walletAction}>
-                  <Text style={styles.walletLink}>View Wallet</Text>
-                  <Ionicons name="chevron-forward" size={20} color="#fff" />
+                  <Ionicons name="arrow-forward-circle" size={28} color="#fff" />
                </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -390,7 +400,7 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F8FAFC',
   },
   center: {
     flex: 1,
@@ -403,263 +413,245 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#F1F5F9',
   },
   avatarContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: '#eff6ff',
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
     position: 'relative',
-    borderWidth: 3,
-    borderColor: '#fff',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 55,
+    borderRadius: 28,
   },
   editPhotoBadge: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    backgroundColor: '#4a90e2',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: -4,
+    right: -4,
+    backgroundColor: '#2563EB',
+    width: 28,
+    height: 28,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#fff',
+    borderColor: '#FFFFFF',
   },
   name: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   role: {
-    fontSize: 14,
-    color: '#64748b',
-    textTransform: 'capitalize',
+    fontSize: 12,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    fontWeight: '800',
+    letterSpacing: 0.5,
     marginBottom: 16,
   },
   headerButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4a90e2',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   saveButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#10B981',
   },
   editButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
   },
   cancelButtonText: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '800',
   },
   section: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0F172A',
     marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   fieldContainer: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   fieldLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
     marginBottom: 4,
     textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   fieldValue: {
-    fontSize: 16,
-    color: '#1e293b',
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '600',
   },
   input: {
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    color: '#1e293b',
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#0F172A',
+    fontWeight: '500',
   },
   healthInfoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+    gap: 8,
   },
   healthCard: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 4,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   healthValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 6,
   },
   healthLabel: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 2,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     margin: 16,
-    padding: 16,
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    marginBottom: 32,
   },
   logoutText: {
-    color: '#ef4444',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '800',
   },
   walletCard: {
     margin: 16,
     borderRadius: 20,
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#0D1B3A',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.2,
-        shadowRadius: 15,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   walletGradient: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
   },
   walletInfo: {
     flex: 1,
   },
   walletLabel: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '700',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   walletBalance: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#fff',
-    marginTop: 4,
+    color: '#FFFFFF',
+    marginTop: 2,
   },
   walletAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    width: 40,
+    height: 40,
     borderRadius: 12,
-    gap: 4,
-  },
-  walletLink: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   quickLinks: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 4,
+    gap: 8,
   },
   linkItem: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#fff',
-    marginHorizontal: 6,
-    paddingVertical: 20,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
   linkIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   linkLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1E293B',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0F172A',
   },
 });
 

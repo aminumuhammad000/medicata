@@ -4,14 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../../services/api';
-import {
-  LiveKitRoom,
-  VideoConference,
-  registerGlobals,
-} from '@livekit/react-native';
+import { LiveKitView } from '../../components/LiveKitView';
 
-// Necessary for LiveKit on React Native
-registerGlobals();
 
 export default function VideoCallScreen() {
   const router = useRouter();
@@ -65,24 +59,21 @@ export default function VideoCallScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LiveKitRoom
-        serverUrl={url}
+      <LiveKitView
+        url={url}
         token={token}
-        connect={true}
-        audio={true}
-        video={isVideo}
+        isVideo={isVideo}
         onDisconnected={() => {
           Alert.alert('Call Ended', `The ${isVideo ? 'video' : 'audio'} consultation has ended.`);
           router.back();
         }}
-        onError={(err) => {
+        onError={(err: any) => {
           console.error(err);
           Alert.alert('Connection Error', 'Failed to connect to video server.');
           router.back();
         }}
-      >
-        <VideoConference />
-      </LiveKitRoom>
+      />
+
     </SafeAreaView>
   );
 }

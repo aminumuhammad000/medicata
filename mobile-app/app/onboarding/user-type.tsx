@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding, UserType } from '../../context/OnboardingContext';
-
-const { width, height } = Dimensions.get('window');
+import { Ionicons } from '@expo/vector-icons';
 
 export default function UserTypeScreen() {
   const router = useRouter();
@@ -15,54 +14,67 @@ export default function UserTypeScreen() {
     router.push('/onboarding/account');
   };
 
-  const UserOption = ({ type, title, description, icon, color }: any) => (
-    <TouchableOpacity 
-      style={styles.option} 
-      onPress={() => handleSelect(type)}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: color }]}>
-        <Text style={styles.icon}>{icon}</Text>
-      </View>
-      <View style={styles.textContainer}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.optionDescription}>{description}</Text>
-      </View>
-      <View style={styles.arrowContainer}>
-        <Text style={styles.arrow}>→</Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const options: { type: UserType; title: string; description: string; icon: any; color: string; bg: string }[] = [
+    {
+      type: 'patient',
+      title: 'Patient',
+      description: 'Book consultations and manage your health records',
+      icon: 'person-outline',
+      color: '#2572D9',
+      bg: '#EFF6FF',
+    },
+    {
+      type: 'doctor',
+      title: 'Doctor',
+      description: 'Consult patients and issue e-prescriptions',
+      icon: 'medkit-outline',
+      color: '#7C3AED',
+      bg: '#F5F3FF',
+    },
+    {
+      type: 'pharmacy',
+      title: 'Pharmacy',
+      description: 'Fulfill medication orders and manage inventory',
+      icon: 'storefront-outline',
+      color: '#059669',
+      bg: '#ECFDF5',
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        style={styles.topBackButton}
+        onPress={() => router.back()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#0F172A" />
+      </TouchableOpacity>
+
       <View style={styles.header}>
         <Text style={styles.title}>Who are you?</Text>
-        <Text style={styles.subtitle}>Select your user type to continue</Text>
+        <Text style={styles.subtitle}>Select your profile type to get started</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <UserOption 
-          type="patient"
-          title="Patient"
-          description="Book consultations and manage your health"
-          icon="👤"
-          color="#2572D9"
-        />
-        <UserOption 
-          type="doctor"
-          title="Doctor"
-          description="Consult patients and issue prescriptions"
-          icon="⚕️"
-          color="#4A90E2"
-        />
-        <UserOption 
-          type="pharmacy"
-          title="Pharmacy"
-          description="Fulfill medication orders and prescriptions"
-          icon="💊"
-          color="#22c55e"
-        />
+        {options.map(opt => (
+          <TouchableOpacity
+            key={opt.type}
+            style={styles.option}
+            onPress={() => handleSelect(opt.type)}
+            activeOpacity={0.75}
+          >
+            <View style={[styles.iconContainer, { backgroundColor: opt.bg }]}>
+              <Ionicons name={opt.icon} size={28} color={opt.color} />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.optionTitle}>{opt.title}</Text>
+              <Text style={styles.optionDescription}>{opt.description}</Text>
+            </View>
+            <View style={[styles.arrowContainer, { backgroundColor: opt.bg }]}>
+              <Ionicons name="chevron-forward" size={18} color={opt.color} />
+            </View>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -71,82 +83,74 @@ export default function UserTypeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
+  },
+  topBackButton: {
+    padding: 16,
+    marginTop: 10,
+    marginLeft: 10,
   },
   header: {
     paddingHorizontal: 32,
-    paddingTop: 32,
+    paddingTop: 16,
     paddingBottom: 24,
   },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    color: '#0F172A',
+    marginBottom: 6,
     letterSpacing: -1,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 24,
+    fontSize: 15,
+    color: '#64748B',
+    lineHeight: 22,
   },
   scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: 24,
     paddingBottom: 32,
-    gap: 16,
+    gap: 14,
   },
   option: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 18,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
-    ...Platform.select({
-      web: {
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
-      }
-    }),
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  icon: {
-    fontSize: 28,
   },
   textContainer: {
     flex: 1,
   },
   optionTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: '#0F172A',
+    marginBottom: 3,
   },
   optionDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 20,
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
   },
   arrowContainer: {
-    marginLeft: 12,
-  },
-  arrow: {
-    fontSize: 24,
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontWeight: '300',
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
 });

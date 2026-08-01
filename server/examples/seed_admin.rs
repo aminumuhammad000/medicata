@@ -1,13 +1,14 @@
+use anyhow::Context;
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, SaltString},
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use sqlx::postgres::PgPoolOptions;
-use serde::{Deserialize, Serialize};
+use std::env;
 
-#[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
-pub enum UserRole {
+enum UserRole {
     Patient,
     Doctor,
     Pharmacy,
@@ -17,40 +18,52 @@ pub enum UserRole {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    println!("Connecting to: {}", database_url);
-    
+
+    let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
+    let admin_email = env::var("ADMIN_EMAIL").unwrap_or_else(|_| "admin@medicata.com".to_string());
+    let admin_password = env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
+    let admin_full_name = env::var("ADMIN_FULL_NAME").unwrap_or_else(|_| "System Administrator".to_string());
+
+    println!("Connecting to database...");
     let pool = PgPoolOptions::new()
         .max_connections(1)
         .connect(&database_url)
         .await
-        .expect("Failed to connect to database");
+        .context("Failed to connect to database")?;
 
-    // Verify connection
-    sqlx::query("SELECT 1").execute(&pool).await.expect("Failed to execute test query");
+    sqlx::query("SELECT 1")
+        .execute(&pool)
+        .await
+        .context("Failed to execute test query")?;
     println!("Database connection verified.");
 
-    // Hash password
-    let password = "admin123";
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     let password_hash = argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(admin_password.as_bytes(), &salt)
         .map_err(|e| anyhow::anyhow!(e.to_string()))?
         .to_string();
-    
+
     let result = sqlx::query(
-        "INSERT INTO users (full_name, email, password_hash, role, is_verified) 
-         VALUES ('System Administrator', 'admin@medicata.com', $1, $2, TRUE)
-         ON CONFLICT (email) DO UPDATE SET password_hash = $1, role = $2"
+        "INSERT INTO users (full_name, email, password_hash, role, is_verified)
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (email) DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             password_hash = EXCLUDED.password_hash,
+             role = EXCLUDED.role,
+             is_verified = TRUE"
     )
+    .bind(&admin_full_name)
+    .bind(&admin_email)
     .bind(password_hash)
     .bind(UserRole::Admin)
     .execute(&pool)
     .await
-    .expect("Failed to insert admin user");
+    .context("Failed to create or update admin user")?;
 
     println!("Rows affected: {}", result.rows_affected());
-    println!("Successfully seeded admin user!");
+    println!("Admin account ready.");
+    println!("Email: {}", admin_email);
+    println!("Password: {}", admin_password);
     Ok(())
 }

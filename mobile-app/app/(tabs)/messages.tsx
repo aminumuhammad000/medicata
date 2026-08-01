@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Platform, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
+import DoctorAvatar from '../../components/DoctorAvatar';
 
 export default function ChatListScreen() {
   const router = useRouter();
@@ -20,10 +29,12 @@ export default function ChatListScreen() {
   }, []);
 
   useEffect(() => {
-    const filtered = chats.filter(chat => {
+    const filtered = chats.filter((chat) => {
       const name = userRole === 'doctor' ? chat.patient_name : chat.doctor_name;
-      return name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-             chat.reason?.toLowerCase().includes(searchQuery.toLowerCase());
+      return (
+        name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        chat.reason?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     });
     setFilteredChats(filtered);
   }, [searchQuery, chats, userRole]);
@@ -35,14 +46,17 @@ export default function ChatListScreen() {
 
       const res = await api.getMyConsultations();
       if (res.data) {
-        // Only show chats for accepted or completed consultations
-        const activeChats = (res.data as any[]).filter(c => 
-          c.status === 'accepted' || c.status === 'completed' || c.status === 'pending'
+        const activeChats = (res.data as any[]).filter(
+          (c) =>
+            c.status === 'accepted' ||
+            c.status === 'completed' ||
+            c.status === 'pending'
         );
-        
-        // Sort by scheduled_at desc
-        activeChats.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-        
+        activeChats.sort(
+          (a, b) =>
+            new Date(b.scheduled_at).getTime() -
+            new Date(a.scheduled_at).getTime()
+        );
         setChats(activeChats);
         setFilteredChats(activeChats);
       }
@@ -54,246 +68,373 @@ export default function ChatListScreen() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return { label: 'Pending', color: '#F59E0B', bg: '#FFFBEB' };
+      case 'accepted':
+        return { label: 'Active', color: '#10B981', bg: '#ECFDF5' };
+      case 'completed':
+        return { label: 'Done', color: '#6366F1', bg: '#EEF2FF' };
+      default:
+        return { label: status, color: '#94A3B8', bg: '#F8FAFC' };
+    }
+  };
+
   const renderChatItem = ({ item }: { item: any }) => {
-    const name = userRole === 'doctor' ? item.patient_name : (item.doctor_name ? `Dr. ${item.doctor_name}` : 'Medical Specialist');
-    const isPending = item.status === 'pending';
-    
+    const name =
+      userRole === 'doctor'
+        ? item.patient_name
+        : item.doctor_name
+        ? `Dr. ${item.doctor_name}`
+        : 'Medical Specialist';
+    const badge = getStatusBadge(item.status);
+
     return (
-      <TouchableOpacity 
-        style={styles.chatCard} 
+      <TouchableOpacity
+        style={styles.chatCard}
         activeOpacity={0.7}
-        onPress={() => router.push({ pathname: '/consultations/desk/[id]', params: { id: item.id } })}
+        onPress={() =>
+          router.push({
+            pathname: '/consultations/desk/[id]',
+            params: { id: item.id },
+          })
+        }
       >
-        <View style={styles.avatarContainer}>
-          <LinearGradient
-            colors={['#4A90E2', '#2572D9']}
-            style={styles.avatarGradient}
-          >
-            <Text style={styles.avatarText}>{(name || 'A').charAt(0)}</Text>
-          </LinearGradient>
-          {isPending && <View style={styles.pendingDot} />}
+        {/* Avatar */}
+        <View style={styles.avatarWrapper}>
+          <DoctorAvatar
+            imageUrl={item.doctor_photo || item.patient_photo || null}
+            name={name}
+            size={52}
+            radius={14}
+            verified={false}
+          />
+          {item.status === 'accepted' && <View style={styles.onlineDot} />}
         </View>
 
-        <View style={styles.chatInfo}>
-          <View style={styles.chatHeaderRow}>
-            <Text style={styles.chatName} numberOfLines={1}>{name}</Text>
+        {/* Content */}
+        <View style={styles.chatContent}>
+          <View style={styles.chatTopRow}>
+            <Text style={styles.chatName} numberOfLines={1}>
+              {name}
+            </Text>
             <Text style={styles.chatTime}>
-              {new Date(item.scheduled_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+              {new Date(item.scheduled_at).toLocaleDateString([], {
+                month: 'short',
+                day: 'numeric',
+              })}
             </Text>
           </View>
-          
-          <View style={styles.chatMessageRow}>
+          <View style={styles.chatBottomRow}>
             <Text style={styles.lastMessage} numberOfLines={1}>
-              {isPending ? '[Awaiting Approval]' : (item.reason || 'Click to start consultation')}
+              {item.reason || 'Tap to open consultation'}
             </Text>
-            {item.status === 'completed' && (
-              <Ionicons name="checkmark-done" size={16} color="#22C55E" />
-            )}
+            <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+              <Text style={[styles.statusText, { color: badge.color }]}>
+                {badge.label}
+              </Text>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
+  const EmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconCircle}>
+        <Ionicons name="chatbubbles-outline" size={48} color="#2563EB" />
+      </View>
+      <Text style={styles.emptyTitle}>No conversations yet</Text>
+      <Text style={styles.emptySubtitle}>
+        {userRole === 'doctor'
+          ? 'Accepted consultations and patient discussions will appear here.'
+          : 'Book a consultation with a doctor to start messaging.'}
+      </Text>
+      {userRole !== 'doctor' && (
+        <TouchableOpacity
+          style={styles.ctaButton}
+          activeOpacity={0.85}
+          onPress={() => router.push('/bookings/search')}
+        >
+          <Ionicons name="search" size={18} color="#fff" />
+          <Text style={styles.ctaText}>Find a Doctor</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.header}>
-        <SafeAreaView edges={['top']}>
-          <View style={styles.headerTop}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <View style={styles.headerInner}>
+          <View>
             <Text style={styles.headerTitle}>Messages</Text>
-            <TouchableOpacity style={styles.headerIconBtn}>
-              <Ionicons name="ellipsis-vertical" size={20} color="#fff" />
+            <Text style={styles.headerSubtitle}>Your consultations</Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <Ionicons name="chatbubbles" size={20} color="#2563EB" />
+          </View>
+        </View>
+
+        {/* Search */}
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={16} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by doctor or reason…"
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={18} color="#CBD5E1" />
             </TouchableOpacity>
-          </View>
+          )}
+        </View>
+      </View>
 
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="rgba(255, 255, 255, 0.5)" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search chats..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
-
+      {/* ── Content ── */}
       {loading ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#0D1B3A" />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loaderText}>Loading messages…</Text>
         </View>
       ) : (
         <FlatList
           data={filteredChats}
           renderItem={renderChatItem}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={
+            filteredChats.length === 0
+              ? styles.listEmpty
+              : styles.listContent
+          }
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchChats(); }} tintColor="#0D1B3A" />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchChats();
+              }}
+              tintColor="#2563EB"
+            />
           }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconBg}>
-                <Ionicons name="chatbubbles-outline" size={60} color="#E2E8F0" />
-              </View>
-              <Text style={styles.emptyTitle}>No conversations yet</Text>
-              <Text style={styles.emptySubtitle}>
-                {userRole === 'doctor' 
-                  ? 'Your active consultations and patient discussions will appear here.'
-                  : 'Start a consultation with a doctor to begin messaging.'}
-              </Text>
-            </View>
-          }
+          ListEmptyComponent={<EmptyState />}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
   },
+
+  // ── Header ──────────────────────────────────────────────
   header: {
-    paddingBottom: 20,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    height: 46,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    color: '#fff',
-    fontSize: 15,
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  chatCard: {
-    flexDirection: 'row',
-    padding: 16,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  avatarContainer: {
-    position: 'relative',
+  headerInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  avatarGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  headerBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── Search ──────────────────────────────────────────────
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#1E293B',
+  },
+
+  // ── List ────────────────────────────────────────────────
+  listContent: {
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  listEmpty: {
+    flexGrow: 1,
+  },
+
+  // ── Chat Card ───────────────────────────────────────────
+  chatCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginRight: 14,
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#2563EB',
   },
-  pendingDot: {
+  onlineDot: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#F59E0B',
-    borderWidth: 3,
-    borderColor: '#fff',
+    bottom: 0,
+    right: 0,
+    width: 13,
+    height: 13,
+    borderRadius: 7,
+    backgroundColor: '#10B981',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
   },
-  chatInfo: {
+  chatContent: {
     flex: 1,
-    marginLeft: 16,
-    gap: 4,
+    gap: 5,
   },
-  chatHeaderRow: {
+  chatTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   chatName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0F172A',
     flex: 1,
+    marginRight: 8,
   },
   chatTime: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
+    fontWeight: '500',
   },
-  chatMessageRow: {
+  chatBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   lastMessage: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
-  centerContainer: {
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // ── Loader ──────────────────────────────────────────────
+  loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
+  loaderText: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+
+  // ── Empty State ─────────────────────────────────────────
   emptyContainer: {
     flex: 1,
-    paddingTop: 100,
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  emptyIconBg: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 40,
+    paddingBottom: 60,
+  },
+  emptyIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
   emptySubtitle: {
     fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: 28,
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+  },
+  ctaText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

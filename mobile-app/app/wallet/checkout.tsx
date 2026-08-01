@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { api } from '../../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -38,15 +37,15 @@ export default function CheckoutScreen() {
           if (res.data?.status === 'completed') {
             clearInterval(pollInterval);
             Alert.alert(
-              'Payment Received', 
-              'Your transfer has been verified successfully!',
+              'Payment Verified', 
+              'Your bank transfer has been received and confirmed!',
               [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
             );
           }
         } catch (err) {
           console.error('Polling error:', err);
         }
-      }, 5000); // Poll every 5 seconds
+      }, 5000);
     }
 
     return () => {
@@ -94,19 +93,19 @@ export default function CheckoutScreen() {
       const res = await api.checkPaymentStatus(session.reference);
       if (res.data?.status === 'completed') {
         Alert.alert(
-          'Payment Received', 
-          'Your transfer has been verified successfully!',
+          'Payment Verified', 
+          'Your bank transfer has been received and confirmed!',
           [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
         );
       } else {
         Alert.alert(
-          'Still Waiting',
-          'We haven\'t received your transfer yet. Transfers can take a few minutes. Please wait a bit longer or try again later.',
+          'Verification Pending',
+          'We haven\'t detected your transfer yet. If you have sent the funds, please wait a minute and tap verify again.',
           [{ text: 'OK' }]
         );
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to verify payment. Please try again.');
+      Alert.alert('Error', 'Failed to verify payment status. Please try again.');
     } finally {
       setIsVerifying(false);
     }
@@ -116,57 +115,63 @@ export default function CheckoutScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4F46E5" />
-          <Text style={styles.loadingText}>Setting up secure payment...</Text>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Initializing secure payment...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="close" size={28} color="#1e293b" />
+          <Ionicons name="close" size={20} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Secure Checkout</Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Payment Summary */}
         <View style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>Amount to Pay</Text>
+          <Text style={styles.summaryLabel}>Total Amount Due</Text>
           <Text style={styles.summaryAmount}>₦{parseInt(amount as string).toLocaleString()}</Text>
           <View style={styles.timerBadge}>
-            <Ionicons name="time-outline" size={16} color="#D97706" />
-            <Text style={styles.timerText}>Expires in {formatTime(timeLeft)}</Text>
+            <Ionicons name="time-outline" size={14} color="#D97706" />
+            <Text style={styles.timerText}>Session expires in {formatTime(timeLeft)}</Text>
           </View>
         </View>
 
+        {/* Transfer Details Card */}
         <View style={styles.instructionCard}>
-          <Text style={styles.instructionTitle}>Bank Transfer Instruction</Text>
+          <Text style={styles.instructionTitle}>Bank Transfer Instructions</Text>
           <Text style={styles.instructionText}>
-            Please transfer exactly <Text style={styles.boldText}>₦{parseInt(amount as string).toLocaleString()}</Text> to the virtual account below.
+            Please transfer the exact amount above to the following secure virtual bank account.
           </Text>
 
           <View style={styles.accountDetails}>
             <View style={styles.detailRow}>
               <View>
-                <Text style={styles.detailLabel}>Bank Name</Text>
+                <Text style={styles.detailLabel}>BANK NAME</Text>
                 <Text style={styles.detailValue}>{session?.bank_name || 'PalmPay (VTStack)'}</Text>
               </View>
-              <Ionicons name="business" size={24} color="#64748B" />
+              <Ionicons name="business-outline" size={20} color="#64748B" />
             </View>
 
             <View style={styles.divider} />
 
             <View style={styles.detailRow}>
               <View>
-                <Text style={styles.detailLabel}>Account Number</Text>
+                <Text style={styles.detailLabel}>ACCOUNT NUMBER</Text>
                 <Text style={styles.accountNumberText}>{session?.account_number || '0000000000'}</Text>
               </View>
-              <TouchableOpacity onPress={() => copyToClipboard(session?.account_number, 'Account number')}>
-                <Ionicons name="copy-outline" size={24} color="#4F46E5" />
+              <TouchableOpacity 
+                style={styles.copyBtnSmall}
+                onPress={() => copyToClipboard(session?.account_number, 'Account number')}
+              >
+                <Ionicons name="copy-outline" size={18} color="#2563EB" />
               </TouchableOpacity>
             </View>
 
@@ -174,43 +179,39 @@ export default function CheckoutScreen() {
 
             <View style={styles.detailRow}>
               <View>
-                <Text style={styles.detailLabel}>Account Name</Text>
+                <Text style={styles.detailLabel}>ACCOUNT NAME</Text>
                 <Text style={styles.detailValue}>{session?.account_name || 'Medicata Checkout'}</Text>
               </View>
-              <Ionicons name="person" size={24} color="#64748B" />
+              <Ionicons name="person-outline" size={20} color="#64748B" />
             </View>
           </View>
 
           <View style={styles.warningBox}>
-            <Ionicons name="information-circle" size={20} color="#3B82F6" />
+            <Ionicons name="information-circle-outline" size={18} color="#0284C7" />
             <Text style={styles.warningText}>
-              This account is valid for this transaction only and expires in 30 minutes.
+              This virtual account is provisioned for this transaction only. Do not save/reuse.
             </Text>
           </View>
         </View>
 
+        {/* Verification Action */}
         <TouchableOpacity 
           style={styles.confirmButton}
           onPress={handleConfirmTransfer}
           disabled={isVerifying}
         >
-          <LinearGradient
-            colors={['#4F46E5', '#7C3AED']}
-            style={styles.gradientButton}
-          >
-            {isVerifying ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.confirmButtonText}>I have made the transfer</Text>
-            )}
-          </LinearGradient>
+          {isVerifying ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.confirmButtonText}>I have made the transfer</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={styles.cancelButton}
           onPress={() => router.back()}
         >
-          <Text style={styles.cancelButtonText}>Cancel Payment</Text>
+          <Text style={styles.cancelButtonText}>Cancel Transaction</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -220,7 +221,7 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAF9',
+    backgroundColor: '#F8FAFC',
   },
   center: {
     flex: 1,
@@ -229,102 +230,100 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: 12,
     color: '#64748B',
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFF',
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderColor: '#E2E8F0',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
-    color: '#1E293B',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
   backButton: {
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     padding: 20,
   },
   summaryCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#64748B',
-    fontWeight: '600',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   summaryAmount: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
     color: '#0F172A',
-    marginVertical: 8,
+    marginVertical: 6,
+    letterSpacing: -1,
   },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFBEB',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
   timerText: {
-    color: '#D97706',
-    fontSize: 13,
+    color: '#B45309',
+    fontSize: 11,
     fontWeight: '700',
   },
   instructionCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   instructionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  instructionText: {
     fontSize: 15,
-    color: '#64748B',
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  boldText: {
     fontWeight: '800',
     color: '#0F172A',
+    marginBottom: 8,
+  },
+  instructionText: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
+    marginBottom: 16,
+    fontWeight: '550',
   },
   accountDetails: {
     backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -332,67 +331,77 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   detailLabel: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '800',
+    marginBottom: 2,
   },
   detailValue: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
   },
   accountNumberText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '900',
-    color: '#4F46E5',
+    color: '#2563EB',
     letterSpacing: 1,
+  },
+  copyBtnSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
   divider: {
     height: 1,
     backgroundColor: '#E2E8F0',
-    marginVertical: 8,
+    marginVertical: 6,
   },
   warningBox: {
     flexDirection: 'row',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F0F9FF',
     padding: 12,
-    borderRadius: 12,
-    marginTop: 20,
-    gap: 10,
+    borderRadius: 10,
+    marginTop: 16,
+    gap: 8,
     alignItems: 'center',
   },
   warningText: {
     flex: 1,
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '600',
-    lineHeight: 18,
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: '700',
+    lineHeight: 15,
   },
   confirmButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 16,
-  },
-  gradientButton: {
-    paddingVertical: 18,
+    backgroundColor: '#2563EB',
+    borderRadius: 10,
+    height: 48,
+    justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 12,
   },
   confirmButtonText: {
-    color: '#FFF',
-    fontSize: 16,
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '800',
   },
   cancelButton: {
-    paddingVertical: 12,
+    height: 40,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#EF4444',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#DC2626',
+    fontSize: 13,
+    fontWeight: '750',
   },
 });

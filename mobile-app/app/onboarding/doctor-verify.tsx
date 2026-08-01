@@ -81,16 +81,20 @@ export default function DoctorVerifyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
-      <ScrollView contentContainerStyle={styles.content}>
-        <ProgressBar currentStep={6} totalSteps={8} label="Professional Verification" />
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color="#0F172A" />
+          </TouchableOpacity>
+          <ProgressBar currentStep={6} totalSteps={8} label="Professional Verification" />
+        </View>
+
+        <View style={styles.titleSection}>
+          <View style={styles.iconBadge}>
+            <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.iconGrad}>
+              <Ionicons name="shield-checkmark-outline" size={24} color="#fff" />
+            </LinearGradient>
+          </View>
           <Text style={styles.title}>Verify License</Text>
           <Text style={styles.subtitle}>Please upload a clear photo of your medical practice license or professional ID card.</Text>
         </View>
@@ -102,13 +106,13 @@ export default function DoctorVerifyScreen() {
                 <View key={index} style={styles.imageWrapper}>
                   <Image source={{ uri: img }} style={styles.previewImage} />
                   <TouchableOpacity style={styles.removeBtn} onPress={() => removeImage(index)}>
-                    <Ionicons name="close-circle" size={24} color="#FF6B6B" />
+                    <Ionicons name="close-circle" size={24} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
               ))}
               {images.length < 3 && (
                 <TouchableOpacity style={styles.addMoreBtn} onPress={pickImage} disabled={uploading}>
-                  <Ionicons name="add" size={32} color="rgba(255,255,255,0.4)" />
+                  <Ionicons name="add" size={32} color="#94A3B8" />
                   <Text style={styles.addMoreText}>Add Another</Text>
                 </TouchableOpacity>
               )}
@@ -116,11 +120,11 @@ export default function DoctorVerifyScreen() {
           ) : (
             <TouchableOpacity style={styles.uploadBox} onPress={pickImage} disabled={uploading}>
               {uploading ? (
-                <ActivityIndicator size="large" color="#4A90E2" />
+                <ActivityIndicator size="large" color="#2572D9" />
               ) : (
                 <>
                   <View style={styles.iconCircle}>
-                    <Ionicons name="cloud-upload" size={40} color="#4A90E2" />
+                    <Ionicons name="cloud-upload-outline" size={40} color="#2572D9" />
                   </View>
                   <Text style={styles.uploadTitle}>Tap to Upload</Text>
                   <Text style={styles.uploadSubtitle}>JPG or PNG (Max 5MB)</Text>
@@ -130,28 +134,38 @@ export default function DoctorVerifyScreen() {
           )}
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={16} color="#EF4444" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
       </ScrollView>
 
-      <TouchableOpacity 
-        style={[styles.button, (images.length === 0 || contextLoading || uploading) && styles.buttonDisabled]} 
-        onPress={handleNext}
-        disabled={images.length === 0 || contextLoading || uploading}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={['#2572D9', '#4A90E2']}
-          style={styles.buttonGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.button, (images.length === 0 || contextLoading || uploading) && styles.buttonDisabled]} 
+          onPress={handleNext}
+          disabled={images.length === 0 || contextLoading || uploading}
+          activeOpacity={0.85}
         >
-          {contextLoading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Continue</Text>
-          )}
-        </LinearGradient>
-      </TouchableOpacity>
+          <LinearGradient
+            colors={images.length > 0 ? ['#4A90E2', '#2572D9'] : ['#CBD5E1', '#CBD5E1']}
+            style={styles.buttonGrad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {contextLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Text style={styles.buttonText}>Continue</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </View>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -159,43 +173,68 @@ export default function DoctorVerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
   },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  content: {
+  scroll: {
     flexGrow: 1,
-    paddingHorizontal: 32,
-    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
   },
-  header: {
-    marginBottom: 40,
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 8,
+    marginBottom: 8,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleSection: {
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  iconGrad: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    letterSpacing: -1,
+    color: '#0F172A',
+    letterSpacing: -0.8,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 24,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'left',
+    lineHeight: 20,
+    maxWidth: '90%',
   },
   uploadSection: {
-    marginBottom: 32,
+    paddingVertical: 20,
   },
   uploadBox: {
-    height: 240,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    height: 220,
+    backgroundColor: '#F8FAFC',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#E2E8F0',
     borderStyle: 'dashed',
     borderRadius: 24,
     justifyContent: 'center',
@@ -203,88 +242,106 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   uploadTitle: {
-    color: '#FFFFFF',
+    color: '#1E293B',
     fontSize: 18,
     fontWeight: '700',
   },
   uploadSubtitle: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: 14,
   },
   imageList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 16,
   },
   imageWrapper: {
     width: '100%',
-    height: 200,
+    height: 180,
     borderRadius: 20,
     overflow: 'hidden',
-    position: 'relative',
-    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   previewImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   removeBtn: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     backgroundColor: '#FFF',
     borderRadius: 12,
   },
   addMoreBtn: {
     width: '100%',
-    height: 80,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    height: 64,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     borderStyle: 'dashed',
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   addMoreText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: '#94A3B8',
     fontSize: 16,
     fontWeight: '600',
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    marginTop: 10,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    paddingTop: 8,
+  },
   button: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginHorizontal: 32,
-    marginBottom: 24,
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.75,
   },
-  buttonGradient: {
-    padding: 18,
+  buttonGrad: {
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 16,
+    letterSpacing: 0.3,
   },
 });

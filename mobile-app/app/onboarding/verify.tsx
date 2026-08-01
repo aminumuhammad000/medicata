@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import ProgressBar from '../../components/onboarding/ProgressBar';
 import { api } from '../../services/api';
 
@@ -46,76 +47,99 @@ export default function VerifyScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <View style={styles.content}>
-          <ProgressBar currentStep={4} totalSteps={data.userType === 'patient' ? 7 : 8} label="Security" />
-          <Text style={styles.title}>Verification</Text>
-          <Text style={styles.subtitle}>Enter the 4-digit code sent to {data.email}</Text>
-
-          <View style={styles.codeContainer}>
-            <TextInput
-              style={styles.codeInput}
-              placeholder="0000"
-              placeholderTextColor="rgba(255, 255, 255, 0.3)"
-              keyboardType="number-pad"
-              maxLength={4}
-              value={code}
-              onChangeText={setCode}
-              autoFocus
-            />
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#0F172A" />
+            </TouchableOpacity>
+            <ProgressBar currentStep={4} totalSteps={data.userType === 'patient' ? 7 : 8} label="Security" />
           </View>
 
-          {error && (
-            <Text style={styles.errorText}>{error}</Text>
-          )}
+          <View style={styles.titleSection}>
+            <View style={styles.iconBadge}>
+              <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.iconGrad}>
+                <Ionicons name="shield-checkmark" size={24} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.title}>Verification</Text>
+            <Text style={styles.subtitle}>Enter the 4-digit code sent to {data.email}</Text>
+          </View>
 
-          {sentMessage && (
-            <Text style={styles.successText}>{sentMessage}</Text>
-          )}
+          <View style={styles.codeSection}>
+            <View style={styles.codeContainer}>
+              <TextInput
+                style={styles.codeInput}
+                placeholder="0000"
+                placeholderTextColor="#CBD5E1"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={code}
+                onChangeText={setCode}
+                autoFocus
+              />
+            </View>
 
-          <TouchableOpacity 
-            style={styles.resendButton} 
-            activeOpacity={0.7}
-            onPress={handleResend}
-            disabled={sending}
-          >
-            {sending ? (
-              <ActivityIndicator color="#4A90E2" />
-            ) : (
-              <Text style={styles.resendText}>Didn't receive code? <Text style={styles.resendHighlight}>Resend</Text></Text>
+            {error && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             )}
+
+            {sentMessage && (
+              <View style={styles.successBox}>
+                <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                <Text style={styles.successText}>{sentMessage}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.resendButton}
+              activeOpacity={0.7}
+              onPress={handleResend}
+              disabled={sending}
+            >
+              {sending ? (
+                <ActivityIndicator color="#2572D9" />
+              ) : (
+                <Text style={styles.resendText}>Didn't receive code? <Text style={styles.resendHighlight}>Resend Code</Text></Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.button, code.length !== 4 && styles.buttonDisabled]}
+            onPress={handleVerify}
+            disabled={code.length !== 4 || loading}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={code.length === 4 ? ['#4A90E2', '#2572D9'] : ['#CBD5E1', '#CBD5E1']}
+              style={styles.buttonGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={styles.buttonInner}>
+                  <Text style={styles.buttonText}>Verify Account</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </View>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity 
-          style={[styles.button, code.length !== 4 && styles.buttonDisabled]} 
-          onPress={handleVerify}
-          disabled={code.length !== 4 || loading}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#2572D9', '#4A90E2']}
-            style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Verify Account</Text>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -124,107 +148,153 @@ export default function VerifyScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
   },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
+  scroll: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
   },
-  content: {
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 8,
+    marginBottom: 8,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleSection: {
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    gap: 4,
+  },
+  iconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  iconGrad: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
   },
   title: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: '900',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -1,
+    color: '#0F172A',
+    letterSpacing: -0.8,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginTop: 8,
-    marginBottom: 48,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-    lineHeight: 24,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'left',
+    lineHeight: 20,
+    maxWidth: '90%',
+  },
+  codeSection: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
   codeContainer: {
     width: '100%',
-    paddingHorizontal: 32,
-    marginBottom: 32,
+    marginBottom: 16,
   },
   codeInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
     borderRadius: 20,
     padding: 24,
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 24,
+    color: '#0F172A',
+    letterSpacing: 12,
+    textAlign: 'center',
   },
   resendButton: {
-    marginTop: 24,
+    marginTop: 20,
+    padding: 10,
   },
   resendText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#64748B',
+    fontWeight: '500',
   },
   resendHighlight: {
-    color: '#4A90E2',
+    color: '#2572D9',
     fontWeight: '700',
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    width: '100%',
+  },
   errorText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    marginTop: 16,
-    textAlign: 'center',
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    width: '100%',
   },
   successText: {
-    color: '#4CAF50',
-    fontSize: 14,
-    marginTop: 16,
-    textAlign: 'center',
+    color: '#22C55E',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    paddingTop: 8,
   },
   button: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    marginHorizontal: 32,
-    marginBottom: 24,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.75,
   },
-  buttonGradient: {
-    padding: 18,
+  buttonGrad: {
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });

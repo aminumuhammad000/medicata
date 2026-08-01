@@ -10,11 +10,8 @@ import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-const CustomTabBar = (props: BottomTabBarProps & { pointerEvents?: any }) => {
-  const { ...rest } = props as any;
-  const pointerEvents = rest.pointerEvents;
-  delete rest.pointerEvents;
-  return <BottomTabBar {...rest} style={[rest.style, { pointerEvents: pointerEvents || 'auto' }]} />;
+const CustomTabBar = (props: BottomTabBarProps) => {
+  return <BottomTabBar {...props} style={(props as any).style} />;
 };
 
 export default function TabLayout() {
@@ -34,16 +31,12 @@ export default function TabLayout() {
       return;
     }
 
-    // Try the dedicated key first (set on login/register)
     let role = await AsyncStorage.getItem('user_role');
-
-    // Fallback: read from user_data JSON (covers existing logged-in sessions)
     if (!role) {
       const userData = await AsyncStorage.getItem('user_data');
       if (userData) {
         const user = JSON.parse(userData);
         role = user?.role?.toLowerCase() || null;
-        // Backfill the key so future reads are fast
         if (role) {
           await AsyncStorage.setItem('user_role', role);
         }
@@ -59,90 +52,84 @@ export default function TabLayout() {
   const isPharmacy = userRole === 'pharmacy';
   const isDoctor = userRole === 'doctor';
 
-  console.log('[Tab Layout] Current Role:', userRole, 'isDoctor:', isDoctor);
-
-  const doctorTabOptions = {
+  const commonTabOptions = {
     tabBarStyle: {
-      backgroundColor: '#0D1B3A',
-      borderTopWidth: 0,
-      height: Platform.OS === 'ios' ? 88 : 70,
-      paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+      backgroundColor: '#FFFFFF',
+      borderTopWidth: 1,
+      borderTopColor: '#F1F5F9',
+      height: Platform.OS === 'ios' ? 96 : 76,
+      paddingBottom: Platform.OS === 'ios' ? 38 : 16,
       paddingTop: 10,
-      elevation: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
+      elevation: 0,
     },
-    tabBarActiveTintColor: '#fff',
-    tabBarInactiveTintColor: 'rgba(255, 255, 255, 0.4)',
+    tabBarActiveTintColor: '#2563EB',
+    tabBarInactiveTintColor: '#94A3B8',
     tabBarLabelStyle: {
-      fontWeight: '700' as const,
-      fontSize: 11,
+      fontWeight: '800' as const,
+      fontSize: 9,
     },
+    headerShown: false,
+    tabBarButton: HapticTab,
   };
 
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{
-        tabBarActiveTintColor: isDoctor ? '#fff' : Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        ...(isDoctor ? doctorTabOptions : {}),
-      }}
+      screenOptions={commonTabOptions}
     >
-      {/* ── HOME / DASHBOARD ─────────────────────────────── */}
       <Tabs.Screen
         name="index"
         options={{
-          title: isPharmacy ? 'Dashboard' : 'Home',
-          tabBarIcon: ({ color }) => (
+          title: isPharmacy ? 'Home' : 'Home',
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={24}
-              name={isPharmacy ? 'business-outline' : 'home-outline'}
+              size={20}
+              name={focused ? (isPharmacy ? 'business' : 'home') : (isPharmacy ? 'business-outline' : 'home-outline')}
               color={color}
             />
           ),
         }}
       />
 
-      {/* ── ORDERS (pharmacy) / APPOINTMENTS (doctor) / VISITS (patient) ── */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: isPharmacy ? 'Orders' : isDoctor ? 'Appointments' : 'Visits',
-          tabBarIcon: ({ color }) => (
+          title: isPharmacy ? 'Orders' : isDoctor ? 'Appts' : 'Visits',
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={24}
-              name={isPharmacy ? 'cart-outline' : 'calendar-outline'}
+              size={20}
+              name={focused ? (isPharmacy ? 'cart' : 'calendar') : (isPharmacy ? 'cart-outline' : 'calendar-outline')}
               color={color}
             />
           ),
         }}
       />
 
-      {/* ── DISPENSE (pharmacy-only) ──────────────────────── */}
       <Tabs.Screen
         name="scan"
         options={{
-          title: 'Dispense',
-          // Hide for non-pharmacy roles
+          title: 'Scan',
           href: isPharmacy ? undefined : null,
-          tabBarIcon: ({ color }) => <Ionicons size={24} name="qr-code-outline" color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons 
+              size={20} 
+              name={focused ? "qr-code" : "qr-code-outline"} 
+              color={color} 
+            />
+          ),
         }}
       />
 
-      {/* ── STOCK (pharmacy) / PATIENTS (doctor) / RECORDS (patient) ── */}
       <Tabs.Screen
         name="two"
         options={{
           title: isPharmacy ? 'Stock' : isDoctor ? 'Patients' : 'Records',
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={24}
-              name={
-                isPharmacy ? 'cube-outline' : isDoctor ? 'people-outline' : 'folder-outline'
+              size={20}
+              name={focused ? 
+                (isPharmacy ? 'cube' : isDoctor ? 'people' : 'folder') : 
+                (isPharmacy ? 'cube-outline' : isDoctor ? 'people-outline' : 'folder-outline')
               }
               color={color}
             />
@@ -150,37 +137,34 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ── MESSAGES TAB ─────────────────────────────── */}
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
-          tabBarIcon: ({ color }) => (
+          title: 'Chats',
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={24}
-              name="chatbubbles-outline"
+              size={20}
+              name={focused ? "chatbubbles" : "chatbubbles-outline"}
               color={color}
             />
           ),
         }}
       />
 
-      {/* ── PROFILE ── */}
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={24}
-              name="person-outline"
+              size={20}
+              name={focused ? "person" : "person-outline"}
               color={color}
             />
           ),
         }}
       />
 
-      {/* Hide redundant/cluttered tabs */}
       <Tabs.Screen
         name="settings"
         options={{

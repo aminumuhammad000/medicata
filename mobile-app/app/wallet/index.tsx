@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
@@ -47,7 +46,6 @@ export default function WalletScreen() {
   const handleTopUp = async () => {
     setTopUpLoading(true);
     try {
-      // Create a top-up session (e.g. for 5000 Naira default or custom)
       const res = await api.initializeCheckout({
         amount: 500000, // 5000 Naira in kobo
         type: 'topup'
@@ -74,119 +72,148 @@ export default function WalletScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0D1B3A" />
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Fetching balance details...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#0D1B3A', '#1a2a4e']} style={styles.headerSection}>
-        <SafeAreaView edges={['top']}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="chevron-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Financial Wallet</Text>
-            <View style={{ width: 40 }} />
-          </View>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Wallet</Text>
+        <TouchableOpacity style={styles.infoBtn} onPress={onRefresh}>
+          <Ionicons name="sync" size={16} color="#0F172A" />
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.balanceContainer}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#2563EB"]} />}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Balance Card (Flat minimalist Google Pay style) */}
+        <View style={styles.balanceCard}>
+          <View style={styles.balanceHeader}>
             <Text style={styles.balanceLabel}>Available Balance</Text>
-            <Text style={styles.balanceValue}>{formatCurrency(balance?.balance || 0)}</Text>
-            
-            <View style={styles.actionRow}>
-               <TouchableOpacity style={styles.mainActionBtn} onPress={handleTopUp}>
-                  <View style={styles.actionIconBg}>
-                    <Ionicons name="add" size={24} color="#0D1B3A" />
-                  </View>
-                  <Text style={styles.actionText}>Top Up</Text>
-               </TouchableOpacity>
-               
-               <TouchableOpacity style={styles.mainActionBtn}>
-                  <View style={styles.actionIconBg}>
-                    <Ionicons name="arrow-up" size={24} color="#0D1B3A" />
-                  </View>
-                  <Text style={styles.actionText}>Withdraw</Text>
-               </TouchableOpacity>
+            <View style={styles.shieldRow}>
+              <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+              <Text style={styles.secureText}>Secure wallet</Text>
             </View>
           </View>
-        </SafeAreaView>
-      </LinearGradient>
+          <Text style={styles.balanceValue}>{formatCurrency(balance?.balance || 0)}</Text>
+          
+          <View style={styles.divider} />
 
-      <View style={styles.content}>
+          {/* Action Row */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={[styles.actionBtn, styles.topUpBtn]} 
+              onPress={handleTopUp}
+              disabled={topUpLoading}
+            >
+              {topUpLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="add" size={18} color="#FFFFFF" />
+                  <Text style={styles.topUpBtnText}>Add Money</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionBtn, styles.withdrawBtn]}
+              onPress={() => alert('Withdrawal service setup completed on settings')}
+            >
+              <Ionicons name="arrow-up" size={16} color="#475569" />
+              <Text style={styles.withdrawBtnText}>Withdraw</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Transactions Info Header */}
         <View style={styles.txHeader}>
           <Text style={styles.txTitle}>Recent Transactions</Text>
           <TouchableOpacity>
-            <Text style={styles.seeAllText}>See All</Text>
+            <Text style={styles.seeAllText}>View all history</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.txList}
-        >
-          {transactions.length > 0 ? (
-            transactions.map((tx, index) => (
+        {/* Transactions List */}
+        {transactions.length > 0 ? (
+          transactions.map((tx, index) => {
+            const isDeposit = tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings';
+            return (
               <Animated.View 
                 key={tx.id} 
-                entering={FadeInDown.delay(index * 100)}
+                entering={FadeInDown.delay(index * 50)}
                 style={styles.txItem}
               >
-                <View style={[styles.txIconBg, { backgroundColor: tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings' ? '#DCFCE7' : '#FEE2E2' }]}>
+                <View style={[styles.txIconBg, { backgroundColor: isDeposit ? '#ECFDF5' : '#FEF2F2' }]}>
                   <Ionicons 
-                    name={tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings' ? 'arrow-down' : 'arrow-up'} 
-                    size={20} 
-                    color={tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings' ? '#166534' : '#991B1B'} 
+                    name={isDeposit ? 'arrow-down-outline' : 'arrow-up-outline'} 
+                    size={16} 
+                    color={isDeposit ? '#059669' : '#DC2626'} 
                   />
                 </View>
                 <View style={styles.txInfo}>
                   <Text style={styles.txType}>{tx.description || tx.transaction_type}</Text>
                   <Text style={styles.txDate}>{formatDate(tx.created_at)}</Text>
                 </View>
-                <Text style={[styles.txAmount, (tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings') ? styles.plusAmount : styles.minusAmount]}>
-                  {(tx.transaction_type === 'deposit' || tx.transaction_type === 'earnings') ? '+' : '-'}{formatCurrency(tx.amount)}
+                <Text style={[styles.txAmount, isDeposit ? styles.plusAmount : styles.minusAmount]}>
+                  {isDeposit ? '+' : '-'}{formatCurrency(tx.amount)}
                 </Text>
               </Animated.View>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={60} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No transactions yet</Text>
+            );
+          })
+        ) : (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBg}>
+              <Ionicons name="wallet-outline" size={32} color="#94A3B8" />
             </View>
-          )}
-        </ScrollView>
-      </View>
+            <Text style={styles.emptyTitle}>No transaction history</Text>
+            <Text style={styles.emptySubtitle}>Fund your account or pay bills to view recent transactions.</Text>
+          </View>
+        )}
+      </ScrollView>
 
-      {/* Top Up Modal (VTStack Display) */}
+      {/* Top Up Modal */}
       <Modal visible={showTopUp} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <Animated.View entering={FadeInUp} style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Fund Your Wallet</Text>
-              <TouchableOpacity onPress={() => setShowTopUp(false)}>
-                <Ionicons name="close" size={24} color="#1E293B" />
+              <Text style={styles.modalTitle}>Fund Account</Text>
+              <TouchableOpacity onPress={() => setShowTopUp(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.paymentInfoBox}>
-              <Text style={styles.paymentInstruction}>Transfer to the virtual account below to fund your wallet instantly.</Text>
+              <Text style={styles.paymentInstruction}>
+                Make a bank transfer to the virtual account below to instantly fund your wallet.
+              </Text>
               
               <View style={styles.accountCard}>
-                 <Text style={styles.bankName}>{checkoutSession?.bank_name}</Text>
-                 <Text style={styles.accountNumber}>{checkoutSession?.account_number}</Text>
-                 <Text style={styles.accountName}>{checkoutSession?.account_name}</Text>
+                 <Text style={styles.bankName}>{checkoutSession?.bank_name || 'STERLING BANK'}</Text>
+                 <Text style={styles.accountNumber}>{checkoutSession?.account_number || '0000000000'}</Text>
+                 <Text style={styles.accountName}>{checkoutSession?.account_name || 'MEDICATA PATIENT'}</Text>
                  
                  <TouchableOpacity style={styles.copyBtn}>
-                    <Ionicons name="copy-outline" size={18} color="#fff" />
-                    <Text style={styles.copyBtnText}>Copy Account Number</Text>
+                    <Ionicons name="copy-outline" size={14} color="#2563EB" />
+                    <Text style={styles.copyBtnText}>Copy Account Code</Text>
                  </TouchableOpacity>
               </View>
 
               <View style={styles.warningBox}>
-                <Ionicons name="information-circle" size={20} color="#4A90E2" />
-                <Text style={styles.warningText}>This account expires in 30 minutes. Ensure you transfer exactly {formatCurrency(checkoutSession?.amount || 0)}.</Text>
+                <Ionicons name="information-circle-outline" size={18} color="#0284C7" />
+                <Text style={styles.warningText}>
+                  This virtual account will expire in 30 minutes. Remit exact amount: {formatCurrency(checkoutSession?.amount || 500000)}.
+                </Text>
               </View>
             </View>
 
@@ -197,58 +224,340 @@ export default function WalletScreen() {
                 onRefresh();
               }}
             >
-              <Text style={styles.doneBtnText}>I've Made The Transfer</Text>
+              <Text style={styles.doneBtnText}>Confirm Transfer</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerSection: { paddingBottom: 40, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  balanceContainer: { alignItems: 'center', marginTop: 32 },
-  balanceLabel: { fontSize: 14, color: 'rgba(255, 255, 255, 0.6)', fontWeight: '600' },
-  balanceValue: { fontSize: 42, fontWeight: '900', color: '#fff', marginVertical: 8 },
-  actionRow: { flexDirection: 'row', gap: 24, marginTop: 24 },
-  mainActionBtn: { alignItems: 'center', gap: 8 },
-  actionIconBg: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' },
-  actionText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  content: { flex: 1, paddingHorizontal: 24, marginTop: -20 },
-  txHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  txTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  seeAllText: { fontSize: 14, color: '#4A90E2', fontWeight: '700' },
-  txList: { paddingBottom: 40 },
-  txItem: { flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
-  txIconBg: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  txInfo: { flex: 1, marginLeft: 16 },
-  txType: { fontSize: 15, fontWeight: '700', color: '#1E293B', textTransform: 'capitalize' },
-  txDate: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
-  txAmount: { fontSize: 16, fontWeight: '800' },
-  plusAmount: { color: '#10B981' },
-  minusAmount: { color: '#EF4444' },
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyText: { marginTop: 16, color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, minHeight: 500 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1E293B' },
-  paymentInfoBox: { flex: 1 },
-  paymentInstruction: { fontSize: 15, color: '#64748B', lineHeight: 22, textAlign: 'center', marginBottom: 32 },
-  accountCard: { backgroundColor: '#0D1B3A', borderRadius: 24, padding: 32, alignItems: 'center' },
-  bankName: { fontSize: 14, color: 'rgba(255, 255, 255, 0.6)', fontWeight: '700', textTransform: 'uppercase', marginBottom: 8 },
-  accountNumber: { fontSize: 32, fontWeight: '900', color: '#fff', letterSpacing: 2, marginBottom: 16 },
-  accountName: { fontSize: 16, color: '#fff', fontWeight: '600', marginBottom: 24 },
-  copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255, 255, 255, 0.1)', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  copyBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  warningBox: { flexDirection: 'row', gap: 12, backgroundColor: '#EFF6FF', padding: 16, borderRadius: 16, marginTop: 24 },
-  warningText: { flex: 1, fontSize: 13, color: '#1E40AF', fontWeight: '600', lineHeight: 18 },
-  doneBtn: { height: 56, backgroundColor: '#4A90E2', borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginTop: 24, marginBottom: 20 },
-  doneBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F8FAFC' 
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC'
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  backBtn: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 10, 
+    backgroundColor: '#F1F5F9', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+  },
+  headerTitle: { 
+    fontSize: 17, 
+    fontWeight: '800', 
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  infoBtn: {
+    width: 36, 
+    height: 36, 
+    borderRadius: 10, 
+    backgroundColor: '#F1F5F9', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  balanceCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 24,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  balanceLabel: { 
+    fontSize: 12, 
+    color: '#64748B', 
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  shieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  secureText: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '700',
+  },
+  balanceValue: { 
+    fontSize: 34, 
+    fontWeight: '900', 
+    color: '#0F172A', 
+    marginTop: 8,
+    letterSpacing: -1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 18,
+  },
+  actionRow: { 
+    flexDirection: 'row', 
+    gap: 12, 
+  },
+  actionBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  topUpBtn: {
+    backgroundColor: '#2563EB',
+  },
+  topUpBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  withdrawBtn: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  withdrawBtnText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  txHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 14 
+  },
+  txTitle: { 
+    fontSize: 12, 
+    fontWeight: '800', 
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  seeAllText: { 
+    fontSize: 12, 
+    color: '#2563EB', 
+    fontWeight: '800' 
+  },
+  txItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 14, 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 16, 
+    marginBottom: 10, 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0' 
+  },
+  txIconBg: { 
+    width: 36, 
+    height: 36, 
+    borderRadius: 10, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  txInfo: { 
+    flex: 1, 
+    marginLeft: 12 
+  },
+  txType: { 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: '#0F172A', 
+    textTransform: 'capitalize' 
+  },
+  txDate: { 
+    fontSize: 11, 
+    color: '#64748B', 
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  txAmount: { 
+    fontSize: 14, 
+    fontWeight: '800' 
+  },
+  plusAmount: { 
+    color: '#059669' 
+  },
+  minusAmount: { 
+    color: '#DC2626' 
+  },
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: 50,
+  },
+  emptyIconBg: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: { 
+    fontSize: 15, 
+    fontWeight: '800', 
+    color: '#0F172A', 
+    marginBottom: 6 
+  },
+  emptySubtitle: { 
+    fontSize: 13, 
+    color: '#64748B', 
+    textAlign: 'center', 
+    lineHeight: 18,
+    fontWeight: '500',
+  },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(15, 23, 42, 0.4)', 
+    justifyContent: 'flex-end' 
+  },
+  modalContent: { 
+    backgroundColor: '#FFFFFF', 
+    borderTopLeftRadius: 24, 
+    borderTopRightRadius: 24, 
+    padding: 24, 
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  modalTitle: { 
+    fontSize: 17, 
+    fontWeight: '800', 
+    color: '#0F172A' 
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentInfoBox: { 
+    marginBottom: 20 
+  },
+  paymentInstruction: { 
+    fontSize: 13, 
+    color: '#64748B', 
+    lineHeight: 18, 
+    textAlign: 'center', 
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  accountCard: { 
+    backgroundColor: '#F8FAFC', 
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16, 
+    padding: 20, 
+    alignItems: 'center' 
+  },
+  bankName: { 
+    fontSize: 11, 
+    color: '#64748B', 
+    fontWeight: '800', 
+    textTransform: 'uppercase', 
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  accountNumber: { 
+    fontSize: 24, 
+    fontWeight: '900', 
+    color: '#0F172A', 
+    letterSpacing: 2, 
+    marginBottom: 8 
+  },
+  accountName: { 
+    fontSize: 13, 
+    color: '#475569', 
+    fontWeight: '700', 
+    marginBottom: 16 
+  },
+  copyBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6, 
+    backgroundColor: '#EFF6FF', 
+    paddingHorizontal: 14, 
+    paddingVertical: 8, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  copyBtnText: { 
+    color: '#2563EB', 
+    fontSize: 12, 
+    fontWeight: '800' 
+  },
+  warningBox: { 
+    flexDirection: 'row', 
+    gap: 8, 
+    backgroundColor: '#F0F9FF', 
+    padding: 12, 
+    borderRadius: 10, 
+    marginTop: 16 
+  },
+  warningText: { 
+    flex: 1, 
+    fontSize: 11, 
+    color: '#0284C7', 
+    fontWeight: '700', 
+    lineHeight: 15 
+  },
+  doneBtn: { 
+    height: 48, 
+    backgroundColor: '#2563EB', 
+    borderRadius: 10, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 8 
+  },
+  doneBtnText: { 
+    fontSize: 14, 
+    fontWeight: '800', 
+    color: '#FFFFFF' 
+  },
 });

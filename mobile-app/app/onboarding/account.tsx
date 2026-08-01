@@ -1,10 +1,106 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useOnboarding } from '../../context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import ProgressBar from '../../components/onboarding/ProgressBar';
+
+const validateEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
+
+type FieldStatus = 'none' | 'valid' | 'invalid';
+
+function FieldRow({
+  label,
+  hint,
+  icon,
+  status,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  icon: any;
+  status: FieldStatus;
+  children: React.ReactNode;
+}) {
+  const borderColor =
+    status === 'valid' ? '#22C55E' :
+    status === 'invalid' ? '#EF4444' : '#E2E8F0';
+  const bg =
+    status === 'valid' ? '#F0FDF4' :
+    status === 'invalid' ? '#FEF2F2' : '#F8FAFC';
+  const iconColor =
+    status === 'valid' ? '#22C55E' :
+    status === 'invalid' ? '#EF4444' : '#94A3B8';
+
+  return (
+    <View style={fieldStyles.wrapper}>
+      <View style={fieldStyles.labelRow}>
+        <Text style={fieldStyles.label}>{label}</Text>
+        {status === 'valid' && (
+          <View style={fieldStyles.validBadge}>
+            <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
+            <Text style={fieldStyles.validText}>Looks good</Text>
+          </View>
+        )}
+        {status === 'invalid' && hint && (
+          <Text style={fieldStyles.hintText}>{hint}</Text>
+        )}
+      </View>
+      <View style={[fieldStyles.inputBox, { borderColor, backgroundColor: bg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} style={fieldStyles.inputIcon} />
+        {children}
+        {status === 'valid' && <Ionicons name="checkmark-circle" size={18} color="#22C55E" />}
+        {status === 'invalid' && <Ionicons name="close-circle" size={18} color="#EF4444" />}
+      </View>
+    </View>
+  );
+}
+
+const fieldStyles = StyleSheet.create({
+  wrapper: { gap: 6 },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  validBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  validText: {
+    fontSize: 11,
+    color: '#22C55E',
+    fontWeight: '600',
+  },
+  hintText: {
+    fontSize: 11,
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    gap: 10,
+  },
+  inputIcon: {},
+});
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -12,117 +108,171 @@ export default function AccountScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const nameStatus: FieldStatus = fullName.length === 0 ? 'none' : fullName.trim().length >= 3 ? 'valid' : 'invalid';
+  const emailStatus: FieldStatus = email.length === 0 ? 'none' : validateEmail(email) ? 'valid' : 'invalid';
+  const passStatus: FieldStatus = password.length === 0 ? 'none' : password.length >= 6 ? 'valid' : 'invalid';
+
+  const isComplete = nameStatus === 'valid' && emailStatus === 'valid' && passStatus === 'valid';
 
   const handleNext = async () => {
-    if (!fullName || !email || !password) return;
-    
-    // Validate email format to prevent backend Lettre parse "Invalid input" errors
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert("Please enter a valid email address.");
-      return;
-    }
-    
+    if (!isComplete) return;
+
     if (data.userType === 'pharmacy') {
-      const success = await register({ 
-        fullName, 
-        email, 
-        password, 
-        userType: 'pharmacy' 
-      });
-      if (success) {
-        router.push('/onboarding/verify');
-      }
+      const success = await register({ fullName, email, password, userType: 'pharmacy' });
+      if (success) router.push('/onboarding/verify');
     } else {
       updateData({ fullName, email, password });
       router.push('/onboarding/contact');
     }
   };
 
-  const isComplete = fullName && email && password;
+  const totalSteps = data.userType === 'patient' ? 7 : 8;
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#0D1B3A', '#1E3A5F', '#2572D9']}
-        style={styles.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ProgressBar currentStep={2} totalSteps={data.userType === 'patient' ? 7 : 8} label="Account Setup" />
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Enter your details to get started</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Header area */}
+          <View style={styles.topBar}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color="#0F172A" />
+            </TouchableOpacity>
+            <ProgressBar currentStep={2} totalSteps={totalSteps} label="Account" />
           </View>
 
+          {/* Title */}
+          <View style={styles.titleSection}>
+            <View style={styles.iconBadge}>
+              <LinearGradient colors={['#4A90E2', '#2572D9']} style={styles.iconGrad}>
+                <Ionicons name="person-add-outline" size={24} color="#fff" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Fill in your details to set up your profile</Text>
+          </View>
+
+          {/* Form */}
           <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Full Name</Text>
+            <FieldRow
+              label="Full Name"
+              hint="At least 3 characters"
+              icon="person-outline"
+              status={nameStatus}
+            >
               <TextInput
                 style={styles.input}
-                placeholder="Ex: John Doe"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholder="John Doe"
+                placeholderTextColor="#94A3B8"
                 value={fullName}
                 onChangeText={setFullName}
               />
-            </View>
+            </FieldRow>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Address</Text>
+            <FieldRow
+              label="Email Address"
+              hint="Enter a valid email"
+              icon="mail-outline"
+              status={emailStatus}
+            >
               <TextInput
                 style={styles.input}
-                placeholder="Ex: john@example.com"
+                placeholder="john@example.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholderTextColor="#94A3B8"
                 value={email}
                 onChangeText={setEmail}
               />
-            </View>
+            </FieldRow>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+            <FieldRow
+              label="Password"
+              hint="At least 6 characters"
+              icon="lock-closed-outline"
+              status={passStatus}
+            >
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                secureTextEntry
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                secureTextEntry={!showPassword}
+                placeholderTextColor="#94A3B8"
                 value={password}
                 onChangeText={setPassword}
               />
-            </View>
+              <TouchableOpacity onPress={() => setShowPassword(p => !p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={18}
+                  color="#94A3B8"
+                />
+              </TouchableOpacity>
+            </FieldRow>
+
+            {/* Password strength indicator */}
+            {password.length > 0 && (
+              <View style={styles.strengthRow}>
+                {[1, 2, 3].map(level => (
+                  <View
+                    key={level}
+                    style={[
+                      styles.strengthBar,
+                      password.length >= level * 3 && (
+                        password.length >= 9 ? styles.strengthStrong :
+                        password.length >= 6 ? styles.strengthMedium :
+                        styles.strengthWeak
+                      )
+                    ]}
+                  />
+                ))}
+                <Text style={styles.strengthLabel}>
+                  {password.length < 6 ? 'Too short' : password.length < 9 ? 'Fair' : 'Strong'}
+                </Text>
+              </View>
+            )}
 
             {error && (
-              <Text style={styles.errorText}>{error}</Text>
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
             )}
           </View>
         </ScrollView>
 
-        <TouchableOpacity 
-          style={[styles.button, (!isComplete || loading) && styles.buttonDisabled]} 
-          onPress={handleNext}
-          disabled={!isComplete || loading}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#2572D9', '#4A90E2']}
-            style={styles.buttonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+        {/* Next button */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.button, !isComplete && styles.buttonDisabled]}
+            onPress={handleNext}
+            disabled={!isComplete || loading}
+            activeOpacity={0.85}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.buttonText}>Next</Text>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={isComplete ? ['#4A90E2', '#2572D9'] : ['#CBD5E1', '#CBD5E1']}
+              style={styles.buttonGrad}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={styles.buttonInner}>
+                  <Text style={styles.buttonText}>Continue</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </View>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -131,93 +281,139 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D1B3A',
+    backgroundColor: '#FFFFFF',
   },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  content: {
+  scroll: {
     flexGrow: 1,
-    paddingHorizontal: 32,
-    paddingTop: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
   },
-  header: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#FFFFFF',
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingTop: 8,
     marginBottom: 8,
-    letterSpacing: -1,
   },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.6)',
-    lineHeight: 24,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  form: {
-    gap: 24,
+  titleSection: {
+    alignItems: 'flex-start',
+    paddingVertical: 16,
+    gap: 4,
   },
-  inputGroup: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 18,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  button: {
+  iconBadge: {
+    width: 48,
+    height: 48,
     borderRadius: 16,
     overflow: 'hidden',
-    marginHorizontal: 32,
-    marginBottom: 24,
-    ...Platform.select({
-      web: {
-        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 8,
-      }
-    }),
+    marginBottom: 8,
+  },
+  iconGrad: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'left',
+    lineHeight: 20,
+    maxWidth: '90%',
+  },
+  form: {
+    gap: 14,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#0F172A',
+    height: '100%',
+  },
+  strengthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: -8,
+  },
+  strengthBar: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+  },
+  strengthWeak: {
+    backgroundColor: '#EF4444',
+  },
+  strengthMedium: {
+    backgroundColor: '#F59E0B',
+  },
+  strengthStrong: {
+    backgroundColor: '#22C55E',
+  },
+  strengthLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    minWidth: 50,
+    textAlign: 'right',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+    flex: 1,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    paddingTop: 8,
+  },
+  button: {
+    borderRadius: 18,
+    overflow: 'hidden',
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.75,
   },
-  buttonGradient: {
-    padding: 18,
+  buttonGrad: {
+    height: 54,
+    justifyContent: 'center',
     alignItems: 'center',
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  errorText: {
-    color: '#FF6B6B',
-    fontSize: 14,
-    marginTop: 8,
-    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });
