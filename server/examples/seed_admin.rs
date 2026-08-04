@@ -23,6 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let admin_email = env::var("ADMIN_EMAIL").unwrap_or_else(|_| "admin@medicata.com".to_string());
     let admin_password = env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".to_string());
     let admin_full_name = env::var("ADMIN_FULL_NAME").unwrap_or_else(|_| "System Administrator".to_string());
+    let admin_phone_number = env::var("ADMIN_PHONE_NUMBER").unwrap_or_else(|_| "+2340000000000".to_string());
 
     println!("Connecting to database...");
     let pool = PgPoolOptions::new()
@@ -45,17 +46,19 @@ async fn main() -> anyhow::Result<()> {
         .to_string();
 
     let result = sqlx::query(
-        "INSERT INTO users (full_name, email, password_hash, role, is_verified)
-         VALUES ($1, $2, $3, $4, TRUE)
+        "INSERT INTO users (full_name, email, password_hash, phone_number, role, is_verified)
+         VALUES ($1, $2, $3, $4, $5, TRUE)
          ON CONFLICT (email) DO UPDATE SET
              full_name = EXCLUDED.full_name,
              password_hash = EXCLUDED.password_hash,
+             phone_number = EXCLUDED.phone_number,
              role = EXCLUDED.role,
              is_verified = TRUE"
     )
     .bind(&admin_full_name)
     .bind(&admin_email)
     .bind(password_hash)
+    .bind(&admin_phone_number)
     .bind(UserRole::Admin)
     .execute(&pool)
     .await
