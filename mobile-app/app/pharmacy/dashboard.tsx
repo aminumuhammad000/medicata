@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { api } from '../../services/api';
 
 export default function PharmacyDashboard() {
@@ -157,59 +158,50 @@ export default function PharmacyDashboard() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>{pharmacyName || 'Medicare Pharmacy'}</Text>
-            <Text style={styles.subtitle}>Manage incoming orders</Text>
+        <LinearGradient colors={['#0F172A', '#1E3A8A']} style={styles.hero}>
+          <View style={styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>{pharmacyName || 'Medicare Pharmacy'}</Text>
+              <Text style={styles.subtitle}>Keep fulfilment moving and patients informed</Text>
+            </View>
+            <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
+              <Ionicons name="notifications" size={22} color="#FFFFFF" />
+              {unreadNotifications > 0 && (
+                <View style={styles.notifBadge}>
+                  <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/notifications')}>
-            <Ionicons name="notifications" size={24} color="#1a1a1a" />
-            {unreadNotifications > 0 && (
-              <View style={styles.notifBadge}>
-                <Text style={styles.notifBadgeText}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</Text>
+
+          <View style={styles.stats}>
+            <View style={styles.statBox}>
+              <Text style={[styles.statVal, { color: '#F59E0B' }]}>{stats.pending}</Text>
+              <Text style={styles.statLab}>Pending</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={[styles.statVal, { color: '#34D399' }]}>{stats.completed}</Text>
+              <Text style={styles.statLab}>Completed</Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+<View style={styles.quickActions}>
+          {[
+            { label: 'Scan QR', icon: 'scan', color: '#4F46E5', bg: '#EEF2FF', route: '/pharmacy/scan' },
+            { label: 'Inventory', icon: 'cube', color: '#10B981', bg: '#ECFDF5', route: '/pharmacy/inventory' },
+            { label: 'All Orders', icon: 'list', color: '#F59E0B', bg: '#FFFBEB', route: '/pharmacy/orders' },
+            { label: 'Search', icon: 'search', color: '#9333EA', bg: '#F5EFFF', route: '/pharmacy/search' },
+          ].map((item) => (
+            <TouchableOpacity key={item.label} style={styles.quickActionBtn} onPress={() => router.push(item.route as any)}>
+              <View style={[styles.quickActionIcon, { backgroundColor: item.bg }]}> 
+                <Ionicons name={item.icon as any} size={22} color={item.color} />
               </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.stats}>
-          <View style={styles.statBox}>
-            <Text style={[styles.statVal, { color: '#F59E0B' }]}>{stats.pending}</Text>
-            <Text style={styles.statLab}>Pending</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statVal, { color: '#10B981' }]}>{stats.completed}</Text>
-            <Text style={styles.statLab}>Completed</Text>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/pharmacy/scan')}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#EEF2FF' }]}>
-              <Ionicons name="scan" size={24} color="#4F46E5" />
-            </View>
-            <Text style={styles.quickActionText}>Scan QR</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/pharmacy/inventory')}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="cube" size={24} color="#10B981" />
-            </View>
-            <Text style={styles.quickActionText}>Inventory</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/pharmacy/orders')}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#FFFBEB' }]}>
-              <Ionicons name="list" size={24} color="#F59E0B" />
-            </View>
-            <Text style={styles.quickActionText}>All Orders</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push('/pharmacy/search')}>
-            <View style={[styles.quickActionIcon, { backgroundColor: '#F3E8FF' }]}>
-              <Ionicons name="search" size={24} color="#9333EA" />
-            </View>
-            <Text style={styles.quickActionText}>Search</Text>
-          </TouchableOpacity>
+              <Text style={styles.quickActionText}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <View style={styles.section}>
@@ -229,8 +221,8 @@ export default function PharmacyDashboard() {
             />
           ) : (
             <View style={styles.emptyState}>
-              <Ionicons name="cart-outline" size={48} color="#ddd" />
-              <Text style={styles.emptyText}>No orders found</Text>
+              <Ionicons name="cart-outline" size={48} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No orders found yet</Text>
             </View>
           )}
         </View>
@@ -242,29 +234,39 @@ export default function PharmacyDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F8FAFC',
+  },
+  hero: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 8,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+    fontSize: 13,
+    color: '#DBEAFE',
+    marginTop: 4,
+    fontWeight: '500',
   },
   notifBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255,255,255,0.16)',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -290,57 +292,61 @@ const styles = StyleSheet.create({
   },
   stats: {
     flexDirection: 'row',
-    padding: 20,
-    gap: 16,
+    gap: 12,
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(255,255,255,0.16)',
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   statVal: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   statLab: {
     fontSize: 12,
-    color: '#666',
-    marginTop: 2,
+    color: '#DBEAFE',
+    marginTop: 4,
+    fontWeight: '600',
   },
   section: {
     flex: 1,
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 18,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontWeight: '800',
+    color: '#0F172A',
   },
   viewAllText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4a90e2',
+    fontWeight: '700',
+    color: '#2563EB',
   },
   list: {
-    gap: 16,
+    gap: 12,
   },
   orderCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: '#E2E8F0',
     padding: 16,
+    shadowColor: '#94A3B8',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   orderHeader: {
     flexDirection: 'row',
@@ -421,22 +427,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginTop: -18,
+    marginBottom: 8,
   },
   quickActionBtn: {
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   quickActionIcon: {
     width: 56,
     height: 56,
-    borderRadius: 16,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   quickActionText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#334155',
   },
   orderFooter: {
@@ -469,17 +477,17 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    padding: 40,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
+    padding: 36,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 18,
     borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#E2E8F0',
   },
   emptyText: {
     marginTop: 12,
     fontSize: 14,
-    color: '#999',
-    fontWeight: '500',
+    color: '#64748B',
+    fontWeight: '600',
   },
 });

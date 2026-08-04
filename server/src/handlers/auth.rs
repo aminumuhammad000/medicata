@@ -132,7 +132,7 @@ pub async fn verify(
         None => return Err(AppError::BadRequest("No verification code sent".to_string())),
     };
 
-    if stored_code != payload.code {
+    if stored_code.trim() != payload.code.trim() {
         return Err(AppError::BadRequest("Invalid verification code".to_string()));
     }
 
@@ -160,11 +160,15 @@ pub async fn send_verification(
     let code = format!("{:04}", rand::random::<u16>() % 10000);
     
     // Save verification code to database
-    sqlx::query("UPDATE users SET verification_code = $1 WHERE email = $2")
+    let update_result = sqlx::query("UPDATE users SET verification_code = $1 WHERE email = $2")
         .bind(&code)
         .bind(&payload.email)
         .execute(&state.db)
         .await?;
+
+    if update_result.rows_affected() == 0 {
+        return Err(AppError::NotFound("No account found for this email".to_string()));
+    }
 
     // Send verification email in background (non-blocking)
     let email_service = state.email_service.clone();
