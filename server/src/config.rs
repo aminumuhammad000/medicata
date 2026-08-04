@@ -9,6 +9,7 @@ pub struct Config {
     pub smtp_password: String,
     pub smtp_host: String,
     pub smtp_port: u16,
+    pub smtp_from: String,
 }
 
 impl Config {
@@ -23,14 +24,18 @@ impl Config {
             .unwrap_or_else(|_| "3000".to_string())
             .parse()?;
         let smtp_username = std::env::var("SMTP_USERNAME")
+            .map(|value| value.trim().to_string())
             .map_err(|_| anyhow::anyhow!("SMTP_USERNAME must be set"))?;
         let smtp_password = std::env::var("SMTP_PASSWORD")
+            .map(|value| value.split_whitespace().collect::<String>())
             .map_err(|_| anyhow::anyhow!("SMTP_PASSWORD must be set"))?;
         let smtp_host = std::env::var("SMTP_HOST")
             .unwrap_or_else(|_| "smtp.gmail.com".to_string());
         let smtp_port = std::env::var("SMTP_PORT")
             .unwrap_or_else(|_| "587".to_string())
             .parse()?;
+        let smtp_from = std::env::var("SMTP_FROM")
+            .unwrap_or_else(|_| smtp_username.clone());
 
         Ok(Config {
             database_url,
@@ -40,6 +45,7 @@ impl Config {
             smtp_password,
             smtp_host,
             smtp_port,
+            smtp_from,
         })
     }
 }

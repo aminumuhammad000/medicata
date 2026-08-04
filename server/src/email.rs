@@ -12,6 +12,7 @@ pub struct EmailService {
     smtp_password: String,
     smtp_host: String,
     smtp_port: u16,
+    smtp_from: String,
 }
 
 impl EmailService {
@@ -21,6 +22,7 @@ impl EmailService {
             smtp_password: config.smtp_password.clone(),
             smtp_host: config.smtp_host.clone(),
             smtp_port: config.smtp_port,
+            smtp_from: config.smtp_from.clone(),
         }
     }
 
@@ -64,6 +66,15 @@ impl EmailService {
         )
     }
 
+    fn get_from_address(&self) -> String {
+        let trimmed = self.smtp_from.trim();
+        if trimmed.contains('<') && trimmed.contains('>') {
+            trimmed.to_string()
+        } else {
+            format!("Medicata <{}>", trimmed)
+        }
+    }
+
     pub async fn send_verification_email(&self, to_email: &str, code: &str) -> Result<()> {
         println!("Attempting to send verification email to: {}", to_email);
         
@@ -82,7 +93,7 @@ impl EmailService {
         );
         
         let email = Message::builder()
-            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .from(self.get_from_address().parse()?)
             .to(to_email.parse()?)
             .subject("Medicata Verification Code")
             .header(ContentType::TEXT_HTML)
@@ -121,7 +132,7 @@ impl EmailService {
         );
 
         let email = Message::builder()
-            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .from(self.get_from_address().parse()?)
             .to(to_email.parse()?)
             .subject("Medicata Password Reset")
             .header(ContentType::TEXT_HTML)
@@ -166,7 +177,7 @@ impl EmailService {
         );
 
         let email = Message::builder()
-            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .from(self.get_from_address().parse()?)
             .to(to_email.parse()?)
             .subject("New Appointment Request - Medicata")
             .header(ContentType::TEXT_HTML)
@@ -226,7 +237,7 @@ impl EmailService {
         );
 
         let email = Message::builder()
-            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .from(self.get_from_address().parse()?)
             .to(to_email.parse()?)
             .subject("Appointment Update - Medicata")
             .header(ContentType::TEXT_HTML)
@@ -263,7 +274,7 @@ impl EmailService {
         );
 
         let email = Message::builder()
-            .from("Medicata <uteach38@gmail.com>".parse()?)
+            .from(self.get_from_address().parse()?)
             .to(to_email.parse()?)
             .subject(message_title)
             .header(ContentType::TEXT_HTML)
