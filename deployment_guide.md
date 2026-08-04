@@ -59,6 +59,20 @@ server {
     listen 80;
     server_name api.medicata.ng;
 
+    set $cors_origin "";
+    if ($http_origin ~* "^https://(app|admin)\\.medicata\\.ng$") {
+        set $cors_origin $http_origin;
+    }
+
+    add_header Access-Control-Allow-Origin $cors_origin always;
+    add_header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Authorization, Content-Type, Accept, Origin" always;
+    add_header Access-Control-Allow-Credentials "true" always;
+
+    if ($request_method = OPTIONS) {
+        return 204;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;

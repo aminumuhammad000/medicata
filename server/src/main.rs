@@ -3,9 +3,10 @@ use axum::{
     Router,
     middleware as axum_middleware,
 };
+use axum::http::{Method, header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE, ORIGIN}};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
@@ -225,13 +226,21 @@ async fn main() -> anyhow::Result<()> {
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .layer(
             CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(vec![
-                    axum::http::header::AUTHORIZATION,
-                    axum::http::header::CONTENT_TYPE,
+                .allow_origin([
+                    "https://app.medicata.ng".parse().unwrap(),
+                    "https://admin.medicata.ng".parse().unwrap(),
+                    "https://medicata.ng".parse().unwrap(),
                 ])
-                .expose_headers(Any),
+                .allow_methods([
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::PATCH,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ])
+                .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT, ORIGIN])
+                .allow_credentials(true),
         )
         .with_state(state.clone());
 
