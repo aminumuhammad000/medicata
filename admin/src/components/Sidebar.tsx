@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -16,14 +15,11 @@ import {
   Calendar,
   Layers,
   FileText,
-  CheckCircle2,
-  AlertCircle,
   UserPlus,
   Megaphone
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
 
 
 const menuItems = [
@@ -47,21 +43,6 @@ const menuItems = [
 
 export default function Sidebar() {
   const { logout } = useAuth();
-  const [systemStatus, setSystemStatus] = useState<'healthy' | 'issue' | 'checking'>('checking');
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        await api.get('/health');
-        setSystemStatus('healthy');
-      } catch {
-        setSystemStatus('issue');
-      }
-    };
-    checkHealth();
-    const interval = setInterval(checkHealth, 30000); // Check every 30s
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <aside className="w-64 h-screen glass fixed left-0 top-0 flex flex-col border-r border-slate-200">
@@ -92,37 +73,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-200 space-y-4">
-        {/* System Status Widget */}
-        <div className="px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {systemStatus === 'healthy' ? (
-              <CheckCircle2 size={18} className="text-emerald-500" />
-            ) : systemStatus === 'checking' ? (
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-500 rounded-full animate-spin" />
-            ) : (
-              <AlertCircle size={18} className="text-red-500" />
-            )}
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-700 leading-tight">System Status</span>
-              <span className={cn(
-                "text-[10px] uppercase tracking-wider font-black",
-                systemStatus === 'healthy' ? "text-emerald-600" :
-                systemStatus === 'checking' ? "text-slate-500" : "text-red-600"
-              )}>
-                {systemStatus === 'healthy' ? 'Operational' :
-                 systemStatus === 'checking' ? 'Checking...' : 'Degraded API'}
-              </span>
-            </div>
-          </div>
-          {systemStatus === 'healthy' && (
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-          )}
-        </div>
-
+      <div className="p-4 border-t border-slate-200">
         <button 
           onClick={logout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all font-semibold"
