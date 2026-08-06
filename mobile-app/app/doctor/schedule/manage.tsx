@@ -143,8 +143,8 @@ export default function ManageSchedule() {
                     isActive
                       ? styles.dayAbbrActive
                       : isWeekend
-                      ? styles.dayAbbrWeekend
-                      : styles.dayAbbrOff,
+                        ? styles.dayAbbrWeekend
+                        : styles.dayAbbrOff,
                   ]}
                 >
                   <Text style={[styles.dayAbbrText, isActive && styles.dayAbbrTextActive]}>

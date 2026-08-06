@@ -1629,7 +1629,7 @@ const App = () => {
           {/* Bottom Bar */}
           <div className="flex flex-col md:flex-row justify-between items-center text-center pt-8 border-t border-white/10 gap-6">
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100/40">© 2026 Medicata Global</span>
+              <span className="text-[10px] font-black tracking-[0.15em] text-blue-100/40">© 2026 Medicata Ltd. A product Pioneers ICT. All rights reserved.</span>
               <div className="hidden sm:block w-1 h-1 bg-white/20 rounded-full" />
               <div className="flex gap-4">
                 <a href="#" className="text-[10px] font-bold text-blue-100/40 hover:text-white uppercase tracking-wider transition-colors">Privacy</a>
