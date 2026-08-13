@@ -194,7 +194,7 @@ export default function RevenuePage() {
                 </div>
             )}
           </div>
-          <button onClick={exportCSV} className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:shadow-lg hover:shadow-primary/20 transition-all group">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-bold hover:shadow-md transition-all group">
             <Download size={18} className="group-hover:-translate-y-1 transition-transform" />
             Export Data
           </button>
@@ -209,7 +209,7 @@ export default function RevenuePage() {
           </div>
           <div className="flex flex-col gap-1 w-full relative z-10">
             <span className="text-slate-500 font-black uppercase text-[10px] tracking-widest flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-lg shadow-primary" />
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               Unified Gross Revenue
             </span>
             <span className="text-4xl font-black text-slate-900 tracking-tighter mt-1">
@@ -332,7 +332,7 @@ export default function RevenuePage() {
           </div>
           <div className="space-y-4">
             {stats.pharmacy_performance.map((pharmacy, i) => (
-              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 hover:bg-white transition-all group border border-slate-100 hover:border-primary/20 hover:shadow-lg hover:shadow-slate-200/50">
+              <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 hover:bg-white transition-all group border border-slate-100 hover:border-primary/20 hover:shadow-md">
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg",

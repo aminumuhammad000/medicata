@@ -100,19 +100,19 @@ export default function AdminsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-primary/25">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary to-indigo-600 rounded-[2rem] flex items-center justify-center text-white shadow-md">
             <ShieldCheck size={32} />
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight italic uppercase">
               Admin <span className="text-primary not-italic">Management</span>
             </h1>
-            <p className="text-slate-500 font-medium tracking-tight">Provision and control the platform's administrative team</p>
+            <p className="text-slate-500 font-medium">Manage platform access, roles, and administrative privileges</p>
           </div>
         </div>
         <button
           onClick={() => { setShowModal(true); setCreateError(null); setCreateSuccess(null); }}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/25 hover:bg-primary/90 hover:shadow-primary/40 transition-all group"
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all group"
         >
           <UserPlus size={20} className="group-hover:rotate-12 transition-transform" />
           Create Administrator
@@ -245,7 +245,7 @@ export default function AdminsPage() {
       {/* Create Admin Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md p-10 space-y-6 animate-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-xl w-full max-w-md p-10 space-y-6 animate-in zoom-in-95 duration-300">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-black text-slate-900 uppercase italic tracking-tight">
@@ -319,7 +319,7 @@ export default function AdminsPage() {
                   <button
                     type="submit"
                     disabled={creating}
-                    className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary text-white font-black shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all disabled:opacity-60"
+                    className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-primary text-white font-black shadow-md hover:bg-primary/90 transition-all disabled:opacity-60"
                   >
                     {creating ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
                     {creating ? 'Creating...' : 'Create Admin'}
@@ -334,7 +334,7 @@ export default function AdminsPage() {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-sm p-10 space-y-6 text-center animate-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-xl w-full max-w-sm p-10 space-y-6 text-center animate-in zoom-in-95 duration-300">
             <div className="w-16 h-16 bg-red-100 rounded-[1.5rem] flex items-center justify-center text-red-500 mx-auto">
               <Trash2 size={28} />
             </div>
@@ -351,7 +351,7 @@ export default function AdminsPage() {
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-500 text-white font-black hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 disabled:opacity-60"
+                className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-red-500 text-white font-black hover:bg-red-600 transition-all shadow-md disabled:opacity-60"
               >
                 {deleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
                 {deleting ? 'Terminating...' : 'Confirm'}

@@ -28,87 +28,16 @@ import {
   BadgeCheck,
   ChevronRight,
   Plus,
-  Heart,
   Pill,
-  Thermometer,
-  Microscope,
-  Baby,
-  Syringe,
-  Brain
+  Search,
+  Sparkles,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
-const SingleBubble = ({ bubble }: { bubble: any }) => {
-  return (
-    <motion.div
-      key={bubble.id}
-      initial={{ opacity: 0.4, x: `${bubble.x}vw`, y: `${bubble.y}vh` }}
-      style={{
-        position: 'absolute',
-        width: bubble.size,
-        height: bubble.size,
-        left: 0,
-        top: 0
-      }}
-      animate={{
-        opacity: 0.4,
-        x: [
-          `${bubble.x}vw`, 
-          `${bubble.x + (Math.random() * 2 - 1)}vw`, 
-          `${bubble.x}vw`
-        ],
-        y: [
-          `${bubble.y}vh`, 
-          `${bubble.y + (Math.random() * 2 - 1)}vh`, 
-          `${bubble.y}vh`
-        ],
-        rotate: [0, 10, -10, 0],
-        scale: [1, 1.05, 0.95, 1]
-      }}
-      transition={{
-        duration: bubble.duration,
-        repeat: Infinity,
-        delay: bubble.delay,
-        ease: "easeInOut"
-      }}
-      className="flex items-center justify-center text-[#2572D9]"
-    >
-      <bubble.icon size={bubble.size} strokeWidth={1.5} />
-    </motion.div>
-  );
-};
 
-const HeartBubbles = () => {
-  const [bubbles, setBubbles] = useState<{ id: number; x: number; y: number; size: number; duration: number; delay: number; icon: React.ElementType }[]>([]);
-
-  const icons = [Heart, Activity, Pill, Stethoscope, Thermometer, Microscope, Baby, Syringe, Brain];
-
-  useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    const bubbleCount = isMobile ? 6 : 15;
-    
-    const newBubbles = Array.from({ length: bubbleCount }).map((_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * (isMobile ? (35 - 20) + 20 : (45 - 25) + 25),
-      duration: Math.random() * (6 - 4) + 4,
-      delay: Math.random() * 5,
-      icon: icons[Math.floor(Math.random() * icons.length)]
-    }));
-    setBubbles(newBubbles);
-  }, []);
-
-  return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-[10]">
-      {bubbles.map((bubble) => (
-        <SingleBubble key={bubble.id} bubble={bubble} />
-      ))}
-    </div>
-  );
-};
 
 // Assets
-import heroImage from './assets/medicata_hero_new_1775487056003.png';
 import mediMascot from './assets/medi.png';
 import doctorBookingImg from './assets/doctor_booking_elite.png';
 import pharmacyDeliveryImg from './assets/pharmacy_delivery_elite.png';
@@ -150,10 +79,244 @@ const MagneticWrapper = ({ children }: { children: React.ReactNode }) => {
   return <div ref={ref} className="magnetic-wrap">{children}</div>;
 };
 
-const Navbar = () => {
-  const [, setIsScrolled] = useState(false);
+// Toast Notification Component
+const ToastNotification = ({ message, type = 'info', onClose }: { message: string; type?: 'info' | 'success'; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 20, scale: 0.9 }}
+      className="fixed bottom-6 right-6 z-[100] max-w-md bg-navy/95 text-white p-4 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-xl flex items-center gap-3"
+    >
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${type === 'success' ? 'bg-green-500 text-white' : 'bg-primary text-white'}`}>
+        {type === 'success' ? <CheckCircle size={18} /> : <Sparkles size={18} />}
+      </div>
+      <div className="flex-1 pr-2">
+        <p className="text-xs font-bold leading-tight">{message}</p>
+      </div>
+      <button onClick={onClose} className="text-white/60 hover:text-white p-1 cursor-pointer">
+        <X size={14} />
+      </button>
+    </motion.div>
+  );
+};
+
+// Auth / Join Modal Component
+const AuthModal = ({ isOpen, mode, onClose, showToast }: { isOpen: boolean; mode: 'signin' | 'join'; onClose: () => void; showToast: (msg: string) => void }) => {
+  const [activeTab, setActiveTab] = useState<'patient' | 'doctor' | 'pharmacy'>('patient');
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      onClose();
+      showToast(mode === 'signin' ? "Welcome back! Session encrypted and verified." : "Registration request submitted! Welcome to Medicata.");
+    }, 1200);
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-navy/60 backdrop-blur-md" onClick={onClose}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden relative"
+        >
+          {/* Header gradient banner */}
+          <div className="bg-gradient-to-r from-navy via-primary to-secondary p-6 text-white relative">
+            <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full bg-white/10 cursor-pointer">
+              <X size={18} />
+            </button>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Prietech AES-256 Vault</span>
+            </div>
+            <h3 className="text-2xl font-black">{mode === 'signin' ? 'Access Medicata' : 'Join Medicata Ecosystem'}</h3>
+            <p className="text-xs text-blue-100/80 mt-1">Select your account tier to proceed to encrypted portal.</p>
+          </div>
+
+          {/* Account Role Tabs */}
+          <div className="p-6">
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+              {[
+                { id: 'patient', label: 'Patient Portal' },
+                { id: 'doctor', label: 'Specialist' },
+                { id: 'pharmacy', label: 'Pharmacy' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${activeTab === tab.id ? 'bg-white text-navy shadow-sm' : 'text-slate-500 hover:text-navy'}`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-navy uppercase tracking-wider mb-1.5">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="name@medicata.health"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-navy uppercase tracking-wider mb-1.5">Passcode</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="••••••••••••"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-medium pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 text-slate-600 font-medium cursor-pointer">
+                  <input type="checkbox" className="rounded text-primary focus:ring-primary" defaultChecked />
+                  <span>Remember device token</span>
+                </label>
+                <a href="#" onClick={(e) => { e.preventDefault(); showToast("Recovery token dispatched to your email."); }} className="text-primary font-bold hover:underline">Forgot passcode?</a>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 bg-primary hover:bg-[#1E5CAF] text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 cursor-pointer mt-4"
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{mode === 'signin' ? 'Verify & Sign In' : 'Complete Registration'}</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 text-center text-xs text-slate-500 font-medium">
+              {mode === 'signin' ? "Don't have an account yet?" : "Already verified on Medicata?"}{' '}
+              <button
+                onClick={() => onClose()}
+                className="text-primary font-bold hover:underline cursor-pointer"
+              >
+                {mode === 'signin' ? 'Apply for Priority Access' : 'Sign in here'}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+// Command Palette Component (Ctrl+K)
+const CommandPalette = ({ isOpen, onClose, showToast }: { isOpen: boolean; onClose: () => void; showToast: (msg: string) => void }) => {
+  const [query, setQuery] = useState('');
+
+  if (!isOpen) return null;
+
+  const items = [
+    { title: "Medi AI Symptom Checker", desc: "Interactive triage assistant with 99.4% accuracy", icon: Bot, action: () => { showToast("Opening Medi AI Triage..."); onClose(); } },
+    { title: "Find Top Specialist", desc: "Book 1-on-1 video consult with verified board doctors", icon: Stethoscope, action: () => { showToast("Navigating to Specialist Directory..."); onClose(); } },
+    { title: "Prietech Vault Privacy", desc: "AES-256 hardware encryption specifications", icon: Shield, action: () => { showToast("Viewing Prietech Vault Security Ledger..."); onClose(); } },
+    { title: "30-Min Global Pharmacy Dispatch", desc: "Hyper-local prescription routing", icon: Pill, action: () => { showToast("Pharmacy Courier Network Active."); onClose(); } },
+    { title: "24/7 Concierge Hotline", desc: "Connect with emergency health dispatch team", icon: PhoneCall, action: () => { showToast("Emergency Concierge connected."); onClose(); } }
+  ];
+
+  const filtered = items.filter(item => item.title.toLowerCase().includes(query.toLowerCase()) || item.desc.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[90] flex items-start justify-center pt-20 p-4 bg-navy/60 backdrop-blur-md" onClick={onClose}>
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-xl overflow-hidden"
+        >
+          <div className="flex items-center px-4 border-b border-slate-100 bg-slate-50/50">
+            <Search size={18} className="text-primary mr-3" />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search Medicata features, symptoms, or specialists..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full py-4 text-sm font-semibold text-navy placeholder:text-slate-400 focus:outline-none bg-transparent"
+            />
+            <kbd className="px-2 py-0.5 text-[10px] font-mono font-bold bg-white text-slate-400 rounded border border-slate-200">ESC</kbd>
+          </div>
+          <div className="max-h-80 overflow-y-auto p-2">
+            {filtered.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs font-semibold">
+                No matching services found for &quot;{query}&quot;
+              </div>
+            ) : (
+              filtered.map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={item.action}
+                  className="w-full p-3 rounded-xl hover:bg-slate-100 flex items-center gap-3 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                    <item.icon size={20} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-black text-navy group-hover:text-primary transition-colors">{item.title}</h4>
+                    <p className="text-[11px] text-slate-500 font-medium truncate">{item.desc}</p>
+                  </div>
+                  <ArrowRight size={14} className="text-slate-300 group-hover:text-primary transition-colors" />
+                </button>
+              ))
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+interface NavbarProps {
+  onOpenAuth: (mode: 'signin' | 'join') => void;
+  showToast: (msg: string, type?: 'info' | 'success') => void;
+}
+
+const Navbar = ({ onOpenAuth, showToast }: NavbarProps) => {
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
+  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -164,7 +327,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      setIsScrolled(window.scrollY > 40);
 
       const sections = ['features', 'how-it-works', 'medi-ai', 'safety'];
       const scrollPos = window.scrollY + 200;
@@ -183,101 +346,172 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const navLinks = [
+    { id: 'features', label: 'Features', icon: LayoutDashboard },
+    { id: 'how-it-works', label: 'How it Works', icon: Activity },
+    { id: 'medi-ai', label: 'Medi AI', icon: Bot, badge: '24/7' },
+    { id: 'safety', label: 'Safety', icon: Shield },
+  ];
+
   return (
-    <div className="fixed top-2 sm:top-4 left-0 right-0 z-50 flex justify-center px-2 sm:px-6 pointer-events-none">
-      <nav className={`nav-pill transition-all duration-500 pointer-events-auto flex items-center px-4 py-1 sm:py-2 md:px-10 md:py-1 gap-4 sm:gap-10 bg-white/95 backdrop-blur-md border border-navy/10 shadow-xl max-w-[98vw] sm:max-w-7xl w-full sm:w-auto`}>
-        {/* Logo & Brand */}
-        <div className="flex items-center border-r border-navy/10 pr-3 sm:pr-8 mr-1 sm:mr-4">
-          <div className="flex items-center">
-            <div className="w-20 h-20 sm:w-20 sm:h-20 flex items-center justify-center">
-              <img src="/logo.png" alt="Medicata Logo" className="w-full h-full object-contain" />
+    <header className="fixed top-2 sm:top-4 left-0 right-0 z-50 flex justify-center px-3 sm:px-6 pointer-events-none">
+      <nav className={`nav-pill transition-all duration-300 pointer-events-auto flex items-center justify-between px-3 sm:px-5 ${isScrolled ? 'py-1.5 sm:py-2 bg-white/95 shadow-xl shadow-navy/10 border-navy/15 scale-[0.98]' : 'py-2 sm:py-2.5 bg-white/90 shadow-lg shadow-navy/5 border-navy/10'} backdrop-blur-2xl border max-w-[96vw] sm:max-w-6xl w-full rounded-full`}>
+        
+        {/* Brand & Clean Icon without border */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <a href="#" className="flex items-center gap-2.5 group">
+            <img src="/favicon.png" alt="Medicata Icon" className="h-7 w-7 sm:h-8 sm:w-8 object-contain transition-transform group-hover:scale-105" />
+            <div className="flex flex-col">
+              <span className="font-display font-black text-sm sm:text-base text-navy tracking-tight leading-none flex items-center gap-1.5">
+                MEDICATA
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/10 text-primary border border-primary/20">
+                  AI
+                </span>
+              </span>
             </div>
-          </div>
+          </a>
+
+          {/* System Status Dot */}
+          <button
+            onClick={() => showToast("24/7 AI Triage system active across 42 global regions with 99.4% accuracy.", "success")}
+            className="hidden xl:flex items-center gap-2 pl-3 border-l border-navy/10 text-[10px] font-semibold text-navy/70 cursor-pointer hover:opacity-80 transition-opacity"
+            title="Click to view AI system status"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span className="tracking-wide uppercase text-[9px] font-bold text-green-700">24/7 AI Active</span>
+          </button>
         </div>
 
-        {/* Desktop Nav Items */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.05,
-                delayChildren: 0.1
-              }
-            }
-          }}
-          className={`hidden md:flex items-center gap-6 font-bold text-xs uppercase tracking-widest text-navy/60`}
+        {/* Desktop Nav Items with Dual-Spring Micro-Interactions */}
+        <div 
+          className="hidden md:flex items-center gap-1 font-bold text-xs tracking-wide bg-slate-100/80 p-1.5 rounded-full border border-slate-200/60 shadow-inner"
+          onMouseLeave={() => setHoveredTab(null)}
         >
-          {[
-            { id: 'features', label: 'Features' },
-            { id: 'how-it-works', label: 'How it Works' },
-            { id: 'medi-ai', label: 'Medi AI' },
-            { id: 'safety', label: 'Safety' },
-          ].map((link) => (
-            <motion.div
-              key={link.id}
-              variants={{
-                hidden: { opacity: 0, y: -10 },
-                visible: { opacity: 1, y: 0 }
-              }}
-            >
-              <MagneticWrapper>
-                <a
-                  href={`#${link.id}`}
-                  className={`hover:text-primary transition-all ${activeSection === link.id ? 'text-primary nav-link-active' : ''}`}
-                >
-                  {link.label}
-                </a>
-              </MagneticWrapper>
-            </motion.div>
-          ))}
-        </motion.div>
+          {navLinks.map((link) => {
+            const isActive = activeSection === link.id;
+            const isHovered = hoveredTab === link.id;
+            const Icon = link.icon;
 
-        {/* CTA */}
-        <div className="hidden lg:flex items-center gap-4 ml-2 pl-6 border-l border-navy/10">
-          <button className={`hidden sm:block text-[10px] font-black uppercase tracking-widest text-navy/60 hover:text-primary transition-colors`}>Sign In</button>
-          <MagneticWrapper>
-            <button className={`btn btn-sm text-[10px] uppercase font-black tracking-widest px-6 btn-accent text-navy`}>
-              Join Now
-            </button>
-          </MagneticWrapper>
+            return (
+              <motion.a
+                key={link.id}
+                href={`#${link.id}`}
+                onMouseEnter={() => setHoveredTab(link.id)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => showToast(`Scrolled to ${link.label} section`, "info")}
+                className={`relative px-4 py-1.5 rounded-full transition-colors duration-200 text-xs font-extrabold flex items-center gap-1.5 cursor-pointer ${isActive ? 'text-primary' : 'text-slate-600 hover:text-navy'}`}
+              >
+                {/* Active Sliding Pill */}
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNavTab"
+                    className="absolute inset-0 bg-white rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-slate-200/80 -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  />
+                )}
+
+                {/* Hover Sliding Pill (when not active) */}
+                {!isActive && isHovered && (
+                  <motion.div
+                    layoutId="hoverNavPill"
+                    className="absolute inset-0 bg-white/70 rounded-full border border-slate-200/50 -z-10"
+                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                  />
+                )}
+
+                <Icon size={13} className={isActive ? 'text-primary' : 'text-slate-400 group-hover:text-navy'} />
+                <span>{link.label}</span>
+
+                {link.badge && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase bg-primary/15 text-primary border border-primary/20">
+                    {link.badge}
+                  </span>
+                )}
+              </motion.a>
+            );
+          })}
         </div>
 
-        {/* Mobile Toggle - Moved to Right */}
-        <button className="md:hidden ml-auto text-navy" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Sign In button */}
+          <button
+            onClick={() => onOpenAuth('signin')}
+            className="hidden lg:block text-xs font-extrabold uppercase tracking-wider text-navy/70 hover:text-primary transition-colors px-3 py-1.5 cursor-pointer"
+          >
+            Sign In
+          </button>
 
-        {/* Scroll Progress Line */}
+          {/* Join Now CTA */}
+          <MagneticWrapper>
+            <motion.button
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => onOpenAuth('join')}
+              className="bg-navy text-white hover:bg-primary text-[11px] uppercase font-black tracking-widest px-4 sm:px-5 py-2 sm:py-2 rounded-full shadow-md hover:shadow-primary/30 transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Join Now</span>
+              <ArrowRight size={13} className="text-secondary" />
+            </motion.button>
+          </MagneticWrapper>
+
+          {/* Mobile Menu Trigger */}
+          <button
+            className="md:hidden p-1.5 text-navy hover:text-primary transition-colors rounded-lg cursor-pointer"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+          >
+            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+
+        {/* Top Progress Line */}
         <motion.div className="nav-progress-line" style={{ scaleX }} />
       </nav>
 
-      {/* Mobile Menu (Floating) */}
+      {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 10 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="md:hidden glass border border-white/40 absolute top-full left-6 right-6 p-6 rounded-3xl shadow-2xl z-[60]"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 8 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="md:hidden glass border border-navy/10 absolute top-full left-4 right-4 p-5 rounded-3xl shadow-2xl z-[60] pointer-events-auto bg-white/95 backdrop-blur-2xl"
           >
-            <div className="flex flex-col gap-6 font-black text-sm uppercase tracking-widest text-navy">
-              <a href="#features" onClick={() => setIsMenuOpen(false)}>Features</a>
-              <a href="#how-it-works" onClick={() => setIsMenuOpen(false)}>How it Works</a>
-              <a href="#medi-ai" onClick={() => setIsMenuOpen(false)}>Medi AI</a>
-              <a href="#safety" onClick={() => setIsMenuOpen(false)}>Safety</a>
-              <div className="flex flex-col gap-3 pt-4">
-                <button className="btn btn-outline w-full py-4 uppercase font-black tracking-widest">Sign In</button>
-                <button className="btn btn-primary w-full py-4 uppercase font-black tracking-widest">Join Now</button>
+            <div className="flex flex-col gap-3 font-bold text-xs uppercase tracking-widest text-navy">
+              {navLinks.map((link) => (
+                <a
+                  key={link.id}
+                  href={`#${link.id}`}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`p-3 rounded-xl transition-colors ${activeSection === link.id ? 'bg-primary/10 text-primary font-black' : 'hover:bg-slate-100 text-navy'}`}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <div className="flex flex-col gap-2 pt-3 border-t border-navy/10">
+                <button
+                  onClick={() => { setIsMenuOpen(false); onOpenAuth('signin'); }}
+                  className="w-full py-3 rounded-2xl border border-navy/20 font-black text-navy text-xs uppercase tracking-widest hover:bg-slate-50 cursor-pointer"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => { setIsMenuOpen(false); onOpenAuth('join'); }}
+                  className="w-full py-3 rounded-2xl bg-primary text-white font-black text-xs uppercase tracking-widest shadow-lg hover:bg-primary/90 cursor-pointer"
+                >
+                  Join Medicata
+                </button>
               </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </header>
   );
 };
 
@@ -285,17 +519,17 @@ const Navbar = () => {
 const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
-    <div className="border-b border-border-color last:border-0">
+    <div className="border-b border-slate-200/80 last:border-0">
       <button
-        className="w-full py-6 flex items-center justify-between text-left hover:text-secondary transition-colors"
+        className="w-full py-4 flex items-center justify-between text-left hover:text-primary transition-colors cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="text-lg font-bold">{question}</span>
+        <span className="text-sm sm:text-base font-extrabold text-navy">{question}</span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.2 }}
         >
-          <ChevronDown size={20} />
+          <ChevronDown size={18} className="text-navy/60" />
         </motion.div>
       </button>
       <AnimatePresence>
@@ -304,10 +538,10 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <p className="pb-6 text-muted leading-relaxed">
+            <p className="pb-4 text-xs sm:text-sm text-slate-600 leading-relaxed">
               {answer}
             </p>
           </motion.div>
@@ -326,15 +560,16 @@ const FAQ = () => {
   ];
 
   return (
-    <section id="faq" className="section-padding bg-white">
-      <div className="container max-w-3xl">
-        <div className="text-center mb-16">
-          <div className="badge">Got Questions?</div>
-          <h2>Everything you need to know</h2>
+    <section id="faq" className="py-16 md:py-24 bg-white border-t border-slate-100">
+      <div className="container max-w-3xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10">
+          <span className="badge">Got Questions?</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mb-2">Everything you need to know</h2>
+          <p className="text-xs sm:text-sm text-slate-600 max-w-lg mx-auto">Clear answers to standard queries regarding Medicata's global healthcare platform.</p>
         </div>
-        <div className="glass rounded-3xl p-8 border border-border-color shadow-sm">
+        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
           {faqs.map((faq, index) => (
-            <FAQItem key={index} {...faq} />
+            <FAQItem key={index} question={faq.question} answer={faq.answer} />
           ))}
         </div>
       </div>
@@ -343,76 +578,14 @@ const FAQ = () => {
 };
 
 const ScrollReveal = ({ children }: { children: React.ReactNode }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.8, ease: "easeOut" }}
-    viewport={{ once: true, margin: "-100px" }}
-  >
+  <div>
     {children}
-  </motion.div>
+  </div>
 );
 
 
 
-const DynamicTypewriter = () => {
-  const sentences = [
-    "Hey, I'm Medi.",
-    "How can I help?",
-    "Elite health companion.",
-    "Find top specialists.",
-    "Order prescriptions fast.",
-    "Secure medical records.",
-    "24/7 wellness support.",
-    "Book an appointment.",
-    "Ready to assist.",
-    "Professional care network.",
-    "Global health vault.",
-    "Symptom check assistant.",
-    "Refill prescriptions now.",
-    "Healthy habits helper.",
-    "Your health matters.",
-    "Safe data storage.",
-    "Connect with doctors.",
-    "Real-time AI support.",
-    "Manage family health.",
-    "Welcome to Medicata."
-  ];
 
-  const [index, setIndex] = useState(0);
-  const [subIndex, setSubIndex] = useState(0);
-  const [reverse, setReverse] = useState(false);
-
-  useEffect(() => {
-    if (subIndex === sentences[index].length + 1 && !reverse) {
-      setTimeout(() => setReverse(true), 3000);
-      return;
-    }
-
-    if (subIndex === 0 && reverse) {
-      setReverse(false);
-      setIndex((prev) => (prev + 1) % sentences.length);
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      setSubIndex((prev) => prev + (reverse ? -1 : 1));
-    }, Math.max(reverse ? 25 : 50, Math.random() * 75));
-
-    return () => clearTimeout(timeout);
-  }, [subIndex, index, reverse]);
-
-  return (
-    <div className="min-h-[60px]">
-      <p className="font-black text-lg text-navy leading-tight mb-2 tracking-tight">
-        &quot;{sentences[index].substring(0, subIndex)}<span className="animate-pulse bg-primary w-1 h-5 inline-block align-middle ml-1" />&quot;
-      </p>
-      <p className="text-xs text-text-muted font-bold leading-relaxed">
-        Medi is online & ready to assist your global health journey.
-      </p>
-    </div>
-  );
-};
 
 const LogisticsLedger = ({ progress }: { progress: any }) => {
   const steps = [
@@ -442,40 +615,28 @@ const JourneyStep = ({ step, index, progress }: { step: any, index: number, prog
   const isEven = index % 2 === 0;
 
   return (
-    <div className={`relative flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-12 lg:gap-24 mb-32 last:mb-0 w-full`}>
-      {/* Visual Indicator (The Node) */}
+    <div className={`relative flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-6 lg:gap-12 mb-16 last:mb-0 w-full`}>
+      {/* Visual Indicator */}
       <div className="absolute left-1/2 -translate-x-1/2 top-0 z-20 flex flex-col items-center">
         <motion.div
           style={{ scale: useSpring(progress as any, { stiffness: 100, damping: 30 }) }}
-          className="w-4 h-4 bg-primary rounded-full shadow-[0_0_20px_rgba(37,114,217,0.6)] border-4 border-white"
+          className="w-3 h-3 bg-primary rounded-full border-2 border-white shadow-xs"
         />
-        <div className="w-px h-full bg-navy/5 absolute top-4 -z-10" />
       </div>
 
       {/* Content Card */}
-      <motion.div
-        initial={{ opacity: 0, x: isEven ? -50 : 50 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className={`w-full lg:w-[45%] ${isEven ? 'lg:text-right' : 'lg:text-left'} group`}
-      >
-        <div className="relative inline-block mb-6">
-          <span className="text-8xl font-black text-navy/5 absolute -top-12 -left-6 lg:left-auto lg:-right-6 select-none font-display">
-            {step.id}
-          </span>
-          <motion.div
-            whileHover={{ scale: 1.1, rotate: isEven ? -5 : 5 }}
-            className={`w-20 h-20 ${step.color} rounded-[32px] flex items-center justify-center shadow-2xl relative z-10 mx-auto ${isEven ? 'lg:ml-auto lg:mr-0' : 'lg:mr-auto lg:ml-0'}`}
-          >
-            <step.icon size={32} className="text-white" />
-          </motion.div>
+      <div className={`w-full lg:w-[45%] ${isEven ? 'lg:text-right' : 'lg:text-left'} bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300`}>
+        <div className="flex items-center gap-3 mb-3 justify-start lg:justify-end">
+          <div className={`w-10 h-10 ${step.color} rounded-xl flex items-center justify-center shadow-xs`}>
+            <step.icon size={20} className="text-white" />
+          </div>
+          <span className="text-xs font-black uppercase tracking-widest text-navy/40">Step {step.id}</span>
         </div>
-        <h3 className="text-3xl font-black mb-4 text-navy tracking-tight group-hover:text-primary transition-colors">{step.title}</h3>
-        <p className="text-xl text-text-muted leading-relaxed opacity-80">{step.desc}</p>
-      </motion.div>
+        <h3 className="text-base sm:text-lg font-extrabold text-navy mb-2 tracking-tight">{step.title}</h3>
+        <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{step.desc}</p>
+      </div>
 
-      {/* Spacing for the other side */}
+      {/* Spacing for opposite side */}
       <div className="hidden lg:block lg:w-[45%]" />
     </div>
   );
@@ -483,118 +644,78 @@ const JourneyStep = ({ step, index, progress }: { step: any, index: number, prog
 
 const SecurityMap = () => {
   return (
-    <div className="relative w-full h-[400px] bg-white rounded-[48px] border border-border-color overflow-hidden shadow-2xl flex items-center justify-center p-8 group">
-      {/* Animated Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(13,27,61,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(13,27,61,0.05)_1px,transparent_1px)] bg-[size:30px_30px] opacity-40 [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]" />
+    <div className="relative w-full h-[320px] bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs flex items-center justify-center p-6">
+      {/* Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(13,27,61,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(13,27,61,0.04)_1px,transparent_1px)] bg-[size:24px_24px] opacity-40" />
 
       {/* Connection Lines */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {/* User to Vault Line */}
-        <motion.path 
-          d="M 20 50 L 50 50" 
-          stroke="rgba(13, 27, 61, 0.1)" 
-          strokeWidth="0.5" 
-          strokeDasharray="1 1"
-        />
-        <motion.path 
-          d="M 20 50 L 50 50" 
-          stroke="#5AC8FA" 
-          strokeWidth="0.5" 
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        />
-        {/* Vault to Server Line */}
-        <motion.path 
-          d="M 50 50 L 80 50" 
-          stroke="rgba(34, 197, 94, 0.1)" 
-          strokeWidth="0.5" 
-          strokeDasharray="1 1"
-        />
-        <motion.path 
-          d="M 50 50 L 80 50" 
-          stroke="#22c55e" 
-          strokeWidth="0.5" 
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: [0, 1, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear", delay: 1 }}
-        />
+        <path d="M 20 50 L 50 50" stroke="#5AC8FA" strokeWidth="1" strokeDasharray="2 2" />
+        <path d="M 50 50 L 80 50" stroke="#22c55e" strokeWidth="1" strokeDasharray="2 2" />
       </svg>
 
       {/* Nodes Container */}
       <div className="absolute inset-0 flex items-center justify-between px-[10%]">
         
         {/* User Node */}
-        <div className="flex flex-col items-center gap-3 relative z-10 w-24">
-          <div className="w-16 h-16 rounded-2xl bg-white border border-navy/10 backdrop-blur-md flex items-center justify-center shadow-[0_0_30px_rgba(37,114,217,0.15)]">
-            <Smartphone className="text-navy" size={28} />
+        <div className="flex flex-col items-center gap-2 relative z-10 w-20">
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+            <Smartphone className="text-navy" size={22} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-navy/60 whitespace-nowrap">User Node</span>
+          <span className="text-[9px] font-black uppercase tracking-wider text-navy/60 whitespace-nowrap">User Node</span>
         </div>
 
         {/* Vault Node (Middle) */}
-        <div className="flex flex-col items-center gap-3 relative z-10 w-32">
-          <motion.div 
-            animate={{ scale: [1, 1.05, 1], boxShadow: ["0 0 20px rgba(90,200,250,0.1)", "0 0 50px rgba(90,200,250,0.3)", "0 0 20px rgba(90,200,250,0.1)"] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="w-24 h-24 rounded-3xl bg-primary/5 border border-primary/20 backdrop-blur-xl flex items-center justify-center relative shadow-sm"
-          >
-            <Shield className="text-primary" size={40} />
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 rounded-3xl border-2 border-dashed border-primary/20"
-            />
-            {/* Encryption Lock */}
-            <div className="absolute -bottom-3 w-8 h-8 rounded-full bg-white border border-primary flex items-center justify-center shadow-lg">
-              <Lock className="text-primary" size={14} />
+        <div className="flex flex-col items-center gap-2 relative z-10 w-28">
+          <div className="w-16 h-16 rounded-2xl bg-primary/5 border border-primary/20 backdrop-blur-xl flex items-center justify-center relative shadow-xs">
+            <Shield className="text-primary" size={28} />
+            <div className="absolute inset-0 rounded-2xl border border-dashed border-primary/20" />
+            <div className="absolute -bottom-2 w-6 h-6 rounded-full bg-white border border-primary flex items-center justify-center shadow-xs">
+              <Lock className="text-primary" size={11} />
             </div>
-          </motion.div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-primary mt-2 whitespace-nowrap">Prietech Vault</span>
+          </div>
+          <span className="text-[9px] font-black uppercase tracking-wider text-primary mt-1 whitespace-nowrap">Prietech Vault</span>
         </div>
 
         {/* Server Node */}
-        <div className="flex flex-col items-center gap-3 relative z-10 w-24">
-          <div className="w-16 h-16 rounded-2xl bg-white border border-navy/10 backdrop-blur-md flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.15)]">
-            <Database className="text-green-500" size={28} />
+        <div className="flex flex-col items-center gap-2 relative z-10 w-20">
+          <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center shadow-xs">
+            <Database className="text-green-500" size={22} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-green-600/80 whitespace-nowrap">Global Server</span>
+          <span className="text-[9px] font-black uppercase tracking-wider text-green-600/80 whitespace-nowrap">Global Server</span>
         </div>
 
       </div>
 
       {/* Floating Status UI */}
-      <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md rounded-full px-4 py-2 border border-border-color shadow-sm flex items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-green-500 animate-[pulse_1s_ease-in-out_infinite]" />
-        <span className="text-[9px] font-black text-navy uppercase tracking-[0.2em] hidden sm:block">Data Encrypted</span>
+      <div className="absolute top-4 right-4 bg-white rounded-full px-3 py-1 border border-slate-200 shadow-xs flex items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        <span className="text-[8px] font-black text-navy uppercase tracking-wider">Data Encrypted</span>
       </div>
     </div>
   );
 };
 
 const FeatureCard = ({ title, desc, icon: Icon, color, bg, tag }: any) => (
-  <motion.div
-    whileHover={{ y: -10, scale: 1.02 }}
-    className="bg-white/80 backdrop-blur-xl p-10 rounded-[40px] shadow-2xl border border-white/40 group h-full flex flex-col justify-between"
-  >
+  <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md hover:border-primary/30 transition-all duration-300 group h-full flex flex-col justify-between">
     <div>
-      <div className={`w-16 h-16 ${bg} ${color} rounded-2xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform duration-500`}>
-        <Icon size={30} />
+      <div className={`w-11 h-11 ${bg} ${color} rounded-xl flex items-center justify-center mb-4 shadow-xs`}>
+        <Icon size={22} />
       </div>
-      <div className="mb-4">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-navy/40 mb-2 block">{tag}</span>
-        <h3 className="text-2xl font-black text-navy leading-tight">{title}</h3>
+      <div className="mb-2">
+        <span className="text-[9px] font-black uppercase tracking-wider text-navy/40 mb-1 block">{tag}</span>
+        <h3 className="text-base sm:text-lg font-extrabold text-navy tracking-tight">{title}</h3>
       </div>
-      <p className="text-lg text-text-muted leading-relaxed opacity-80">{desc}</p>
+      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">{desc}</p>
     </div>
-    <div className="mt-10">
+    <div className="mt-5">
       <MagneticWrapper>
-        <button className="text-primary font-black uppercase text-[9px] tracking-[0.3em] flex items-center gap-3">
-          Explore <ArrowRight size={16} />
+        <button className="text-primary font-black uppercase text-[9px] tracking-widest flex items-center gap-2 cursor-pointer hover:underline">
+          Explore <ArrowRight size={13} />
         </button>
       </MagneticWrapper>
     </div>
-  </motion.div>
+  </div>
 );
 
 
@@ -646,49 +767,41 @@ const SuccessStories = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="mb-12">
-        <h2 className="text-3xl md:text-4xl font-black text-navy mb-3 tracking-tight">Our Success Stories</h2>
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-navy/40">Say This</span>
-          <div className="w-12 h-[2px] bg-navy/10" />
-        </div>
+      <div className="mb-8 text-center max-w-xl mx-auto">
+        <span className="badge">Member Insights</span>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-navy tracking-tight mb-2">Our Success Stories</h2>
+        <p className="text-xs sm:text-sm text-slate-600">Verified experiences from patients, specialists, and pharmacy hubs.</p>
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-8 items-start">
+      <div className="grid lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Vertical Tabs */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className="lg:col-span-4 space-y-2">
           {Object.entries(stories).map(([key, item]) => (
-            <motion.button
+            <button
               key={key}
               onClick={() => setActiveTab(key)}
-              whileHover={{ x: 5 }}
-              className={`w-full flex items-center gap-4 p-4 rounded-[28px] transition-all duration-500 text-left relative overflow-hidden ${activeTab === key ? 'bg-white shadow-[0_15px_40px_rgba(37,114,217,0.08)]' : 'hover:bg-white/50'}`}
+              className={`w-full flex items-center gap-3 p-3 sm:p-4 rounded-xl transition-all duration-300 text-left relative overflow-hidden cursor-pointer ${activeTab === key ? 'bg-white border border-slate-200/80 shadow-xs' : 'hover:bg-white/60'}`}
             >
-              {/* Active Highlight Bar */}
               {activeTab === key && (
-                <motion.div 
-                  layoutId="activeStoryBar"
-                  className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary z-20"
-                />
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary z-20" />
               )}
               
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 shrink-0 ${activeTab === key ? 'bg-primary text-white shadow-md' : 'bg-navy/5 text-navy/40'}`}>
-                {key === 'patients' && <User size={20} />}
-                {key === 'doctors' && <Stethoscope size={20} />}
-                {key === 'pharmacy' && <Database size={20} />}
-                {key === 'institutions' && <Globe size={20} />}
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center relative z-10 shrink-0 ${activeTab === key ? 'bg-primary text-white' : 'bg-slate-100 text-navy/40'}`}>
+                {key === 'patients' && <User size={16} />}
+                {key === 'doctors' && <Stethoscope size={16} />}
+                {key === 'pharmacy' && <Database size={16} />}
               </div>
 
               <div className="relative z-10">
-                <h4 className={`text-base font-black tracking-tight ${activeTab === key ? 'text-navy' : 'text-navy/40'}`}>{item.category}</h4>
-                <p className={`text-[10px] font-bold ${activeTab === key ? 'text-primary' : 'text-navy/20'}`}>{item.subtext}</p>
+                <h4 className={`text-xs sm:text-sm font-extrabold tracking-tight ${activeTab === key ? 'text-navy' : 'text-navy/50'}`}>{item.category}</h4>
+                <p className={`text-[9px] font-bold ${activeTab === key ? 'text-primary' : 'text-slate-400'}`}>{item.subtext}</p>
               </div>
-            </motion.button>
+            </button>
           ))}
         </div>
 
         {/* Right Column: Story content */}
-        <div className="lg:col-span-6 bg-white rounded-[20px] p-4 md:p-6 relative overflow-hidden group shadow-[0_10px_30px_rgba(13,27,61,0.02)] border border-navy/5 min-h-[260px] flex flex-col justify-center">
+        <div className="lg:col-span-8 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col justify-center">
           
           {/* Decorative Stylized Icon (Top Right) */}
           <div className="absolute -top-4 -right-4 text-primary/5 transition-transform duration-1000 group-hover:rotate-12 group-hover:scale-110">
@@ -751,7 +864,6 @@ const SuccessStories = () => {
 
 
 const InstitutionalTrust = () => {
-  const [activeIndex, setActiveIndex] = useState(0);
   const items = [
     { label: "Data Integrity", value: "SOC2 Type II", desc: "Military-grade service transparency." },
     { label: "Privacy Standard", value: "HIPAA & GDPR", desc: "Global medical data sovereignty." },
@@ -759,72 +871,30 @@ const InstitutionalTrust = () => {
     { label: "Information Security", value: "ISO 27001", desc: "Unmatched network resilience." }
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % items.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [items.length]);
-
   return (
-    <section className="section-padding bg-off-white overflow-hidden">
-      <div className="container">
-        <div className="grid lg:grid-cols-2 gap-20 items-center">
-          <div className="max-w-xl">
-            <div className="badge border-navy/10 text-navy/40 bg-navy/5 mb-6">Scientific Authority</div>
-            <h2 className="text-5xl font-black text-navy tracking-tighter mb-8 leading-[1.1]">Built on <span className="text-gradient">verified excellence.</span></h2>
-            <p className="text-lg text-text-muted font-medium mb-10 leading-relaxed">
-              We adhere to the world's most rigorous medical and technical standards to ensure absolute trust and sovereign data security for every user.
-            </p>
-            <div className="flex gap-4">
-              {items.map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`h-1.5 rounded-full transition-all duration-500 ${activeIndex === i ? 'w-8 bg-primary' : 'w-2 bg-navy/10'}`} 
-                />
-              ))}
-            </div>
-          </div>
+    <section className="py-16 md:py-24 bg-slate-50 border-t border-slate-100">
+      <div className="container max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="badge">Scientific Authority</span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy tracking-tight mb-2">
+            Built on verified excellence.
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600">
+            We adhere to the world's most rigorous medical and security standards.
+          </p>
+        </div>
 
-          <div className="relative h-[280px] sm:h-[400px] flex items-center justify-center lg:justify-end mt-12 lg:mt-0">
-            <div className="relative w-full max-w-[280px] sm:max-w-[400px] h-full">
-              <AnimatePresence mode="popLayout">
-                {items.map((item, i) => {
-                  const isFront = i === activeIndex;
-                  const position = (i - activeIndex + items.length) % items.length;
-                  
-                  if (position > 2) return null; // Only show top 3 cards for cleaner look
-
-                  return (
-                    <motion.div
-                      key={item.value}
-                      style={{ zIndex: items.length - position }}
-                      initial={{ opacity: 0, scale: 0.8, x: 50 }}
-                      animate={{ 
-                        opacity: 1 - position * 0.2,
-                        scale: 1 - position * 0.05,
-                        x: position * 20,
-                        y: position * -20,
-                        rotate: position * 2
-                      }}
-                      exit={{ opacity: 0, x: -100, scale: 0.9, rotate: -5 }}
-                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      className="absolute inset-0"
-                    >
-                      <div className={`bg-white p-12 rounded-[48px] shadow-2xl border border-navy/5 h-full flex flex-col justify-between group transition-colors duration-500 ${isFront ? 'hover:bg-navy hover:text-white' : ''}`}>
-                        <div>
-                          <BadgeCheck size={48} className={`mb-8 transition-colors ${isFront ? 'text-primary group-hover:text-accent' : 'text-primary/20'}`} />
-                          <p className={`text-[11px] font-black uppercase tracking-[0.4em] mb-3 ${isFront ? 'text-navy/30 group-hover:text-white/40' : 'text-navy/10'}`}>{item.label}</p>
-                          <h4 className="text-3xl font-black mb-6 tracking-tighter">{item.value}</h4>
-                        </div>
-                        <p className={`text-base font-medium leading-relaxed ${isFront ? 'opacity-60' : 'opacity-20'}`}>{item.desc}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {items.map((item, i) => (
+            <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                <BadgeCheck size={20} />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1">{item.label}</span>
+              <h3 className="text-base font-extrabold text-navy mb-1">{item.value}</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">{item.desc}</p>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
@@ -841,133 +911,142 @@ const App = () => {
     offset: ["start center", "end center"]
   });
 
-  // Automatically cycle through roles every 5 seconds
+  // Interactive UI States
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'join'>('join');
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type?: 'info' | 'success' } | null>(null);
+
+  const showToast = (message: string, type: 'info' | 'success' = 'info') => {
+    setToastMessage({ message, type });
+  };
+
+  const handleOpenAuth = (mode: 'signin' | 'join') => {
+    setAuthMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  // Keyboard shortcut listener for Cmd+K / Ctrl+K
   useEffect(() => {
-    const roles: ('patient' | 'doctor' | 'pharmacy')[] = ['patient', 'doctor', 'pharmacy'];
-    const interval = setInterval(() => {
-      setActiveRole((current) => {
-        const nextIndex = (roles.indexOf(current) + 1) % roles.length;
-        return roles[nextIndex];
-      });
-    }, 5000);
-    return () => clearInterval(interval);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+
 
   return (
     <div className="min-h-screen relative overflow-hidden">
-      <HeartBubbles />
       <div className="noise-overlay" />
-      <Navbar />
+      <Navbar
+        onOpenAuth={handleOpenAuth}
+        showToast={showToast}
+      />
 
-      {/* 1. Hero Section */}
-      <section className="section-padding pt-32 md:pt-40 lg:pt-[180px] bg-white overflow-hidden relative grid-pattern">
-        {/* Animated background elements - Elite blobs */}
+      <AuthModal
+        isOpen={authModalOpen}
+        mode={authMode}
+        onClose={() => setAuthModalOpen(false)}
+        showToast={showToast}
+      />
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        showToast={showToast}
+      />
+
+      <AnimatePresence>
+        {toastMessage && (
+          <ToastNotification
+            message={toastMessage.message}
+            type={toastMessage.type}
+            onClose={() => setToastMessage(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 1. Hero Section - Minimalist Modern */}
+      <section className="pt-28 pb-20 sm:pt-36 sm:pb-28 bg-white overflow-hidden relative grid-pattern">
+        {/* Subtle background ambient light */}
         <motion.div
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary/5 blur-[120px] rounded-full"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.3, 1], rotate: [90, 0, 90] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-[-10%] left-[-5%] w-[800px] h-[800px] bg-secondary/5 blur-[150px] rounded-full"
+          animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
+          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+          className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-primary/10 via-secondary/5 to-transparent blur-[120px] rounded-full pointer-events-none"
         />
 
-        <div className="container grid lg:grid-cols-2 gap-12 sm:gap-20 items-center relative z-10 pt-20 lg:pt-0">
+        <div className="container max-w-4xl mx-auto text-center relative z-10 px-4 sm:px-6">
           <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-center lg:text-left"
-            variants={{
-              hidden: { opacity: 0 },
-              visible: {
-                opacity: 1,
-                transition: { staggerChildren: 0.2 }
-              }
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="flex flex-col items-center"
           >
-
-            <motion.h1
-              variants={{ hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] sm:leading-[1.05] tracking-tight mb-6"
-            >
-              Healthcare, <br />
-              <span className="text-gradient-navy italic">reimagined.</span>
-            </motion.h1>
-
-            <motion.p
-              variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-              className="text-lg sm:text-xl md:text-2xl text-text-muted mb-8 sm:mb-10 max-w-xl mx-auto lg:mx-0 leading-relaxed font-display"
-            >
-              Your health journey shouldn't be a struggle. Meet <span className="text-primary font-black">Medi</span> your personal 24/7 companion for a healthier, happier you.
-            </motion.p>
-
-            <motion.div
-              variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1 } }}
-              className="flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-5 items-center justify-center lg:justify-start"
-            >
-              <MagneticWrapper>
-                <button className="btn btn-accent btn-lg text-[#0D1B3D] w-full sm:w-auto px-10 shadow-xl hover:shadow-accent/30 flex items-center justify-center gap-3">
-                  Start Your Journey <ArrowRight size={22} className="animate-pulse" />
-                </button>
-              </MagneticWrapper>
-
-              <div className="flex -space-x-3 items-center">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-12 h-12 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-sm">
-                    <img src={`https://i.pravatar.cc/100?u=${i + 10}`} alt="User" />
-                  </div>
-                ))}
-                <div className="ml-4 pl-4 border-l border-border-color">
-                  <p className="text-sm font-black text-navy tracking-tight">4.9/5 Global Rating</p>
-                  <p className="text-[8px] text-text-muted uppercase tracking-[0.2em] font-black">Vetted by elite professionals</p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
-            whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 1.2, type: "spring", bounce: 0.4 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="relative z-10 p-4 bg-white/20 backdrop-blur-2xl rounded-[48px] shadow-2xl border border-white/40">
-              <img src={heroImage} alt="Medicata Experience" className="rounded-[40px] shadow-inner" />
+            {/* Minimalist Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-navy text-xs font-bold shadow-2xs mb-6">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">Next-Gen Healthcare Intelligence</span>
             </div>
 
-            {/* Elite Floating Elements */}
-            <motion.div
-              animate={{ y: [0, -15, 0], x: [0, 10, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-6 sm:-top-12 -right-4 sm:-right-8 glass p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl z-20 flex items-center gap-2 sm:gap-4 border border-white/60"
-            >
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-500 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transform rotate-6">
-                <CheckCircle className="text-white" size={16} />
-              </div>
-              <div>
-                <p className="font-black text-[10px] sm:text-sm text-navy uppercase tracking-tighter">Verified</p>
-                <p className="text-[8px] sm:text-xs text-text-muted font-bold">Clinic: St. Mary's</p>
-              </div>
-            </motion.div>
+            {/* Refined Headline (Smaller, Crisp & Minimalist) */}
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-navy leading-[1.18] tracking-tight mb-5 max-w-3xl">
+              Healthcare, <span className="text-gradient-navy italic">reimagined</span> for modern precision.
+            </h1>
 
-            <motion.div
-              animate={{ y: [0, 15, 0], x: [0, -10, 0] }}
-              transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="absolute -bottom-1 sm:-bottom-10 -left-1 sm:-left-12 glass p-1 sm:p-6 rounded sm:rounded-3xl shadow-2xl z-20 flex items-center gap-1 sm:gap-5 max-w-[100px] sm:max-w-sm border border-white/60"
-            >
-              <div className="relative shrink-0">
-                <img src={mediMascot} alt="Medi AI" className="w-4 h-4 sm:w-20 sm:h-20 object-contain drop-shadow-xl" />
-                <div className="absolute top-0 right-0 w-0.5 h-0.5 sm:w-4 sm:h-4 bg-green-500 rounded-full border border-white heartbeat-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-              </div>
-              <div className="max-w-[65px] sm:max-w-[200px]">
-                <div className="text-[4px] sm:text-xs leading-[1.0] font-black tracking-tight text-navy/90 break-words">
-                  <DynamicTypewriter />
+            {/* Refined Subtitle (Smaller & Sleek) */}
+            <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto leading-relaxed font-sans mb-8">
+              Seamless access to 24/7 AI triage, top 1% global specialists, and hardware-encrypted medical records—all in one unified platform.
+            </p>
+
+            {/* Minimal Action CTAs */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 mb-14 w-full sm:w-auto">
+              <MagneticWrapper>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => handleOpenAuth('join')}
+                  className="bg-navy text-white hover:bg-primary text-xs uppercase font-black tracking-widest px-7 py-3.5 rounded-full shadow-lg shadow-navy/15 hover:shadow-primary/30 transition-all cursor-pointer flex items-center justify-center gap-2 w-full sm:w-auto"
+                >
+                  <span>Start Your Journey</span>
+                  <ArrowRight size={15} className="text-secondary" />
+                </motion.button>
+              </MagneticWrapper>
+
+              <MagneticWrapper>
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    const el = document.getElementById('features');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200/80 text-navy border border-slate-200/90 text-xs uppercase font-extrabold tracking-widest px-7 py-3.5 rounded-full transition-all cursor-pointer w-full sm:w-auto"
+                >
+                  Explore Ecosystem
+                </motion.button>
+              </MagneticWrapper>
+            </div>
+
+            {/* Minimalist Metrics Strip */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 pt-8 border-t border-slate-200/60 w-full max-w-3xl">
+              {[
+                { value: "99.4%", label: "AI Precision Rate" },
+                { value: "30 Min", label: "Pharmacy Dispatch" },
+                { value: "AES-256", label: "Vault Encryption" },
+                { value: "Top 1%", label: "Verified Doctors" },
+              ].map((stat, idx) => (
+                <div key={idx} className="flex flex-col items-center">
+                  <span className="text-lg sm:text-xl font-black text-navy tracking-tight">{stat.value}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{stat.label}</span>
                 </div>
-              </div>
-            </motion.div>
+              ))}
+            </div>
+
           </motion.div>
         </div>
 
@@ -981,67 +1060,51 @@ const App = () => {
           <p className="text-center font-black text-navy/40 mb-14 uppercase tracking-[0.4em] text-[10px]">
             Strategically Partnered with Global Excellence
           </p>
-          <div className="relative flex overflow-hidden group mask-horizontal">
-            <div className="animate-marquee flex gap-24 whitespace-nowrap pause-on-hover px-12">
-              {[...Array(2)].map((_, groupIndex) => (
-                <React.Fragment key={groupIndex}>phone
-                  {['Johns Hopkins', 'Mayo Clinic', 'Harvard Health', 'Cleveland Clinic', 'NHS Verified'].map((name, i) => (
-                    <span 
-                      key={`${groupIndex}-${i}`} 
-                      className="text-2xl font-black tracking-tighter text-navy opacity-40 grayscale hover:opacity-100 hover:grayscale-0 hover:text-primary transition-all duration-500 cursor-default select-none"
-                    >
-                      {name}
-                    </span>
-                  ))}
-                </React.Fragment>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-16 px-4">
+            {['Johns Hopkins', 'Mayo Clinic', 'Harvard Health', 'Cleveland Clinic', 'NHS Verified'].map((name, i) => (
+              <span 
+                key={i} 
+                className="text-lg sm:text-xl font-black tracking-tighter text-navy/40 grayscale hover:opacity-100 hover:text-primary transition-all duration-300 cursor-default select-none"
+              >
+                {name}
+              </span>
+            ))}
           </div>
         </div>
       </section>
 
       {/* 4. Elite Ecosystem (Dynamic Role Switcher) */}
-      <section id="features" className="section-padding bg-off-white relative">
-        <div className="container">
-          <div className="text-center max-w-4xl mx-auto mb-20">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="badge bg-primary/10 text-primary border border-primary/20"
-            >
-              Elite Ecosystem
-            </motion.div>
-            <motion.h2
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-5xl md:text-7xl font-black tracking-tighter mb-12"
-            >
-              Designed for every <br />
-              <span className="text-gradient">side of care.</span>
-            </motion.h2>
+      <section id="features" className="py-16 md:py-24 bg-off-white relative border-t border-slate-100">
+        <div className="container max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <span className="badge">Elite Ecosystem</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy tracking-tight mb-2">
+              Designed for every side of care.
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600">
+              Unified workflows tailored for Patients, Doctors, and Pharmacies.
+            </p>
 
             {/* Role Switcher Toggle */}
-            <div className="flex justify-center mb-16 overflow-x-auto pb-4 px-4 mask-fade-right">
-              <div className="inline-flex p-1.5 bg-white/50 backdrop-blur-xl border border-navy/5 rounded-[32px] shadow-2xl relative">
+            <div className="flex justify-center mt-6 overflow-x-auto pb-2 px-2">
+              <div className="inline-flex p-1 bg-white border border-slate-200/80 rounded-2xl shadow-xs relative">
                 {['patient', 'doctor', 'pharmacy'].map((role) => (
                   <button
                     key={role}
                     onClick={() => setActiveRole(role as any)}
-                    className={`relative z-10 px-4 sm:px-8 py-3 sm:py-4 text-[10px] sm:text-xs font-black uppercase tracking-widest transition-all duration-500 rounded-[24px] whitespace-nowrap ${activeRole === role ? 'text-white' : 'text-navy/40 hover:text-navy'}`}
+                    className={`relative z-10 px-4 sm:px-6 py-2 text-[10px] sm:text-xs font-extrabold uppercase tracking-wider transition-all duration-300 rounded-xl whitespace-nowrap cursor-pointer ${activeRole === role ? 'text-white' : 'text-navy/50 hover:text-navy'}`}
                   >
                     {activeRole === role && (
                       <motion.div 
                         layoutId="activeTab"
-                        className="absolute inset-0 bg-navy rounded-[24px] shadow-xl shadow-navy/20"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                        className="absolute inset-0 bg-navy rounded-xl shadow-xs"
+                        transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
                       />
                     )}
                     <span className="relative z-20 flex items-center gap-2">
-                       {role === 'patient' && <User size={14} />}
-                       {role === 'doctor' && <Stethoscope size={14} />}
-                       {role === 'pharmacy' && <Database size={14} />}
+                       {role === 'patient' && <User size={13} />}
+                       {role === 'doctor' && <Stethoscope size={13} />}
+                       {role === 'pharmacy' && <Database size={13} />}
                        {role}
                     </span>
                   </button>
@@ -1053,11 +1116,11 @@ const App = () => {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeRole}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-              className="grid lg:grid-cols-3 gap-8"
+              exit={{ opacity: 0, scale: 0.98, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="grid lg:grid-cols-3 gap-6"
             >
               {activeRole === 'patient' && [
                 { title: 'Global Specialist Access', desc: "Direct access to the world's leading medical minds. Search by specialty and real-time availability.", icon: Calendar, color: 'text-primary', bg: 'bg-primary/5', tag: 'Expert Care' },
@@ -1068,54 +1131,48 @@ const App = () => {
               {activeRole === 'doctor' && (
                 <>
                   <div className="lg:col-span-2">
-                    <div className="grid md:grid-cols-2 gap-8 h-full">
+                    <div className="grid md:grid-cols-2 gap-6 h-full">
                       <FeatureCard title="Clinical MD-Panel" desc="A command center designed for precision archiving, schedule settings, and license-verified trust." icon={LayoutDashboard} color="text-primary" bg="bg-primary/5" tag="MD Commands" />
                       <FeatureCard title="QR-Verified E-Prescribe" desc="Generate digital prescriptions with secure sharing logic and expiry tracking in seconds." icon={FileText} color="text-secondary" bg="bg-secondary/5" tag="Digital Flow" />
                     </div>
                   </div>
-                  <motion.div
-                    whileHover={{ y: -10 }}
-                    className="bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/40 overflow-hidden flex flex-col"
-                  >
-                    <div className="h-48 bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center p-6">
-                       <img src={doctorBookingImg} alt="Doctor Panel" className="h-full object-contain drop-shadow-xl" />
+                  <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
+                    <div className="h-32 bg-gradient-to-br from-primary/10 to-transparent flex items-center justify-center p-4">
+                       <img src={doctorBookingImg} alt="Doctor Panel" className="h-full object-contain" />
                     </div>
-                    <div className="p-10 flex-1 flex flex-col justify-between">
+                    <div className="p-5 flex-1 flex flex-col justify-between">
                       <div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-navy/40 mb-2 block">Institutional</span>
-                        <h3 className="text-2xl font-black text-navy leading-tight">Elite Patient History Vault</h3>
-                        <p className="text-text-muted mt-4 font-medium italic">Instant clinical forensics with biometric authorization.</p>
+                        <span className="text-[9px] font-black uppercase tracking-wider text-navy/40 mb-1 block">Institutional</span>
+                        <h3 className="text-base sm:text-lg font-extrabold text-navy leading-tight">Elite Patient History Vault</h3>
+                        <p className="text-xs text-slate-600 mt-2 leading-relaxed">Instant clinical forensics with biometric authorization.</p>
                       </div>
                       <MagneticWrapper>
-                        <button className="text-primary font-black uppercase text-[9px] tracking-[0.3em] flex items-center gap-3 mt-8">View MD Specs <ArrowRight size={16} /></button>
+                        <button className="text-primary font-black uppercase text-[9px] tracking-widest flex items-center gap-2 mt-4 cursor-pointer hover:underline">View MD Specs <ArrowRight size={13} /></button>
                       </MagneticWrapper>
                     </div>
-                  </motion.div>
+                  </div>
                 </>
               )}
 
               {activeRole === 'pharmacy' && (
                 <>
-                  <motion.div
-                    whileHover={{ y: -10 }}
-                    className="bg-white/80 backdrop-blur-xl rounded-[40px] shadow-2xl border border-white/40 overflow-hidden flex flex-col"
-                  >
-                    <div className="h-48 bg-gradient-to-br from-secondary/10 to-transparent flex items-center justify-center p-6">
-                       <img src={pharmacyDeliveryImg} alt="Pharmacy Logistics" className="h-full object-contain drop-shadow-xl" />
+                  <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
+                    <div className="h-32 bg-gradient-to-br from-secondary/10 to-transparent flex items-center justify-center p-4">
+                       <img src={pharmacyDeliveryImg} alt="Pharmacy Logistics" className="h-full object-contain" />
                     </div>
-                    <div className="p-10 flex-1 flex flex-col justify-between">
+                    <div className="p-5 flex-1 flex flex-col justify-between">
                       <div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-navy/40 mb-2 block">Supply Chain</span>
-                        <h3 className="text-2xl font-black text-navy leading-tight">Unified Order Ledger</h3>
-                        <p className="text-text-muted mt-4 font-medium italic">Track prescriptions from doctor to patient with algorithmic dispatch and stock-logic.</p>
+                        <span className="text-[9px] font-black uppercase tracking-wider text-navy/40 mb-1 block">Supply Chain</span>
+                        <h3 className="text-base sm:text-lg font-extrabold text-navy leading-tight">Unified Order Ledger</h3>
+                        <p className="text-xs text-slate-600 mt-2 leading-relaxed">Track prescriptions from doctor to patient with algorithmic dispatch.</p>
                       </div>
                       <MagneticWrapper>
-                        <button className="text-secondary font-black uppercase text-[9px] tracking-[0.3em] flex items-center gap-3 mt-8">Register Hub <ArrowRight size={16} /></button>
+                        <button className="text-secondary font-black uppercase text-[9px] tracking-widest flex items-center gap-2 mt-4 cursor-pointer hover:underline">Register Hub <ArrowRight size={13} /></button>
                       </MagneticWrapper>
                     </div>
-                  </motion.div>
+                  </div>
                   <div className="lg:col-span-2">
-                    <div className="grid md:grid-cols-2 gap-8 h-full">
+                    <div className="grid md:grid-cols-2 gap-6 h-full">
                       <FeatureCard title="Verified QR Check" desc="Instant verification of sharing cards through our distributed clinical ledger. Avoid expiry issues." icon={Lock} color="text-accent" bg="bg-accent/5" tag="Fraud Protection" />
                       <FeatureCard title="Global Stock Monitoring" desc="Optimize routes for ultra-fast pharmaceutical dispatching based on real-time drug availability." icon={MapPin} color="text-primary" bg="bg-primary/5" tag="Supply Network" />
                     </div>
@@ -1125,30 +1182,19 @@ const App = () => {
             </motion.div>
           </AnimatePresence>
         </div>
-        
-        {/* Bottom Curve Divider for Section Transition */}
       </section>
 
-
-      {/* 4.7 Institutional Trust (Global Authority) */}
+      {/* 4.5 Institutional Authority */}
       <InstitutionalTrust />
 
-      {/* 5. How It Works (Elite Step Journey Redesign) */}
-      <section id="how-it-works" ref={containerRef} className="section-padding bg-white relative overflow-hidden">
+      {/* 5. How It Works */}
+      <section id="how-it-works" ref={containerRef} className="py-16 md:py-24 bg-white relative overflow-hidden border-t border-slate-100">
         <LogisticsLedger progress={scrollYProgress} />
-        {/* Animated Path Background */}
-        <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-[200px] bottom-[100px] w-px bg-navy/5">
-          <motion.div
-            style={{ scaleY: scrollYProgress, originY: 0 }}
-            className="w-1 h-full bg-gradient-to-b from-primary via-secondary to-accent shadow-[0_0_15px_rgba(90,200,250,0.3)] rounded-full"
-          />
-        </div>
-
-        <div className="container relative z-10">
-          <div className="text-center max-w-4xl mx-auto mb-32">
-            <div className="badge">Elite Process</div>
-            <h2 className="text-5xl md:text-6xl font-black tracking-tight">Vetted care in <span className="text-gradient-gold">4 precise steps</span></h2>
-            <p className="mt-8 text-xl md:text-2xl text-text-muted leading-relaxed">The Medicata journey—from initial consulting to localized pharmacy fulfillment.</p>
+        <div className="container max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="badge">Elite Process</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-navy tracking-tight mb-2">Vetted care in 4 precise steps</h2>
+            <p className="text-xs sm:text-sm text-slate-600">The Medicata journey from initial consulting to localized pharmacy fulfillment.</p>
           </div>
 
           <div className="max-w-5xl mx-auto">
@@ -1525,126 +1571,50 @@ const App = () => {
       </section>
 
 
-      {/* 12. Final CTA & Recommendation (Elite Invitation) */}
-      <section className="section-padding bg-off-white text-center relative overflow-hidden">
-        <div className="container max-w-5xl relative z-10">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight mb-12">
-              Step into the future of <br />
-              <span className="text-gradient-gold italic">your health.</span>
-            </h2>
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-8 mb-16">
-              <MagneticWrapper>
-                <button className="btn btn-primary btn-lg w-full sm:w-auto px-12 py-6 sm:py-8 text-lg sm:text-xl shadow-2xl hover:shadow-primary/30">Get Invited Now</button>
-              </MagneticWrapper>
-              <MagneticWrapper>
-                <button className="btn btn-outline btn-lg w-full sm:w-auto px-12 py-6 sm:py-8 text-lg sm:text-xl">Our Vision</button>
-              </MagneticWrapper>
-            </div>
 
-          </motion.div>
-        </div>
-        {/* Elite Background Shapes */}
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-          <div className="absolute top-[10%] left-[5%] w-64 h-64 bg-primary blur-3xl rounded-full" />
-          <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-secondary blur-3xl rounded-full" />
-        </div>
-      </section>
 
-      {/* 11. Elite Command Footer */}
-      <footer className="relative bg-navy text-white pt-32 pb-12 overflow-hidden mt-20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-navy to-navy pointer-events-none" />
-        
-        <div className="container relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 mb-24">
-            
-            {/* Brand & Mission */}
-            <div className="lg:col-span-5 lg:pr-8">
-              <div className="flex items-center mb-6">
-                <div className="w-20 h-20 sm:w-32 sm:h-32 flex items-center justify-center">
-                  <img src="/logo.png" alt="Medicata Logo" className="w-full h-full object-contain" />
-                </div>
-              </div>
-              <p className="text-blue-100/60 text-lg leading-relaxed mb-10 max-w-sm">
-                Engineering the future of global healthcare. Absolute privacy, algorithmic precision, and world-class care—delivered instantly.
-              </p>
-              
-              {/* Newsletter Terminal */}
-              <div className="bg-white/5 border border-white/10 p-2 rounded-2xl flex items-center max-w-sm backdrop-blur-md focus-within:border-primary/50 focus-within:bg-white/10 transition-all duration-500">
-                <div className="pl-4">
-                  <Globe size={18} className="text-primary/70" />
-                </div>
-                <input 
-                  type="email" 
-                  placeholder="Join the exclusive network..." 
-                  className="bg-transparent border-none text-white focus:outline-none w-full px-4 text-sm font-medium placeholder:text-white/30"
-                />
-                <button className="bg-white text-navy px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary hover:text-white transition-colors h-full">Join</button>
-              </div>
-            </div>
-
-            {/* Navigation Links */}
-            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12">
-              <div>
-                <h4 className="font-black text-xs uppercase tracking-[0.3em] text-white mb-8 border-b border-white/10 pb-4 inline-block">Ecosystem</h4>
-                <ul className="space-y-4">
-                  {['Specialist Booking', 'Prietech Vault', 'Medi AI Engine', 'Global Pharmacy'].map((item) => (
-                    <li key={item}>
-                      <a href="#" className="text-blue-100/50 hover:text-primary hover:-translate-y-0.5 transition-all inline-block text-sm font-medium">{item}</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-black text-xs uppercase tracking-[0.3em] text-white mb-8 border-b border-white/10 pb-4 inline-block">Organization</h4>
-                <ul className="space-y-4">
-                  {['The Vision', 'Board of Directors', 'Clinical Guidelines', 'Careers'].map((item) => (
-                    <li key={item}>
-                      <a href="#" className="text-blue-100/50 hover:text-secondary hover:-translate-y-0.5 transition-all inline-block text-sm font-medium">{item}</a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="col-span-2 md:col-span-1 border-t md:border-t-0 border-white/10 pt-8 md:pt-0">
-                <h4 className="font-black text-xs uppercase tracking-[0.3em] text-white mb-8 border-b border-white/10 pb-4 inline-block">Support</h4>
-                <ul className="space-y-4">
-                  {['24/7 Concierge', 'Help Center', 'API Documentation', 'System Status'].map((item) => (
-                    <li key={item}>
-                      <a href="#" className="text-blue-100/50 hover:text-white transition-colors inline-block text-sm font-bold flex items-center gap-2 group">
-                        {item === 'System Status' && <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block" />}
-                        <span className="group-hover:underline underline-offset-4 decoration-primary/50">{item}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            
+      {/* Sleek Minimalist Thin Footer */}
+      <footer className="bg-navy text-white py-8 border-t border-white/10 mt-12">
+        <div className="container max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+          
+          {/* Brand & Copyright */}
+          <div className="flex items-center gap-3">
+            <img src="/favicon.png" alt="Medicata Icon" className="h-6 w-6 object-contain" />
+            <span className="font-display font-black text-sm text-white tracking-tight">MEDICATA</span>
+            <span className="text-white/20">|</span>
+            <span className="text-[11px] font-medium text-blue-100/50">© 2026 Medicata Ltd. All rights reserved.</span>
           </div>
 
-          {/* Bottom Bar */}
-          <div className="flex flex-col md:flex-row justify-between items-center text-center pt-8 border-t border-white/10 gap-6">
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <span className="text-[10px] font-black tracking-[0.15em] text-blue-100/40">© 2026 Medicata Ltd. A product Pioneers ICT. All rights reserved.</span>
-              <div className="hidden sm:block w-1 h-1 bg-white/20 rounded-full" />
-              <div className="flex gap-4">
-                <a href="#" className="text-[10px] font-bold text-blue-100/40 hover:text-white uppercase tracking-wider transition-colors">Privacy</a>
-                <a href="#" className="text-[10px] font-bold text-blue-100/40 hover:text-white uppercase tracking-wider transition-colors">Terms</a>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              {[Twitter, Linkedin, Instagram, Facebook].map((Icon, i) => (
-                <a key={i} href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-all group">
-                  <Icon size={16} className="text-white/60 group-hover:text-white scale-90 group-hover:scale-100 transition-transform" />
-                </a>
-              ))}
-            </div>
+          {/* Quick Links */}
+          <div className="flex items-center gap-6 text-[11px] font-bold text-blue-100/60 uppercase tracking-wider">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#medi-ai" className="hover:text-white transition-colors">Medi AI</a>
+            <a href="#safety" className="hover:text-white transition-colors">Safety</a>
+            <button onClick={() => showToast("24/7 AI Triage System active across 42 global regions.", "success")} className="hover:text-white transition-colors cursor-pointer flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+              <span>Status</span>
+            </button>
           </div>
+
+          {/* Compact Social Icons */}
+          <div className="flex items-center gap-2">
+            {[
+              { icon: Twitter, href: "#" },
+              { icon: Linkedin, href: "#" },
+              { icon: Instagram, href: "#" },
+              { icon: Facebook, href: "#" }
+            ].map((item, i) => (
+              <a
+                key={i}
+                href={item.href}
+                onClick={(e) => { e.preventDefault(); showToast("Opening social channel..."); }}
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-primary hover:border-primary transition-colors cursor-pointer"
+              >
+                <item.icon size={13} className="text-white/70 hover:text-white" />
+              </a>
+            ))}
+          </div>
+
         </div>
       </footer>
     </div>

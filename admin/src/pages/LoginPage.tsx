@@ -39,7 +39,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl shadow-slate-200/50 border border-slate-100">
+        <div className="bg-white rounded-[2.5rem] p-10 shadow-xl border border-slate-100">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700 capitalize tracking-wider ml-1">Email</label>
@@ -93,7 +93,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg capitalize tracking-widest shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg capitalize tracking-widest shadow-md hover:bg-primary/90 active:scale-[0.98] transition-all disabled:opacity-50"
             >
               {loading ? 'loading...' : 'Login'}
             </button>

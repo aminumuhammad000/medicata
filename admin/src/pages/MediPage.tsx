@@ -11,8 +11,7 @@ import {
   Terminal,
   Bot,
   Send,
-  User,
-  Brain
+  User
 } from 'lucide-react';
 import api from '../services/api';
 import { cn } from '../utils/cn';
@@ -99,8 +98,8 @@ export default function MediPage() {
       {/* Header */}
       <div className="flex justify-between items-end">
         <div className="flex items-center gap-6">
-          <div className="w-16 h-16 bg-primary rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-primary/20">
-            <Brain size={32} />
+          <div className="w-16 h-16 bg-primary rounded-[2rem] flex items-center justify-center text-white shadow-md">
+            <Bot size={32} />
           </div>
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tight italic uppercase">
@@ -223,7 +222,7 @@ export default function MediPage() {
                   <button 
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all disabled:opacity-50"
                   >
                     <Save size={20} />
                     {saving ? 'Syncing...' : 'Save Configuration'}
@@ -266,7 +265,7 @@ export default function MediPage() {
                         <button 
                             onClick={handleSimulate}
                             disabled={simulating || !input.trim()}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-primary text-white rounded-xl shadow-md hover:bg-primary/90 transition-all disabled:opacity-50"
                         >
                             <Send size={18} />
                         </button>

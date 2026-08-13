@@ -149,18 +149,19 @@ export default function LabTestsPage() {
           { label: 'Cancelled', val: stats?.cancelled ?? '—', icon: AlertCircle, color: 'bg-red-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center gap-4 shadow-sm">
-            <div className={cn("p-4 rounded-2xl text-white shadow-lg", stat.color)}>
+            <div className={cn("p-4 rounded-2xl text-white shadow-md", stat.color)}>
               <stat.icon size={24} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-black text-slate-900">{stat.val}</h3>
+              <p className="text-sm font-bold text-slate-500">{stat.label}</p>
+              <h3 className="text-2xl font-black text-slate-800">{stat.val}</h3>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-xl shadow-slate-200/20">
+      {/* Main Table Container */}
+      <div className="bg-white rounded-[2.5rem] overflow-hidden border border-slate-200 shadow-sm">
         <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row gap-4 justify-between items-center">
           <div className="relative w-full flex-1 max-w-lg">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />

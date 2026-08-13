@@ -151,7 +151,7 @@ export default function PrescriptionsPage() {
           { label: 'Expired', val: stats?.expired ?? '—', icon: AlertTriangle, color: 'bg-red-500' },
         ].map((stat, i) => (
           <div key={i} className="bg-white/50 backdrop-blur-xl p-6 rounded-[2rem] border border-white flex items-center gap-4 shadow-sm">
-            <div className={cn("p-4 rounded-2xl text-white shadow-lg", stat.color)}>
+            <div className={cn("p-4 rounded-2xl text-white shadow-md", stat.color)}>
               <stat.icon size={24} />
             </div>
             <div>
@@ -190,7 +190,7 @@ export default function PrescriptionsPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white overflow-hidden shadow-xl shadow-slate-200/50">
+      <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50/80 border-b border-white">
@@ -300,7 +300,7 @@ export default function PrescriptionsPage() {
       {selectedPrescription && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedPrescription(null)}></div>
-          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-xl animate-in zoom-in-95 duration-200">
             <button onClick={() => setSelectedPrescription(null)} className="absolute right-6 top-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-700 transition">
               <X size={18} />
             </button>

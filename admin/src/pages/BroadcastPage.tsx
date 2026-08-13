@@ -132,7 +132,7 @@ export default function BroadcastPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div className="flex items-center gap-5">
-          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-[2rem] flex items-center justify-center text-white shadow-xl shadow-amber-400/30">
+          <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-[2rem] flex items-center justify-center text-white">
             <Megaphone size={32} />
           </div>
           <div>
@@ -152,7 +152,7 @@ export default function BroadcastPage() {
         {/* Compose Panel */}
         <div className="xl:col-span-2 space-y-6">
           {/* Scope Selector */}
-          <div className="glass p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-5">
+          <div className="glass p-8 rounded-[2rem] border border-slate-200 space-y-5">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Step 1 — Select Target Audience</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
               {SCOPE_OPTIONS.map(opt => (
@@ -162,7 +162,7 @@ export default function BroadcastPage() {
                   className={cn(
                     "flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 font-bold text-xs text-center transition-all",
                     scope === opt.key
-                      ? "border-primary bg-primary text-white shadow-lg shadow-primary/20 scale-[1.04]"
+                      ? "border-primary bg-primary text-white scale-[1.04]"
                       : "border-slate-200 bg-white text-slate-500 hover:border-primary/30 hover:text-primary"
                   )}
                 >
@@ -195,7 +195,7 @@ export default function BroadcastPage() {
                 </div>
 
                 {showDropdown && userResults.length > 0 && !selectedUser && (
-                  <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-full mt-2 w-full bg-white rounded-2xl border border-slate-100 overflow-hidden z-30 animate-in fade-in zoom-in-95 duration-200">
                     {userResults.map(u => (
                       <button
                         key={u.id}
@@ -278,7 +278,7 @@ export default function BroadcastPage() {
               <button
                 onClick={handleSend}
                 disabled={sending || !title.trim() || !message.trim()}
-                className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/25 hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="group-hover:translate-x-1 transition-transform" />}
                 {sending ? 'Dispatching...' : 'Dispatch Broadcast'}

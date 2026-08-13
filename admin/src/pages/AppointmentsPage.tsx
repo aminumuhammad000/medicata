@@ -174,7 +174,7 @@ export default function AppointmentsPage() {
             { label: 'Cancelled', val: stats?.cancelled ?? '—', icon: XCircle, color: 'bg-red-500' },
         ].map((stat, i) => (
             <div key={i} className="bg-white/50 backdrop-blur-xl p-6 rounded-[2rem] border border-white flex items-center gap-4 shadow-sm">
-                <div className={cn("p-4 rounded-2xl text-white shadow-lg", stat.color)}>
+                <div className={cn("p-4 rounded-2xl text-white", stat.color)}>
                     <stat.icon size={24} />
                 </div>
                 <div>
@@ -213,7 +213,7 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Main Table */}
-      <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white overflow-hidden shadow-xl shadow-slate-200/50">
+      <div className="bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50/80 border-b border-white">
@@ -325,7 +325,7 @@ export default function AppointmentsPage() {
       {selectedConsultation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedConsultation(null)}></div>
-          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-xl animate-in zoom-in-95 duration-200">
              <button onClick={() => setSelectedConsultation(null)} className="absolute right-6 top-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-700 transition">
                <X size={18} />
              </button>
@@ -363,7 +363,7 @@ export default function AppointmentsPage() {
                 {selectedConsultation.status === 'scheduled' && (
                   <button 
                     onClick={() => cancelConsultation(selectedConsultation.id, selectedConsultation.id.slice(0,8))}
-                    className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl hover:bg-red-600 shadow-xl shadow-red-500/30 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl hover:bg-red-600 shadow-md transition flex items-center justify-center gap-2"
                   >
                      <XCircle size={18} />
                      Force Cancel

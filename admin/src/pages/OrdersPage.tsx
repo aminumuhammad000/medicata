@@ -275,7 +275,7 @@ export default function OrdersPage() {
             const StatusIcon = status.icon;
             
             return (
-              <div key={order.id} className="group bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all overflow-hidden relative">
+              <div key={order.id} className="group bg-white rounded-[2rem] border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-primary/20 transition-all overflow-hidden relative">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                   {/* ID & Date */}
                   <div className="space-y-2">
@@ -341,7 +341,7 @@ export default function OrdersPage() {
                 <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
                    <button 
                      onClick={() => setSelectedOrder(order)}
-                     className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20 hover:scale-105 transition-all"
+                     className="p-2 bg-primary text-white rounded-xl shadow-sm hover:scale-105 transition-all"
                    >
                      <ArrowRight size={16} />
                    </button>
@@ -379,7 +379,7 @@ export default function OrdersPage() {
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}></div>
-          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="relative bg-white rounded-[2.5rem] p-8 max-w-lg w-full shadow-md animate-in zoom-in-95 duration-200">
              <button onClick={() => setSelectedOrder(null)} className="absolute right-6 top-6 p-2 bg-slate-50 rounded-full text-slate-400 hover:text-slate-700 transition">
                <X size={18} />
              </button>
@@ -448,7 +448,7 @@ export default function OrdersPage() {
                 {selectedOrder.status.toLowerCase() !== 'cancelled' && selectedOrder.status.toLowerCase() !== 'delivered' && (
                   <button 
                     onClick={() => cancelOrder(selectedOrder.id)}
-                    className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl hover:bg-red-600 shadow-xl shadow-red-500/30 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl hover:bg-red-600 shadow-md transition flex items-center justify-center gap-2"
                   >
                      <AlertTriangle size={18} />
                      Force Cancel & Refund

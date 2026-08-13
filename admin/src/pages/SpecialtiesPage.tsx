@@ -6,6 +6,7 @@ import {
   Heart, 
   Baby, 
   User, 
+  Users,
   Bone, 
   Sparkles,
   Layers,
@@ -16,7 +17,8 @@ import {
   Search,
   Download,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import api from '../services/api';
 import { cn } from '../utils/cn';
@@ -151,45 +153,42 @@ export default function SpecialtiesPage() {
           <p className="text-slate-500 font-medium">Manage specialties and platform medical departments</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={exportCSV}
-            className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm"
-          >
-            <Download size={18} className="text-primary" />
-            Export Taxonomy
+          <button onClick={fetchSpecialties} className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            Refresh
           </button>
           <button 
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all"
+            onClick={() => { closeModal(); setShowAddModal(true); }}
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl font-black shadow-md hover:bg-primary/90 transition-all"
           >
-            <Plus size={20} />
-            Create Department
+            <Plus size={18} />
+            Add Specialty
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center gap-4 shadow-sm">
-          <div className="p-4 rounded-2xl text-white shadow-lg bg-indigo-500">
+          <div className="p-4 rounded-2xl text-white shadow-md bg-indigo-500">
             <Layers size={24} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Specialties</p>
-            <h3 className="text-2xl font-black text-slate-900">{data?.total ?? '—'}</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Active</p>
+            <h3 className="text-2xl font-black text-slate-900">{data?.total ?? '—'} Specialties</h3>
           </div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center gap-4 shadow-sm">
-          <div className="p-4 rounded-2xl text-white shadow-lg bg-emerald-500">
-            <User size={24} />
+          <div className="p-4 rounded-2xl text-white shadow-md bg-emerald-500">
+            <Users size={24} />
           </div>
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Doctors Matched</p>
-            <h3 className="text-2xl font-black text-slate-900">{data?.total_doctors_assigned ?? '—'}</h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Total Doctors Bound</p>
+            <h3 className="text-2xl font-black text-slate-900">{data?.total_doctors_assigned ?? '—'} Doctors</h3>
           </div>
         </div>
         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center gap-4 shadow-sm">
-          <div className="p-4 rounded-2xl text-white shadow-lg bg-amber-500">
-            <CheckCircle2 size={24} />
+          <div className="p-4 rounded-2xl text-white shadow-md bg-amber-500">
+            <Stethoscope size={24} />
           </div>
           <div>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">System Status</p>
@@ -198,7 +197,7 @@ export default function SpecialtiesPage() {
         </div>
       </div>
 
-      <div className="glass rounded-[2rem] overflow-hidden border border-white shadow-xl shadow-slate-200/20 p-6 flex flex-col md:flex-row gap-4">
+      <div className="glass rounded-[2rem] overflow-hidden border border-white shadow-sm p-6 flex flex-col md:flex-row gap-4">
           <div className="relative w-full max-w-lg">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -260,7 +259,7 @@ export default function SpecialtiesPage() {
 
       {deletingId && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white max-w-sm w-full p-8 rounded-3xl shadow-2xl text-center">
+          <div className="bg-white max-w-sm w-full p-8 rounded-3xl shadow-xl text-center">
             <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle size={32} />
             </div>
@@ -277,7 +276,7 @@ export default function SpecialtiesPage() {
       {/* Add / Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[3rem] p-8 md:p-10 shadow-2xl animate-in zoom-in-95 duration-300 custom-scrollbar">
+            <div className="bg-white w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[3rem] p-8 md:p-10 shadow-xl animate-in zoom-in-95 duration-300 custom-scrollbar">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white flex-shrink-0">
                         <Plus size={24} />
@@ -308,7 +307,7 @@ export default function SpecialtiesPage() {
                                     onClick={() => setNewSpec({...newSpec, icon})}
                                     className={cn(
                                         "p-3 rounded-2xl flex flex-col items-center gap-2 transition-all",
-                                        newSpec.icon === icon ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105" : "bg-slate-50 text-slate-400 hover:bg-white border border-transparent hover:border-slate-200"
+                                        newSpec.icon === icon ? "bg-primary text-white shadow-md scale-105" : "bg-slate-50 text-slate-400 hover:bg-white border border-transparent hover:border-slate-200"
                                     )}
                                 >
                                     {getIcon(icon)}
@@ -339,7 +338,7 @@ export default function SpecialtiesPage() {
                     </button>
                     <button 
                         onClick={handleSave}
-                        className="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+                        className="px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
                     >
                         <Plus size={20} />
                         {editingId ? 'Update' : 'Save'}

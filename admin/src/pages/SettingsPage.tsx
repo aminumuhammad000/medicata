@@ -133,7 +133,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('platform')}
             className={cn(
               "w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all text-left",
-              activeTab === 'platform' ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
+              activeTab === 'platform' ? "bg-primary text-white shadow-md scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
             )}
           >
             <Settings size={20} />
@@ -143,7 +143,7 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('preferences')}
             className={cn(
               "w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all text-left",
-              activeTab === 'preferences' ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
+              activeTab === 'preferences' ? "bg-primary text-white shadow-md scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
             )}
           >
             <Bell size={20} />
@@ -153,10 +153,10 @@ export default function SettingsPage() {
             onClick={() => setActiveTab('security')}
             className={cn(
               "w-full flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all text-left",
-              activeTab === 'security' ? "bg-primary text-white shadow-lg shadow-primary/20 scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
+              activeTab === 'security' ? "bg-primary text-white shadow-md scale-[1.02]" : "text-slate-500 hover:bg-white hover:text-primary"
             )}
           >
-            <Shield size={20} />
+            <Lock size={20} />
             Security
           </button>
           
@@ -182,9 +182,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Content Area */}
+        {/* Main Content Area */}
         <div className="lg:col-span-3">
-          <div className="glass p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/20 border border-white">
+          <div className="glass p-10 rounded-[2.5rem] shadow-sm border border-white">
             {activeTab === 'platform' && systemSettings && (
               <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -269,7 +269,7 @@ export default function SettingsPage() {
                   <button 
                     onClick={saveSystemSettings}
                     disabled={saving}
-                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all disabled:opacity-50"
                   >
                     <Save size={20} />
                     {saving ? 'Saving...' : 'Save Platform Settings'}
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                   <button 
                     onClick={saveUserSettings}
                     disabled={saving}
-                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-8 py-4 bg-primary text-white rounded-2xl font-black shadow-md hover:bg-primary/90 transition-all disabled:opacity-50"
                   >
                     <Save size={20} />
                     {saving ? 'Saving...' : 'Update Preferences'}
