@@ -1,11 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Nunito:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-display: 'Nunito', sans-serif;
-  --color-primary: #2572D9;
-  --color-primary-soft: rgba(37, 114, 217, 0.1);
+  --font-sans: 'Plus Jakarta Sans', 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-display: 'Poppins', 'Plus Jakarta Sans', sans-serif;
+  --font-poppins: 'Poppins', sans-serif;
+  --color-primary: #2875d8;
+  --color-primary-soft: rgba(40, 117, 216, 0.1);
   --color-secondary: #5AC8FA;
   --color-secondary-soft: rgba(90, 200, 250, 0.1);
   --color-navy: #0D1B3D;
@@ -28,8 +29,8 @@
 }
 
 :root {
-  --primary: #2572D9;
-  --primary-soft: rgba(37, 114, 217, 0.1);
+  --primary: #2875d8;
+  --primary-soft: rgba(40, 117, 216, 0.1);
   --secondary: #5AC8FA;
   --secondary-soft: rgba(90, 200, 250, 0.1);
   --navy: #0D1B3D;
@@ -57,11 +58,14 @@
 }
 
 @layer base {
-  body {
-    @apply font-sans text-text-main bg-white leading-relaxed antialiased overflow-x-hidden;
+  html, body {
+    @apply text-text-main leading-relaxed antialiased overflow-x-hidden;
+    font-family: 'Plus Jakarta Sans', 'Poppins', system-ui, -apple-system, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    font-family: 'Poppins', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
+    letter-spacing: -0.015em;
   }
 }
 
@@ -83,7 +87,7 @@
   }
   
   .btn-primary {
-    @apply bg-primary text-white hover:bg-[#1E5CAF] hover:shadow-[0_4px_20px_rgba(37,114,217,0.4)];
+    @apply bg-primary text-white hover:bg-[#1f60b5] hover:shadow-[0_4px_20px_rgba(40,117,216,0.4)];
   }
   
   .btn-accent {
@@ -95,19 +99,19 @@
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-[#549bf7];
   }
 
   .text-gradient-navy {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-navy to-primary;
+    @apply text-primary;
   }
 
   .text-gradient-gold {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-yellow-600;
+    @apply text-primary;
   }
 
   .badge {
-    @apply inline-block px-4 py-2 rounded-full bg-secondary/15 text-[#1a8bc4] text-xs font-bold uppercase tracking-wider mb-5;
+    @apply inline-block px-3.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-extrabold uppercase tracking-wider mb-4;
   }
 
   .grid-pattern {
@@ -209,6 +213,6 @@
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2572D9;
+  background: #2875d8;
 }
 
