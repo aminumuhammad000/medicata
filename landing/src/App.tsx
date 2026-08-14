@@ -39,15 +39,6 @@ import {
   HelpCircle,
   Award,
   Cpu,
-  Clock,
-  QrCode,
-  Video,
-  Play,
-  HeartPulse,
-  Zap,
-  FileCheck,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2
 } from 'lucide-react';
 
@@ -1113,586 +1104,161 @@ const ScrollReveal = ({ children }: { children: React.ReactNode }) => (
 
 
 const HowItWorksSection = ({ showToast }: { showToast: (msg: string, type?: 'info' | 'success') => void }) => {
-  const [activeStep, setActiveStep] = useState<number>(0);
-  const [isAutomating, setIsAutomating] = useState<boolean>(false);
+  const [activeCard, setActiveCard] = useState<number>(0);
 
   const steps = [
     {
       id: '01',
       title: 'Autonomous AI Triage',
-      badge: '0.4s Latency',
-      desc: 'Medi AI synthesizes vital telemetry and compares symptom vectors across 40M+ clinical protocols to generate your triage brief.',
+      desc: 'Medi AI ingests vital telemetry and evaluates symptom patterns across 40M+ clinical protocols to generate your diagnostic brief in under a second.',
       icon: Bot,
-      metric: '99.4% Diagnostic Precision',
-      tag: 'Neural Intake',
-      accent: 'from-blue-500/10 to-indigo-500/10',
-      iconColor: 'text-primary',
-      iconBg: 'bg-primary/10',
-      tagBg: 'bg-blue-50 text-blue-700',
-      deepDive: {
-        stageTitle: 'Autonomous Neural Ingestion & Triage Synthesis',
-        badge: '0.38s Processing Speed',
-        vitals: [
-          { label: 'Heart Rate', val: '72 BPM', status: 'Sinus Rhythm · Normal', icon: HeartPulse, color: 'text-rose-500', bg: 'bg-rose-50' },
-          { label: 'SpO2 Oxygen', val: '99%', status: 'Optimal Saturation', icon: Activity, color: 'text-sky-500', bg: 'bg-sky-50' },
-          { label: 'Arterial Pressure', val: '118 / 76', status: 'Target Hemodynamics', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50' },
-        ],
-        clinicalProtocol: '40M+ Peer-Reviewed Protocols & Clinical Trials Scanned',
-        confidenceScore: '99.4% Diagnostic Precision',
-        summary: 'Patient reports acute cranial tension and ocular sensitivity for 48h. Vitals indicate stable arterial hemodynamics without red-flag neurological markers.',
-        outcome: 'Level-2 Priority: Fast-tracked directly to Board-Certified Neurology Specialist without triage wait queues.'
+      preview: {
+        metric1: 'Heart Rate: 72 BPM',
+        metric2: 'SpO2: 99%',
+        status: 'Stable Vitals',
+        action: 'Neurology Fast-Track'
       }
     },
     {
       id: '02',
-      title: 'Specialist Teleconsult',
-      badge: 'Top 1% MDs',
-      desc: 'Direct encrypted HD video consultation with verified board-certified physicians from Johns Hopkins, Mayo Clinic, and Harvard Health.',
+      title: 'Board-Certified Teleconsult',
+      desc: 'Connect directly via encrypted HD video with attending physicians from top academic medical institutions for comprehensive clinical evaluation.',
       icon: Stethoscope,
-      metric: 'Sub-15 Min Access',
-      tag: 'Board Certified',
-      accent: 'from-sky-500/10 to-cyan-500/10',
-      iconColor: 'text-sky-600',
-      iconBg: 'bg-sky-500/10',
-      tagBg: 'bg-sky-50 text-sky-700',
-      deepDive: {
-        stageTitle: 'Direct Encrypted Board-Certified MD Teleconsultation',
-        badge: 'Top 1% Physician Network',
-        doctor: {
-          name: 'Dr. Sarah Chen, MD',
-          role: 'Attending Physician · Neurology & Internal Medicine',
-          hospital: 'Johns Hopkins Medicine & Harvard Health Fellow',
-          npi: 'NPI #1982740291',
-          status: 'Direct HD Stream Active · 256-Bit Encrypted'
-        },
-        encryption: 'End-to-End Encrypted WebRTC Media Channel (TLS 1.3 / SRTP)',
-        summary: 'Direct visual & auditory tele-examination completed. Differential diagnosis confirms benign tension cephalalgia triggered by postural strain.',
-        outcome: 'Clinical care plan established. Tamper-proof non-opioid prophylactic prescription authorized for instant digital issue.'
+      preview: {
+        doctor: 'Dr. Sarah Chen, MD',
+        institution: 'Johns Hopkins Medicine',
+        status: 'Encrypted HD Room',
+        action: 'Care Plan Established'
       }
     },
     {
       id: '03',
       title: 'Cryptographic E-Prescribe',
-      badge: 'AES-256 Vault',
-      desc: 'Physician generates a tamper-proof digital prescription card with dynamic biometric verification and instant fraud immunity.',
+      desc: 'Your physician issues a tamper-proof digital prescription card with biometric verification and instant fraud immunity for pharmacy fulfillment.',
       icon: FileText,
-      metric: 'Zero-Knowledge Ledger',
-      tag: 'Hardware Secured',
-      accent: 'from-indigo-500/10 to-violet-500/10',
-      iconColor: 'text-indigo-600',
-      iconBg: 'bg-indigo-500/10',
-      tagBg: 'bg-indigo-50 text-indigo-700',
-      deepDive: {
-        stageTitle: 'Biometric E-Prescription Token & Hardware Security Vault',
-        badge: 'Zero Plaintext Exposure',
-        rxDetails: {
-          token: 'RX-8842-ZK-MEDICATA',
-          medication: 'Sumatriptan Succinate 50mg (Oral Tablets)',
-          regimen: '1 tablet PO at onset of symptoms (Qty: 9)',
-          authSeal: 'Physician Biometric Enclave Signed'
-        },
-        vaultSpecs: 'Hardware Security Module (HSM) sharded across distributed validation nodes',
-        summary: 'Prescription token is cryptographically signed with biometric enclave keys, guaranteeing zero counterfeiting and complete pharmacy interoperability.',
-        outcome: 'Tamper-proof digital prescription token minted. Ready for instant pharmacy routing.'
+      preview: {
+        token: 'Token #RX-8842-ZK',
+        medication: 'Sumatriptan 50mg',
+        status: 'Biometric Signed',
+        action: 'Verified & Active'
       }
     }
   ];
 
-  const handleStepSelect = (index: number) => {
-    setActiveStep(index);
-    showToast(`Stage ${steps[index].id}: ${steps[index].title} — ${steps[index].metric}`, "info");
-  };
-
-  const handleNextStep = () => {
-    const next = (activeStep + 1) % steps.length;
-    handleStepSelect(next);
-  };
-
-  const handlePrevStep = () => {
-    const prev = (activeStep - 1 + steps.length) % steps.length;
-    handleStepSelect(prev);
-  };
-
-  const handleSimulatePathway = () => {
-    if (isAutomating) return;
-    setIsAutomating(true);
-    setActiveStep(0);
-    showToast("Stage 01: Ingesting telemetry and symptom vectors...", "info");
-
-    const t1 = setTimeout(() => {
-      setActiveStep(1);
-      showToast("Stage 02: Matched with Neurology Specialist (Dr. Sarah Chen, MD)...", "info");
-    }, 1500);
-
-    const t2 = setTimeout(() => {
-      setActiveStep(2);
-      showToast("Stage 03: Cryptographic QR prescription issued in Vault!", "success");
-      setIsAutomating(false);
-    }, 3000);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  };
-
-  const currentStepData = steps[activeStep];
-  const currentDeepDive = currentStepData.deepDive;
-
   return (
-    <section id="how-it-works" className="py-14 sm:py-20 md:py-28 bg-[#EEF2F6] text-navy relative overflow-hidden border-b border-slate-300/80">
-      {/* Subtle Ambient Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-primary/[0.04] blur-[120px] rounded-full pointer-events-none" />
-
-      <div className="container max-w-6xl mx-auto px-3.5 sm:px-6 relative z-10 w-full overflow-hidden">
+    <section id="how-it-works" className="py-16 sm:py-20 md:py-28 bg-[#EEF2F6] text-navy relative border-b border-slate-300/80">
+      <div className="container max-w-6xl mx-auto px-4 sm:px-6">
         
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white text-primary text-[10px] sm:text-[11px] font-bold tracking-wider mb-3 sm:mb-4 border border-slate-200 shadow-2xs">
-            <Sparkles size={12} className="text-primary" />
-            <span>CLINICAL PATHWAY</span>
-          </div>
-
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-medium text-navy tracking-tight mb-2.5 sm:mb-3 leading-tight">
+        {/* Section Header - Clean, Uncluttered, Human-Crafted */}
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2.5">
+            Clinical Pathway
+          </p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-navy tracking-tight mb-3 leading-tight">
             Vetted care in 3 precise steps.
           </h2>
-
-          <p className="text-xs sm:text-sm md:text-base text-slate-600 leading-relaxed font-sans max-w-2xl mx-auto">
-            From autonomous AI triage to cryptographic digital prescription, experience the seamless flow of modern precision care.
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
+            From initial symptom assessment to your cryptographic digital prescription, care flows without friction or delay.
           </p>
-
-          {/* Quick Trust Highlights Pill Row */}
-          <div className="mt-5 sm:mt-6 flex flex-wrap items-center justify-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-slate-600">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-              <Zap size={12} className="text-primary shrink-0" />
-              <span className="font-semibold text-navy">&lt; 0.4s</span> AI Latency
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-              <BadgeCheck size={12} className="text-emerald-600 shrink-0" />
-              <span className="font-semibold text-navy">Top 1%</span> Board MDs
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs">
-              <ShieldCheck size={12} className="text-indigo-600 shrink-0" />
-              <span className="font-semibold text-navy">AES-256</span> HSM Vault
-            </div>
-          </div>
         </div>
 
-        {/* Connected Progression Stepper Track (Desktop/Tablet) */}
-        <div className="hidden md:block mb-8 relative px-4">
-          <div className="relative flex items-center justify-between">
-            {/* Background Line Track */}
-            <div className="absolute top-1/2 left-8 right-8 -translate-y-1/2 h-[2px] bg-slate-300/80" />
-            
-            {/* Active Progress Bar Fill */}
-            <motion.div 
-              className="absolute top-1/2 left-8 -translate-y-1/2 h-[2px] bg-primary transition-all duration-500"
-              style={{ width: `${(activeStep / (steps.length - 1)) * 88}%` }}
-            />
-
-            {/* Stepper Buttons */}
-            {steps.map((step, index) => {
-              const isSelected = activeStep === index;
-              const isPassed = activeStep > index;
-
-              return (
-                <button
-                  key={step.id}
-                  onClick={() => handleStepSelect(index)}
-                  className="relative z-10 flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white border transition-all cursor-pointer group shadow-sm hover:border-primary/50"
-                  style={{
-                    borderColor: isSelected ? '#2875d8' : isPassed ? '#93c5fd' : '#cbd5e1'
-                  }}
-                >
-                  <span className={`w-6 h-6 rounded-lg text-[11px] font-bold flex items-center justify-center transition-all ${
-                    isSelected
-                      ? 'bg-primary text-white shadow-xs'
-                      : isPassed
-                      ? 'bg-primary/15 text-primary'
-                      : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200'
-                  }`}>
-                    {isPassed ? <Check size={12} strokeWidth={3} /> : step.id}
-                  </span>
-                  <div className="text-left">
-                    <p className={`text-xs font-bold leading-tight transition-colors ${
-                      isSelected ? 'text-primary' : 'text-slate-800'
-                    }`}>
-                      {step.title}
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-medium leading-none mt-0.5">
-                      {step.tag}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 3-Step Interactive Grid (Clean Borderless Modern Cards) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-5 items-stretch relative w-full max-w-full">
+        {/* 3 Executive Modern Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 items-stretch">
           {steps.map((step, index) => {
             const Icon = step.icon;
-            const isCurrent = activeStep === index;
-            const isPassed = activeStep > index;
+            const isSelected = activeCard === index;
 
             return (
               <motion.div
                 key={step.id}
-                whileHover={{ y: -4, scale: 1.01 }}
-                whileTap={{ scale: 0.985 }}
-                onClick={() => handleStepSelect(index)}
-                className={`p-4 sm:p-6 rounded-2xl transition-all duration-300 flex flex-col justify-between cursor-pointer relative bg-white w-full max-w-full ${
-                  isCurrent
-                    ? 'shadow-xl shadow-primary/10 ring-2 ring-primary/25'
+                whileHover={{ y: -3 }}
+                onClick={() => {
+                  setActiveCard(index);
+                  showToast(`Step ${step.id}: ${step.title}`, "info");
+                }}
+                className={`bg-white rounded-2xl p-5 sm:p-6 transition-all duration-200 cursor-pointer flex flex-col justify-between text-left ${
+                  isSelected 
+                    ? 'shadow-md ring-2 ring-primary/20' 
                     : 'shadow-xs hover:shadow-md'
                 }`}
               >
-                <div className="flex-1 flex flex-col">
-                  {/* Card Header: Step ID, Tag & Icon */}
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-lg transition-colors ${
-                        isCurrent 
-                          ? 'bg-primary text-white shadow-xs' 
-                          : isPassed
-                          ? 'bg-primary/10 text-primary'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {step.id}
-                      </span>
-                      <span className={`text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${step.tagBg}`}>
-                        {step.tag}
-                      </span>
-                    </div>
-
-                    <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center transition-all ${
-                      isCurrent 
-                        ? 'bg-primary text-white shadow-xs' 
-                        : `${step.iconBg} ${step.iconColor}`
-                    }`}>
-                      <Icon size={15} />
+                <div>
+                  {/* Top ID & Icon */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-mono font-bold text-slate-400">
+                      /{step.id}
+                    </span>
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <Icon size={18} />
                     </div>
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-sm sm:text-base font-bold text-navy mb-1.5 sm:mb-2 tracking-tight group-hover:text-primary transition-colors">
+                  <h3 className="text-base sm:text-lg font-bold text-navy mb-2 tracking-tight">
                     {step.title}
                   </h3>
-                  <p className="text-xs text-slate-600 leading-relaxed font-sans mb-4 sm:mb-5 font-normal flex-1">
+                  <p className="text-xs text-slate-600 leading-relaxed font-sans mb-6">
                     {step.desc}
                   </p>
                 </div>
 
-                {/* Footer Metric Badge & Live Status Indicator */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto text-[10px] sm:text-[11px]">
-                  <span className="font-bold text-navy flex items-center gap-1.5 truncate">
-                    <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                    <span className="truncate">{step.badge}</span>
-                  </span>
-                  
-                  {isCurrent ? (
-                    <span className="font-bold text-primary flex items-center gap-1 shrink-0 ml-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                      Active
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-medium text-slate-400 group-hover:text-slate-600 transition-colors shrink-0 ml-1">
-                      {step.metric}
-                    </span>
+                {/* Embedded UI Preview Pill / Card */}
+                <div className="bg-slate-50 rounded-xl p-3.5 space-y-2 text-xs">
+                  {step.id === '01' && (
+                    <>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-slate-700">{step.preview.metric1}</span>
+                        <span className="font-semibold text-slate-700">{step.preview.metric2}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-200/60 text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          {step.preview.status}
+                        </span>
+                        <span className="font-semibold text-primary">{step.preview.action}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {step.id === '02' && (
+                    <>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-navy flex items-center gap-1">
+                          {step.preview.doctor}
+                          <BadgeCheck size={13} className="text-primary shrink-0" />
+                        </span>
+                        <span className="text-slate-500 text-[10px]">{step.preview.institution}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-200/60 text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          {step.preview.status}
+                        </span>
+                        <span className="font-semibold text-primary">{step.preview.action}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {step.id === '03' && (
+                    <>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-mono font-bold text-navy">{step.preview.token}</span>
+                        <span className="font-semibold text-slate-700">{step.preview.medication}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-slate-200/60 text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <ShieldCheck size={11} className="text-emerald-600" />
+                          {step.preview.status}
+                        </span>
+                        <span className="font-semibold text-primary">{step.preview.action}</span>
+                      </div>
+                    </>
                   )}
                 </div>
+
               </motion.div>
             );
           })}
-        </div>
-
-        {/* Dynamic Stage Deep-Dive Architecture Console */}
-        <div className="mt-6 sm:mt-10 bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl shadow-md overflow-hidden w-full max-w-full">
-          
-          {/* Console Header Bar */}
-          <div className="px-4 sm:px-7 py-3.5 sm:py-4 bg-slate-50/80 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shrink-0" />
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Stage {currentStepData.id} of 03
-              </span>
-              <span className="text-slate-300 hidden sm:inline">|</span>
-              <h4 className="text-xs sm:text-sm font-semibold text-navy flex items-center gap-1.5">
-                {currentDeepDive.stageTitle}
-              </h4>
-            </div>
-
-            {/* Console Toolbar Controls */}
-            <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto justify-between sm:justify-end">
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handlePrevStep}
-                  title="Previous Stage"
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs transition-colors cursor-pointer"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <button
-                  onClick={handleNextStep}
-                  title="Next Stage"
-                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs transition-colors cursor-pointer"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-
-              <button
-                onClick={handleSimulatePathway}
-                disabled={isAutomating}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                  isAutomating
-                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    : 'bg-primary hover:bg-[#1f60b5] text-white shadow-2xs'
-                }`}
-              >
-                {isAutomating ? (
-                  <>
-                    <Activity size={13} className="animate-spin text-white" />
-                    <span>Auto-Simulating...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={12} fill="currentColor" />
-                    <span>Simulate Flow</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Dynamic Console Body per Stage */}
-          <div className="p-4 sm:p-7 md:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeStep}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-center w-full max-w-full"
-              >
-                {/* Stage 01 Preview: AI Telemetry & Triage */}
-                {activeStep === 0 && (
-                  <>
-                    <div className="lg:col-span-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                        <Activity size={14} className="text-primary" />
-                        <span>Real-Time Biometric Stream</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                        {currentDeepDive.vitals?.map((v, i) => {
-                          const VIcon = v.icon;
-                          return (
-                            <div key={i} className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50 flex flex-col justify-between shadow-2xs hover:border-slate-300 transition-all overflow-hidden">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 truncate">{v.label}</span>
-                                <div className={`p-1 rounded-md ${v.bg} ${v.color} shrink-0`}>
-                                  <VIcon size={11} />
-                                </div>
-                              </div>
-                              <p className="text-sm sm:text-base font-bold text-navy truncate">{v.val}</p>
-                              <span className="text-[8.5px] sm:text-[9px] text-slate-500 font-medium leading-tight mt-0.5 truncate">{v.status}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-200/80 bg-blue-50/60 flex items-center justify-between text-xs shadow-2xs gap-2">
-                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                          <Cpu size={14} className="text-primary shrink-0" />
-                          <span className="text-slate-800 font-semibold truncate text-[11px] sm:text-xs">{currentDeepDive.clinicalProtocol}</span>
-                        </div>
-                        <span className="font-bold text-primary text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md bg-white border border-blue-200 shrink-0">{currentDeepDive.confidenceScore}</span>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                        <CheckCircle2 size={12} />
-                        <span>{currentDeepDive.badge}</span>
-                      </div>
-
-                      <h5 className="text-sm sm:text-base font-bold text-navy leading-snug">
-                        Intelligent Triage & Differential Matching
-                      </h5>
-
-                      <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 font-mono text-[11px] shadow-2xs">
-                        "{currentDeepDive.summary}"
-                      </p>
-
-                      <div className="flex items-center gap-2 sm:gap-2.5 text-xs font-bold text-navy bg-primary/5 border border-primary/20 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-2xs">
-                        <BadgeCheck size={16} className="text-primary shrink-0" />
-                        <span className="leading-snug">{currentDeepDive.outcome}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Stage 02 Preview: Specialist Video Teleconsult */}
-                {activeStep === 1 && (
-                  <>
-                    <div className="lg:col-span-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                        <Video size={14} className="text-sky-600" />
-                        <span>Encrypted MD Room</span>
-                      </div>
-
-                      <div className="p-3.5 sm:p-5 rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50/60 via-white to-slate-50 flex items-center gap-3 sm:gap-4 shadow-xs overflow-hidden">
-                        <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-sky-600 text-white flex items-center justify-center font-bold text-base sm:text-lg shrink-0 shadow-xs">
-                          SC
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <h5 className="text-xs sm:text-base font-bold text-navy truncate">{currentDeepDive.doctor?.name}</h5>
-                            <BadgeCheck size={13} className="text-sky-600 shrink-0" />
-                          </div>
-                          <p className="text-[11px] sm:text-xs text-slate-700 font-semibold truncate">{currentDeepDive.doctor?.role}</p>
-                          <p className="text-[9.5px] sm:text-[10px] text-slate-500 mt-0.5 truncate">{currentDeepDive.doctor?.hospital}</p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
-                        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50 flex items-center gap-2 shadow-2xs overflow-hidden">
-                          <Lock size={13} className="text-sky-600 shrink-0" />
-                          <span className="text-[11px] text-slate-700 font-semibold truncate">256-Bit TLS / SRTP</span>
-                        </div>
-                        <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50 flex items-center gap-2 shadow-2xs overflow-hidden">
-                          <Clock size={13} className="text-emerald-600 shrink-0" />
-                          <span className="text-[11px] text-slate-700 font-semibold truncate">Sub-15 Min Connect</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold">
-                        <CheckCircle2 size={12} />
-                        <span>{currentDeepDive.badge}</span>
-                      </div>
-
-                      <h5 className="text-sm sm:text-base font-bold text-navy leading-snug">
-                        Clinical Examination & Regimen
-                      </h5>
-
-                      <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 font-mono text-[11px] shadow-2xs">
-                        "{currentDeepDive.summary}"
-                      </p>
-
-                      <div className="flex items-center gap-2 sm:gap-2.5 text-xs font-bold text-navy bg-sky-50/80 border border-sky-200 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-2xs">
-                        <BadgeCheck size={16} className="text-sky-600 shrink-0" />
-                        <span className="leading-snug">{currentDeepDive.outcome}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Stage 03 Preview: Cryptographic E-Prescription */}
-                {activeStep === 2 && (
-                  <>
-                    <div className="lg:col-span-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                        <QrCode size={14} className="text-indigo-600" />
-                        <span>Biometric E-Prescription Card</span>
-                      </div>
-
-                      <div className="p-3.5 sm:p-5 rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/50 via-white to-slate-50 space-y-2.5 sm:space-y-3 shadow-xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-indigo-100">
-                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                            <FileCheck size={15} className="text-indigo-600 shrink-0" />
-                            <span className="text-xs font-bold text-navy font-mono truncate">{currentDeepDive.rxDetails?.token}</span>
-                          </div>
-                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 shrink-0">
-                            Valid
-                          </span>
-                        </div>
-
-                        <div>
-                          <p className="text-xs sm:text-sm font-bold text-navy">{currentDeepDive.rxDetails?.medication}</p>
-                          <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{currentDeepDive.rxDetails?.regimen}</p>
-                        </div>
-
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-                          <span className="flex items-center gap-1 text-emerald-700 font-bold">
-                            <ShieldCheck size={12} />
-                            {currentDeepDive.rxDetails?.authSeal}
-                          </span>
-                          <span className="font-mono text-slate-400 font-medium text-[9px] sm:text-[10px]">HASH: 0x8a92...ef41</span>
-                        </div>
-                      </div>
-
-                      <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border border-slate-200/90 bg-slate-50 flex items-center gap-2 text-xs text-slate-700 shadow-2xs">
-                        <Lock size={13} className="text-indigo-600 shrink-0" />
-                        <span className="text-[10.5px] sm:text-[11px] font-semibold leading-tight">{currentDeepDive.vaultSpecs}</span>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-6 border-t lg:border-t-0 lg:border-l border-slate-200/80 pt-4 lg:pt-0 lg:pl-6 space-y-3 sm:space-y-3.5 w-full">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">
-                        <ShieldCheck size={12} />
-                        <span>{currentDeepDive.badge}</span>
-                      </div>
-
-                      <h5 className="text-sm sm:text-base font-bold text-navy leading-snug">
-                        Hardware Security Module (HSM) Verification
-                      </h5>
-
-                      <p className="text-xs text-slate-700 leading-relaxed font-sans bg-slate-50 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/90 font-mono text-[11px] shadow-2xs">
-                        "{currentDeepDive.summary}"
-                      </p>
-
-                      <div className="flex items-center gap-2 sm:gap-2.5 text-xs font-bold text-navy bg-indigo-50/80 border border-indigo-200 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl shadow-2xs">
-                        <CheckCircle2 size={16} className="text-indigo-600 shrink-0" />
-                        <span className="leading-snug">{currentDeepDive.outcome}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-
-          {/* Interactive Simulation Status Bar */}
-          <div className="px-4 sm:px-7 py-3 sm:py-3.5 bg-slate-50 border-t border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-2.5 sm:gap-3 text-xs w-full">
-            <div className="flex items-center gap-2 text-slate-600 flex-wrap w-full md:w-auto">
-              <span className="text-[10px] sm:text-[11px] font-bold text-navy shrink-0">Quick Steps:</span>
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                {steps.map((s, idx) => (
-                  <button
-                    key={s.id}
-                    onClick={() => handleStepSelect(idx)}
-                    className={`px-2 py-0.5 rounded-md text-[9.5px] sm:text-[10px] font-bold transition-all cursor-pointer ${
-                      activeStep === idx 
-                        ? 'bg-primary text-white shadow-2xs' 
-                        : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    {s.id} {s.tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto text-[10px] sm:text-[11px]">
-              <span className="text-slate-400 truncate">
-                {isAutomating ? 'Simulating pathway...' : 'Tap step to inspect'}
-              </span>
-              <button
-                onClick={handleSimulatePathway}
-                disabled={isAutomating}
-                className="font-bold text-primary hover:underline cursor-pointer flex items-center gap-1 shrink-0"
-              >
-                <span>Full Walkthrough</span>
-                <ArrowRight size={11} />
-              </button>
-            </div>
-          </div>
-
         </div>
 
       </div>
