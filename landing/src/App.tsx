@@ -1266,148 +1266,7 @@ const HowItWorksSection = ({ showToast }: { showToast: (msg: string, type?: 'inf
   );
 };
 
-const SecurityMap = ({ showToast }: { showToast?: (msg: string, type?: 'info' | 'success') => void }) => {
-  const [activeNode, setActiveNode] = useState<'user' | 'vault' | 'server'>('vault');
-  const [isHandshaking, setIsHandshaking] = useState(false);
 
-  const nodes = {
-    user: {
-      id: 'user',
-      title: 'Client Enclave',
-      icon: Smartphone,
-      desc: 'Hardware biometric enclave generates isolated local encryption keys. Plaintext never leaves your physical device.',
-      status: 'Biometric Protected',
-      iconBg: 'bg-blue-50 text-blue-600'
-    },
-    vault: {
-      id: 'vault',
-      title: 'Medicata HSM',
-      icon: ShieldCheck,
-      desc: 'Distributed hardware security modules ensure tamper-evident key isolation and zero third-party plaintext exposure.',
-      status: 'Hardware Isolated',
-      iconBg: 'bg-indigo-50 text-indigo-600'
-    },
-    server: {
-      id: 'server',
-      title: 'Global Provider',
-      icon: Database,
-      desc: 'Encrypted clinical ledger securely verifies credentials and routing without accessing confidential patient records.',
-      status: 'Encrypted Ledger',
-      iconBg: 'bg-emerald-50 text-emerald-600'
-    }
-  };
-
-  const handleTestHandshake = () => {
-    if (isHandshaking) return;
-    setIsHandshaking(true);
-    setActiveNode('user');
-    if (showToast) showToast("Step 1/3: Client key generated in Biometric Enclave...", "info");
-
-    setTimeout(() => {
-      setActiveNode('vault');
-      if (showToast) showToast("Step 2/3: Medicata HSM verified zero-knowledge proof...", "info");
-    }, 1200);
-
-    setTimeout(() => {
-      setActiveNode('server');
-      if (showToast) showToast("Step 3/3: End-to-end encrypted handshake complete!", "success");
-      setIsHandshaking(false);
-    }, 2500);
-  };
-
-  const current = nodes[activeNode];
-
-  return (
-    <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md flex flex-col justify-between text-left relative overflow-hidden w-full max-w-full">
-      {/* Top Bar: Telemetry Status */}
-      <div className="flex items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100 w-full">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span className="text-[11px] font-bold text-navy uppercase tracking-wider">
-            Cryptographic Pipeline
-          </span>
-        </div>
-        <button
-          onClick={handleTestHandshake}
-          disabled={isHandshaking}
-          className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-            isHandshaking
-              ? 'bg-primary/15 text-primary cursor-not-allowed'
-              : 'bg-slate-100 hover:bg-primary hover:text-white text-navy'
-          }`}
-        >
-          <Activity size={12} className={isHandshaking ? 'animate-spin text-primary' : 'text-primary'} />
-          <span>{isHandshaking ? 'Verifying...' : 'Test Handshake'}</span>
-        </button>
-      </div>
-
-      {/* Interactive 3-Node Visual Architecture */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5 relative w-full">
-        {/* Connection Pulse Bar behind nodes */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-[15%] right-[15%] h-[2px] bg-slate-100 -z-0 pointer-events-none">
-          <motion.div
-            animate={{ x: ['-20%', '120%'] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-full bg-gradient-to-r from-transparent via-primary to-transparent"
-          />
-        </div>
-
-        {/* 3 Clickable Nodes */}
-        {[nodes.user, nodes.vault, nodes.server].map((node) => {
-          const NodeIcon = node.icon;
-          const isSelected = activeNode === node.id;
-
-          return (
-            <div
-              key={node.id}
-              onClick={() => {
-                setActiveNode(node.id as any);
-                if (showToast) showToast(`${node.title}: Verified`, "info");
-              }}
-              className={`p-3 sm:p-3.5 rounded-xl transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative z-10 ${
-                isSelected
-                  ? 'bg-white shadow-sm ring-2 ring-primary/20'
-                  : 'bg-slate-50 hover:bg-slate-100/80'
-              }`}
-            >
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-all shrink-0 ${
-                isSelected ? 'bg-primary text-white' : node.iconBg
-              }`}>
-                <NodeIcon size={16} />
-              </div>
-              <h4 className="text-[11px] font-bold text-navy leading-tight truncate w-full">
-                {node.title}
-              </h4>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Single Clean Node Readout Card */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={current.id}
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -4 }}
-          transition={{ duration: 0.15 }}
-          className="bg-slate-50 rounded-xl p-4 space-y-1.5 w-full"
-        >
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-navy">{current.title}</span>
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-              <CheckCircle2 size={11} className="text-emerald-600" />
-              {current.status}
-            </span>
-          </div>
-          <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed font-sans font-normal">
-            {current.desc}
-          </p>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-};
 
 const FeatureCard = ({ title, desc, icon: Icon, tag }: any) => (
   <div className="bg-white/5 p-5 sm:p-6 rounded-2xl border border-white/10 shadow-none hover:border-primary/40 hover:bg-white/[0.08] transition-all duration-300 group h-full flex flex-col justify-between text-left w-full max-w-full overflow-hidden">
@@ -2037,74 +1896,96 @@ const App = () => {
       {/* 8. Safety & Trust */}
       <section id="safety" className="py-16 sm:py-20 md:py-28 bg-[#EEF2F6] text-navy relative border-b border-slate-300/80">
         <div className="container max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
-            
-            {/* Left: Interactive Cryptographic Pipeline */}
-            <div className="lg:col-span-6 order-2 lg:order-1 relative">
-              <SecurityMap showToast={showToast} />
-            </div>
-
-            {/* Right: Clean, High-Trust Pillars */}
-            <div className="lg:col-span-6 order-1 lg:order-2 text-left">
-              <ScrollReveal>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2.5">
-                  Security & Privacy
-                </p>
-
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-navy tracking-tight mb-3 leading-tight">
-                  Your data is <br />
-                  <span className="text-primary font-semibold">vault-grade secure.</span>
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans mb-6 max-w-xl">
-                  Military-grade encryption and hardware-isolated enclaves guarantee that your clinical records, vitals, and prescriptions remain strictly confidential.
-                </p>
-
-                {/* 3 Streamlined Security Pillars */}
-                <div className="space-y-3 mb-6">
-                  {[
-                    { 
-                      icon: ShieldCheck, 
-                      title: "Zero-Knowledge Biometric Encryption", 
-                      desc: "Encrypted at the hardware source on your device; private decryption keys never touch cloud servers."
-                    },
-                    { 
-                      icon: Lock, 
-                      title: "Hardware Isolated HSM Vault", 
-                      desc: "Cryptographic ledger keys isolated in dedicated hardware security modules with tamper zeroization."
-                    },
-                    { 
-                      icon: BadgeCheck, 
-                      title: "SOC2 Type II & HIPAA Certified", 
-                      desc: "Rigorously validated and continuously audited by accredited third-party clinical cybersecurity evaluators."
-                    }
-                  ].map((item, i) => (
-                    <div 
-                      key={i} 
-                      className="flex items-start gap-3.5 bg-white p-3.5 sm:p-4 rounded-2xl shadow-xs"
-                    >
-                      <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                        <item.icon size={16} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-xs sm:text-sm font-bold text-navy mb-0.5">{item.title}</h3>
-                        <p className="text-[11px] text-slate-600 leading-relaxed font-normal">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Compliance Assurance Row */}
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-500">
-                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> HIPAA Compliant</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> SOC2 Type II</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> GDPR Certified</span>
-                </div>
-              </ScrollReveal>
-            </div>
-
+          
+          {/* Header */}
+          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2.5">
+              Privacy & Security
+            </p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-navy tracking-tight mb-3 leading-tight">
+              Your data is <span className="text-primary font-semibold">vault-grade secure.</span>
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
+              Built on zero-knowledge architecture and hardware-isolated enclaves so your health telemetry and records remain strictly private.
+            </p>
           </div>
+
+          {/* 3 Executive Professional Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 items-stretch mb-10">
+            {/* Card 1: Client Enclave */}
+            <div className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between text-left">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center mb-4">
+                  <Smartphone size={20} />
+                </div>
+                <h3 className="text-base font-bold text-navy mb-2 tracking-tight">
+                  Zero-Knowledge Enclave
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed font-sans mb-6">
+                  Private decryption keys are generated locally within your device biometric hardware. Plaintext medical records never leave your physical device.
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  On-Device Isolation
+                </span>
+                <span className="font-mono text-[10px] text-slate-400">AES-256</span>
+              </div>
+            </div>
+
+            {/* Card 2: Hardware HSM Vault */}
+            <div className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between text-left">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4">
+                  <ShieldCheck size={20} />
+                </div>
+                <h3 className="text-base font-bold text-navy mb-2 tracking-tight">
+                  Hardware Security Module
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed font-sans mb-6">
+                  Prescription signatures and clinical verifications are processed inside dedicated FIPS 140-2 Level 3 hardware vaults with tamper-evident zeroization.
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  Tamper-Evident Shards
+                </span>
+                <span className="font-mono text-[10px] text-slate-400">FIPS 140-2</span>
+              </div>
+            </div>
+
+            {/* Card 3: Continuous Audited Compliance */}
+            <div className="bg-white rounded-2xl p-6 shadow-xs hover:shadow-md transition-all flex flex-col justify-between text-left">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4">
+                  <BadgeCheck size={20} />
+                </div>
+                <h3 className="text-base font-bold text-navy mb-2 tracking-tight">
+                  Audited Compliance
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed font-sans mb-6">
+                  Continuously evaluated and certified by independent clinical and cybersecurity auditors under rigorous HIPAA, SOC2 Type II, and GDPR standards.
+                </p>
+              </div>
+              <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5 text-emerald-700">
+                  <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                  Verified Compliance
+                </span>
+                <span className="font-mono text-[10px] text-slate-400">SOC2 · HIPAA</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Clean Enterprise Trust Seal Bar */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-xs font-semibold text-slate-500 pt-6 border-t border-slate-300/60">
+            <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-primary" /> End-to-End Encrypted</span>
+            <span className="flex items-center gap-1.5"><Lock size={14} className="text-primary" /> Zero Plaintext Storage</span>
+            <span className="flex items-center gap-1.5"><BadgeCheck size={14} className="text-primary" /> HIPAA & SOC2 Certified</span>
+          </div>
+
         </div>
       </section>
 
