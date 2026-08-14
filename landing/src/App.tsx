@@ -1273,35 +1273,26 @@ const SecurityMap = ({ showToast }: { showToast?: (msg: string, type?: 'info' | 
   const nodes = {
     user: {
       id: 'user',
-      title: 'User Biometric',
-      badge: 'Client Enclave',
+      title: 'Client Enclave',
       icon: Smartphone,
       desc: 'Hardware biometric enclave generates isolated local encryption keys. Plaintext never leaves your physical device.',
       status: 'Biometric Protected',
-      latency: '< 0.2ms',
-      cipher: 'AES-256-GCM',
       iconBg: 'bg-blue-50 text-blue-600'
     },
     vault: {
       id: 'vault',
       title: 'Medicata HSM',
-      badge: 'Zero-Knowledge',
       icon: ShieldCheck,
-      desc: 'Sharded hardware security modules with tamper-evident zeroization and zero third-party plaintexts.',
-      status: 'Hardware Enclave Active',
-      latency: '< 0.4ms',
-      cipher: 'Hardware HSM Shards',
+      desc: 'Distributed hardware security modules ensure tamper-evident key isolation and zero third-party plaintext exposure.',
+      status: 'Hardware Isolated',
       iconBg: 'bg-indigo-50 text-indigo-600'
     },
     server: {
       id: 'server',
       title: 'Global Provider',
-      badge: 'Clinical Ledger',
       icon: Database,
-      desc: 'Decentralized provider verification mesh securely validating credentials with zero medical record exposure.',
-      status: 'Decentralized Verification',
-      latency: '< 0.5ms',
-      cipher: 'TLS 1.3 / SRTP',
+      desc: 'Encrypted clinical ledger securely verifies credentials and routing without accessing confidential patient records.',
+      status: 'Encrypted Ledger',
       iconBg: 'bg-emerald-50 text-emerald-600'
     }
   };
@@ -1310,16 +1301,16 @@ const SecurityMap = ({ showToast }: { showToast?: (msg: string, type?: 'info' | 
     if (isHandshaking) return;
     setIsHandshaking(true);
     setActiveNode('user');
-    if (showToast) showToast("Step 1/3: Local client key generated in Biometric Enclave...", "info");
+    if (showToast) showToast("Step 1/3: Client key generated in Biometric Enclave...", "info");
 
     setTimeout(() => {
       setActiveNode('vault');
-      if (showToast) showToast("Step 2/3: Medicata HSM Vault verified zero-knowledge proof...", "info");
+      if (showToast) showToast("Step 2/3: Medicata HSM verified zero-knowledge proof...", "info");
     }, 1200);
 
     setTimeout(() => {
       setActiveNode('server');
-      if (showToast) showToast("Step 3/3: End-to-end encrypted handshake completed across Global Nodes!", "success");
+      if (showToast) showToast("Step 3/3: End-to-end encrypted handshake complete!", "success");
       setIsHandshaking(false);
     }, 2500);
   };
@@ -1327,22 +1318,22 @@ const SecurityMap = ({ showToast }: { showToast?: (msg: string, type?: 'info' | 
   const current = nodes[activeNode];
 
   return (
-    <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-4 sm:p-5 md:p-7 shadow-md flex flex-col justify-between text-left relative overflow-hidden w-full max-w-full">
+    <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md flex flex-col justify-between text-left relative overflow-hidden w-full max-w-full">
       {/* Top Bar: Telemetry Status */}
-      <div className="flex flex-col xs:flex-row sm:flex-row items-start xs:items-center justify-between gap-2.5 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-3.5 border-b border-slate-100 w-full">
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span className="text-[10px] sm:text-[11px] font-bold text-navy uppercase tracking-wider">
-            Zero-Knowledge Pipeline
+      <div className="flex items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100 w-full">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="text-[11px] font-bold text-navy uppercase tracking-wider">
+            Cryptographic Pipeline
           </span>
         </div>
         <button
           onClick={handleTestHandshake}
           disabled={isHandshaking}
-          className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[9.5px] sm:text-[10px] font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+          className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
             isHandshaking
               ? 'bg-primary/15 text-primary cursor-not-allowed'
-              : 'bg-slate-100 hover:bg-primary hover:text-white text-navy border border-slate-200 shadow-2xs'
+              : 'bg-slate-100 hover:bg-primary hover:text-white text-navy'
           }`}
         >
           <Activity size={12} className={isHandshaking ? 'animate-spin text-primary' : 'text-primary'} />
@@ -1350,99 +1341,68 @@ const SecurityMap = ({ showToast }: { showToast?: (msg: string, type?: 'info' | 
         </button>
       </div>
 
-      {/* Interactive 3-Node Architecture */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-3 mb-4 sm:mb-5 relative w-full">
+      {/* Interactive 3-Node Visual Architecture */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5 relative w-full">
         {/* Connection Pulse Bar behind nodes */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-[12%] right-[12%] h-[2px] bg-slate-200 -z-0 pointer-events-none">
+        <div className="absolute top-1/2 -translate-y-1/2 left-[15%] right-[15%] h-[2px] bg-slate-100 -z-0 pointer-events-none">
           <motion.div
-            animate={{
-              x: ['-20%', '120%']
-            }}
-            transition={{
-              duration: 2.2,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-            className="w-16 h-full bg-gradient-to-r from-transparent via-primary to-transparent"
+            animate={{ x: ['-20%', '120%'] }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-full bg-gradient-to-r from-transparent via-primary to-transparent"
           />
         </div>
 
-        {/* 3 Modern Minimal Clickable Node Cards */}
+        {/* 3 Clickable Nodes */}
         {[nodes.user, nodes.vault, nodes.server].map((node) => {
           const NodeIcon = node.icon;
           const isSelected = activeNode === node.id;
 
           return (
-            <motion.div
+            <div
               key={node.id}
-              whileHover={{ y: -2, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setActiveNode(node.id as any);
-                if (showToast) showToast(`${node.title}: ${node.badge} (${node.status})`, "info");
+                if (showToast) showToast(`${node.title}: Verified`, "info");
               }}
-              className={`p-2 sm:p-3.5 rounded-xl sm:rounded-2xl transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative z-10 overflow-hidden ${
+              className={`p-3 sm:p-3.5 rounded-xl transition-all duration-200 cursor-pointer flex flex-col items-center text-center relative z-10 ${
                 isSelected
-                  ? 'bg-white shadow-md shadow-primary/10 ring-2 ring-primary'
-                  : 'bg-slate-50 hover:bg-slate-100/80 shadow-2xs'
+                  ? 'bg-white shadow-sm ring-2 ring-primary/20'
+                  : 'bg-slate-50 hover:bg-slate-100/80'
               }`}
             >
-              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center mb-1.5 sm:mb-2.5 transition-all shrink-0 ${
-                isSelected
-                  ? 'bg-primary text-white shadow-xs'
-                  : node.iconBg
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-all shrink-0 ${
+                isSelected ? 'bg-primary text-white' : node.iconBg
               }`}>
                 <NodeIcon size={16} />
               </div>
-              <h4 className="text-[10px] sm:text-xs font-bold text-navy leading-tight truncate w-full mb-1">
+              <h4 className="text-[11px] font-bold text-navy leading-tight truncate w-full">
                 {node.title}
               </h4>
-              <span className={`text-[7.5px] sm:text-[9px] font-bold uppercase tracking-tight sm:tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full truncate max-w-full ${
-                isSelected ? 'bg-primary/10 text-primary' : 'bg-slate-200/70 text-slate-600'
-              }`}>
-                {node.badge}
-              </span>
-            </motion.div>
+            </div>
           );
         })}
       </div>
 
-      {/* Live Forensics Box for Active Selected Node */}
+      {/* Single Clean Node Readout Card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
-          initial={{ opacity: 0, y: 6 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ duration: 0.2 }}
-          className="bg-slate-50/90 rounded-xl sm:rounded-2xl p-3.5 sm:p-4 md:p-5 shadow-2xs space-y-2 sm:space-y-2.5 w-full"
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.15 }}
+          className="bg-slate-50 rounded-xl p-4 space-y-1.5 w-full"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="text-xs sm:text-sm font-bold text-navy">{current.title}</span>
-              <span className="text-[8.5px] sm:text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                {current.status}
-              </span>
-            </div>
-            <span className="text-[9.5px] sm:text-[10px] font-medium text-slate-500">
-              Latency: <strong className="text-navy font-bold">{current.latency}</strong>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-navy">{current.title}</span>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+              <CheckCircle2 size={11} className="text-emerald-600" />
+              {current.status}
             </span>
           </div>
-
           <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed font-sans font-normal">
             {current.desc}
           </p>
-
-          <div className="pt-2 sm:pt-2.5 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-[10px]">
-            <div className="flex items-center gap-1.5 text-slate-600">
-              <span className="font-semibold text-slate-400">Cipher:</span>
-              <span className="text-primary font-bold font-mono text-[9.5px] sm:text-[10px]">{current.cipher}</span>
-            </div>
-            <span className="text-emerald-700 font-bold flex items-center gap-1 text-[9.5px] sm:text-[10px]">
-              <CheckCircle2 size={11} className="text-emerald-600 shrink-0" />
-              <span>Zero Plaintext Leakage</span>
-            </span>
-          </div>
         </motion.div>
       </AnimatePresence>
     </div>
@@ -2074,108 +2034,72 @@ const App = () => {
         </div>
       </section>
 
-      {/* 8. Safety & Trust (Polished Solid Gray Canvas for Maximum Precision & Contrast) */}
-      <section id="safety" className="py-14 sm:py-20 md:py-28 bg-[#EEF2F6] text-navy relative border-b border-slate-300/80 w-full overflow-hidden">
-        <div className="container max-w-6xl mx-auto px-3.5 sm:px-6 w-full overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-14 items-center w-full max-w-full">
+      {/* 8. Safety & Trust */}
+      <section id="safety" className="py-16 sm:py-20 md:py-28 bg-[#EEF2F6] text-navy relative border-b border-slate-300/80">
+        <div className="container max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 items-center">
             
-            {/* Left: Security Map Visualization (5 Cols) */}
-            <div className="lg:col-span-6 order-2 lg:order-1 relative w-full max-w-full">
+            {/* Left: Interactive Cryptographic Pipeline */}
+            <div className="lg:col-span-6 order-2 lg:order-1 relative">
               <SecurityMap showToast={showToast} />
             </div>
 
-            {/* Right: Polished Executive Content (7 Cols) */}
-            <div className="lg:col-span-6 order-1 lg:order-2 text-left w-full">
+            {/* Right: Clean, High-Trust Pillars */}
+            <div className="lg:col-span-6 order-1 lg:order-2 text-left">
               <ScrollReveal>
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-white text-primary text-[10px] sm:text-[11px] font-bold tracking-wider mb-3 sm:mb-4 border border-slate-200 shadow-2xs">
-                  <ShieldCheck size={12} className="text-primary" />
-                  <span>CRYPTOGRAPHIC INTEGRITY</span>
-                </div>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-primary mb-2.5">
+                  Security & Privacy
+                </p>
 
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-navy tracking-tight mb-2.5 sm:mb-3 leading-tight">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium text-navy tracking-tight mb-3 leading-tight">
                   Your data is <br />
                   <span className="text-primary font-semibold">vault-grade secure.</span>
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans mb-5 sm:mb-6 max-w-xl">
-                  Military-grade AES-256 GCM encryption and zero-knowledge hardware proofs ensure your clinical records, symptom telemetry, and prescriptions remain strictly confidential.
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans mb-6 max-w-xl">
+                  Military-grade encryption and hardware-isolated enclaves guarantee that your clinical records, vitals, and prescriptions remain strictly confidential.
                 </p>
 
-                {/* Trust Badges Ribbon */}
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5 mb-5 sm:mb-6 text-[9.5px] sm:text-[11px] font-semibold text-slate-700">
-                  <span className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200/90 shadow-2xs flex items-center gap-1.5">
-                    <ShieldCheck size={12} className="text-primary" /> SOC2 Type II
-                  </span>
-                  <span className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200/90 shadow-2xs flex items-center gap-1.5">
-                    <Lock size={12} className="text-indigo-600" /> HIPAA Compliant
-                  </span>
-                  <span className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200/90 shadow-2xs flex items-center gap-1.5">
-                    <CheckCircle2 size={12} className="text-emerald-600" /> GDPR Certified
-                  </span>
-                  <span className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200/90 shadow-2xs flex items-center gap-1.5">
-                    <Cpu size={12} className="text-sky-600" /> Hardware Enclave
-                  </span>
-                </div>
-
-                <div className="space-y-2.5 sm:space-y-3">
+                {/* 3 Streamlined Security Pillars */}
+                <div className="space-y-3 mb-6">
                   {[
                     { 
                       icon: ShieldCheck, 
-                      tag: "Client Enclave",
                       title: "Zero-Knowledge Biometric Encryption", 
-                      desc: "Encrypted at the biometric hardware source on your device; private decryption keys never touch cloud servers.",
-                      metric: "256-Bit Hardware Enclave"
+                      desc: "Encrypted at the hardware source on your device; private decryption keys never touch cloud servers."
                     },
                     { 
                       icon: Lock, 
-                      tag: "FIPS 140-2 Level 3",
-                      title: "Distributed HSM Key Isolation", 
-                      desc: "Cryptographic ledger keys isolated in dedicated hardware modules with instant tamper zeroization.",
-                      metric: "Military-Grade Sharding"
+                      title: "Hardware Isolated HSM Vault", 
+                      desc: "Cryptographic ledger keys isolated in dedicated hardware security modules with tamper zeroization."
                     },
                     { 
                       icon: BadgeCheck, 
-                      tag: "Audited Compliance",
                       title: "SOC2 Type II & HIPAA Certified", 
-                      desc: "Rigorously validated by independent third-party cybersecurity and clinical compliance auditors.",
-                      metric: "Continuous 3rd-Party Audits"
+                      desc: "Rigorously validated and continuously audited by accredited third-party clinical cybersecurity evaluators."
                     }
                   ].map((item, i) => (
-                    <motion.div 
+                    <div 
                       key={i} 
-                      whileHover={{ y: -2, scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      onClick={() => showToast(`${item.title}: Active & Enforced.`, "info")}
-                      className="flex items-start gap-3 sm:gap-3.5 bg-white p-3.5 sm:p-4.5 rounded-xl sm:rounded-2xl transition-all cursor-pointer shadow-xs hover:shadow-md group"
+                      className="flex items-start gap-3.5 bg-white p-3.5 sm:p-4 rounded-2xl shadow-xs"
                     >
-                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-all mt-0.5 shadow-2xs">
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
                         <item.icon size={16} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-0.5 sm:mb-1">
-                          <h3 className="text-xs sm:text-sm font-bold text-navy truncate">{item.title}</h3>
-                          <span className="text-[8.5px] sm:text-[9px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
-                            {item.tag}
-                          </span>
-                        </div>
+                        <h3 className="text-xs sm:text-sm font-bold text-navy mb-0.5">{item.title}</h3>
                         <p className="text-[11px] text-slate-600 leading-relaxed font-normal">{item.desc}</p>
-                        <p className="text-[10px] text-primary font-bold mt-1 sm:mt-1.5 flex items-center gap-1.5">
-                          <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
-                          <span>{item.metric}</span>
-                        </p>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
 
-                {/* Active Session Status Bar */}
-                <div className="mt-4 sm:mt-5 p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="text-[10.5px] sm:text-[11px] font-bold text-slate-800">
-                      Active Session: TLS 1.3 / AES-256-GCM Enforced
-                    </span>
-                  </div>
-                  <span className="text-[9.5px] sm:text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 self-end sm:self-auto">100% Protected</span>
+                {/* Compliance Assurance Row */}
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-slate-500">
+                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> HIPAA Compliant</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> SOC2 Type II</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="flex items-center gap-1.5"><CheckCircle2 size={13} className="text-emerald-600" /> GDPR Certified</span>
                 </div>
               </ScrollReveal>
             </div>
