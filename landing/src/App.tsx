@@ -1444,7 +1444,81 @@ const InstitutionalTrust = ({ showToast }: { showToast: (msg: string, type?: 'in
   );
 };
 
+const NotFoundPage = ({ onNavigateHome }: { onNavigateHome: () => void }) => {
+  return (
+    <div className="min-h-screen bg-navy text-white flex flex-col justify-between relative overflow-hidden font-sans">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-primary/20 blur-[140px] rounded-full pointer-events-none" />
+
+      {/* Header */}
+      <header className="p-6 flex items-center justify-between container max-w-6xl mx-auto relative z-10">
+        <button onClick={onNavigateHome} className="flex items-center gap-2.5 cursor-pointer">
+          <img src="/favicon.png" alt="Medicata" className="w-8 h-8 object-contain" />
+          <span className="font-display font-bold text-lg text-white tracking-tight">
+            MEDICATA <span className="text-[9px] font-black text-primary px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 ml-1">AI</span>
+          </span>
+        </button>
+        <button
+          onClick={onNavigateHome}
+          className="text-xs font-semibold text-slate-300 hover:text-white px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer"
+        >
+          Return to Platform
+        </button>
+      </header>
+
+      {/* Main 404 Hero */}
+      <main className="container max-w-2xl mx-auto px-4 py-16 text-center relative z-10 my-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="space-y-6"
+        >
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs font-bold font-mono tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <span>ERROR 404 · CLINICAL PATH NOT FOUND</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight">
+            Lost in the <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-[#5AC8FA] to-white">
+              Clinical Network?
+            </span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto leading-relaxed">
+            The requested diagnostic endpoint or clinical protocol does not exist, has expired, or is restricted by hardware security policies.
+          </p>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={onNavigateHome}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Back to Home</span>
+              <ArrowRight size={14} />
+            </button>
+            <a
+              href="mailto:support@medicata.ai"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold uppercase tracking-wider border border-white/10 transition-colors flex items-center justify-center gap-2"
+            >
+              <Mail size={14} />
+              <span>Contact Support</span>
+            </a>
+          </div>
+        </motion.div>
+      </main>
+
+      {/* Footer */}
+      <footer className="p-6 text-center text-xs text-slate-500 relative z-10 border-t border-white/5">
+        <p>© 2026 Medicata Health Inc. Vault-Grade Healthcare Ecosystem.</p>
+      </footer>
+    </div>
+  );
+};
+
 const App = () => {
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [activeRole, setActiveRole] = useState<'patient' | 'doctor' | 'pharmacy'>('patient');
 
   // Interactive UI States
@@ -1455,9 +1529,28 @@ const App = () => {
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [isNewsletterSubscribed, setIsNewsletterSubscribed] = useState(false);
 
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const showToast = (message: string, type: 'info' | 'success' = 'info') => {
     setToastMessage({ message, type });
   };
+
+  const is404 = currentPath !== '/' && currentPath !== '' && currentPath !== '/index.html';
+
+  if (is404) {
+    return (
+      <NotFoundPage
+        onNavigateHome={() => {
+          window.history.pushState({}, '', '/');
+          setCurrentPath('/');
+        }}
+      />
+    );
+  }
 
   const handleNewsletterSubmit = (e: React.FormEvent) => {
     e.preventDefault();

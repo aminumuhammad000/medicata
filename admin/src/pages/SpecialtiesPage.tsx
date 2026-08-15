@@ -16,7 +16,6 @@ import {
   Trees,
   Search,
   Download,
-  CheckCircle2,
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
@@ -153,6 +152,10 @@ export default function SpecialtiesPage() {
           <p className="text-slate-500 font-medium">Manage specialties and platform medical departments</p>
         </div>
         <div className="flex items-center gap-3">
+          <button onClick={exportCSV} className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
+            <Download size={16} />
+            Export CSV
+          </button>
           <button onClick={fetchSpecialties} className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Refresh
