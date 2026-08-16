@@ -190,7 +190,6 @@ export const App: React.FC = () => {
         <main className="flex-1 p-4 sm:p-6 md:p-8">
           {activeTab === 'overview' && (
             <OverviewView
-              profile={profile}
               vitals={initialVitals}
               appointments={appointments}
               prescriptions={prescriptions}
