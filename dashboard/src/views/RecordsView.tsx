@@ -50,23 +50,25 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
     }, 1400);
   };
 
+  const card3dClass = `bg-white dark:bg-slate-900/95 border-b-4 border-r-1.5 border-slate-200 dark:border-slate-800 border-slate-200/80 dark:border-b-slate-950/80 dark:border-r-slate-950/80 rounded-2xl p-4 shadow-sm transition-all duration-200 text-left`;
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8 text-left">
+    <div className="max-w-6xl mx-auto space-y-5 text-left">
       
-      {/* Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary shrink-0 mt-0.5">
-            <FileText size={22} />
+      {/* Header Card */}
+      <div className={`${card3dClass} flex flex-col md:flex-row md:items-center justify-between gap-3 p-4`}>
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <FileText size={16} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-navy">Health Records Vault</h2>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-100 leading-tight">Health Records Vault</h2>
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border border-emerald-100/50 dark:border-emerald-900/30">
                 AES-256 Sharded
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-normal">
               Immutable diagnostic history, lab results, and physician notes protected by zero-knowledge architecture.
             </p>
           </div>
@@ -76,40 +78,40 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
           <button
             onClick={handleSimulatedUpload}
             disabled={isUploading}
-            className="px-4 py-2.5 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer border border-primary/30"
+            className="px-3 py-1.5 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-[10px] font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-primary/20"
           >
-            <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
-              <Upload size={12} />
+            <div className="w-4.5 h-4.5 rounded bg-white/20 flex items-center justify-center">
+              <Upload size={11} />
             </div>
-            <span>{isUploading ? 'Encrypting & Storing...' : 'Upload Document'}</span>
+            <span>{isUploading ? 'Encrypting...' : 'Upload Document'}</span>
           </button>
         </div>
       </div>
 
       {/* Search & Category Filter Toolbar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="relative w-full sm:w-80">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-slate-500">
-            <Search size={13} />
+      <div className={`${card3dClass} p-3 flex flex-col sm:flex-row items-center justify-between gap-3`}>
+        <div className="relative w-full sm:w-72">
+          <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-5.5 h-5.5 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+            <Search size={11} />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search records by title or hospital..."
-            className="w-full pl-11 pr-4 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:outline-none focus:border-primary"
+            className="w-full pl-10 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-[10.5px] font-medium text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
+              className={`px-2.5 py-1 rounded-xl text-[10px] font-semibold transition-colors shrink-0 cursor-pointer ${
                 selectedCategory === cat
                   ? 'bg-primary text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/80'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200/60 dark:border-slate-750'
               }`}
             >
               {cat}
@@ -119,47 +121,47 @@ export const RecordsView: React.FC<RecordsViewProps> = ({
       </div>
 
       {/* Records Table / List */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
-        <div className="divide-y divide-slate-100">
+      <div className={`${card3dClass} p-0 overflow-hidden`}>
+        <div className="divide-y divide-slate-100 dark:divide-slate-850/60">
           {filteredRecords.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs font-semibold">
+            <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-[11px] font-semibold">
               No matching records found in encrypted vault.
             </div>
           ) : (
             filteredRecords.map((rec) => (
               <div
                 key={rec.id}
-                className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors"
+                className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/40 dark:hover:bg-slate-950/20 transition-colors"
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 rounded-2xl bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                    <FileText size={20} />
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/20 text-blue-650 dark:text-blue-450 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText size={15} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-navy">{rec.title}</h4>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="text-[11.5px] font-semibold text-slate-700 dark:text-slate-200">{rec.title}</h4>
+                      <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700">
                         {rec.category}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{rec.provider} &bull; {rec.date} &bull; {rec.fileSize}</p>
-                    <p className="font-mono text-[10px] text-slate-400 mt-1">HASH: {rec.hash}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{rec.provider} &bull; {rec.date} &bull; {rec.fileSize}</p>
+                    <p className="font-mono text-[9px] text-slate-400 dark:text-slate-650 mt-0.5">HASH: {rec.hash}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto">
+                <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
                   <button
                     onClick={() => showToast(`Decrypted and previewing: ${rec.title}`, "info")}
-                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                    className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-350 text-[10px] font-semibold transition-colors cursor-pointer flex items-center gap-1"
                   >
-                    <Eye size={13} />
+                    <Eye size={11} />
                     <span>View</span>
                   </button>
                   <button
                     onClick={() => showToast(`Downloaded encrypted file ${rec.title}.`, "success")}
-                    className="px-3 py-1.5 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                    className="px-2.5 py-1 rounded-lg bg-primary hover:bg-[#1f60b5] text-white text-[10px] font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs border border-primary/20"
                   >
-                    <Download size={13} />
+                    <Download size={11} />
                     <span>Download</span>
                   </button>
                 </div>

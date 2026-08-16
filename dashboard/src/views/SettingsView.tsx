@@ -57,64 +57,66 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast("Profile and clinical preferences updated.", "success");
   };
 
+  const card3dClass = `bg-white dark:bg-slate-900/95 border-b-4 border-r-1.5 border-slate-200 dark:border-slate-800 border-slate-200/80 dark:border-b-slate-950/80 dark:border-r-slate-950/80 rounded-2xl p-4 shadow-sm transition-all duration-200 text-left`;
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 text-left">
+    <div className="max-w-4xl mx-auto space-y-5 text-left">
       
-      {/* Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs">
-        <h2 className="text-xl sm:text-2xl font-bold text-navy">Account & Clinical Settings</h2>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+      {/* Header Card */}
+      <div className={card3dClass}>
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-100 leading-tight">Account & Clinical Settings</h2>
+        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-normal">
           Manage your personal profile, connected biometric wearables, and emergency contact details.
         </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-4">
         
         {/* Profile Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary">
-              <User size={16} />
+        <div className={`${card3dClass} space-y-4`}>
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+              <User size={13.5} />
             </div>
-            <h3 className="text-xs font-bold text-navy uppercase tracking-wider">Patient Identification</h3>
+            <h3 className="text-xs font-semibold text-slate-650 dark:text-slate-250">Patient Identification</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Full Legal Name</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Full Legal Name</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Email Address</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Email Address</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Phone Number</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Phone Number</label>
               <input
                 type="tel"
                 value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-navy uppercase tracking-wider">Age</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Age</label>
                 {formData.age > 0 && (
-                  <span className="text-[10px] font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                  <span className="text-[8px] font-bold text-primary px-1 rounded bg-primary/10">
                     Born ~{new Date().getFullYear() - formData.age}
                   </span>
                 )}
@@ -130,20 +132,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     setFormData({ ...formData, age: isNaN(val) ? 0 : Math.min(120, Math.max(0, val)) });
                   }}
                   placeholder="e.g. 32"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
                 />
                 <div className="absolute right-2 flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, age: Math.max(1, (formData.age || 1) - 1) })}
-                    className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs hover:bg-slate-200 cursor-pointer"
+                    className="w-5.5 h-5.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-350 flex items-center justify-center font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer"
                   >
                     -
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, age: Math.min(120, (formData.age || 0) + 1) })}
-                    className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs hover:bg-slate-200 cursor-pointer"
+                    className="w-5.5 h-5.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-655 dark:text-slate-350 flex items-center justify-center font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer"
                   >
                     +
                   </button>
@@ -152,8 +154,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-2">Blood Type</label>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1.5">Blood Type</label>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
                 {bloodTypes.map(bt => {
                   const isSelected = formData.bloodType === bt;
                   return (
@@ -161,13 +163,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       key={bt}
                       type="button"
                       onClick={() => setFormData({ ...formData, bloodType: bt })}
-                      className={`py-2 px-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      className={`py-1.5 px-2 rounded-xl font-semibold text-xs flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25 ring-2 ring-rose-500/30'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/80'
+                          ? 'bg-rose-500 text-white shadow-sm ring-2 ring-rose-500/20'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200/60 dark:border-slate-750'
                       }`}
                     >
-                      <Droplet size={11} className={isSelected ? 'fill-white text-white' : 'text-rose-500'} />
+                      <Droplet size={10} className={isSelected ? 'fill-white text-white' : 'text-rose-500'} />
                       <span>{bt}</span>
                     </button>
                   );
@@ -178,58 +180,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {/* Emergency Contact */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-            <div className="w-8 h-8 rounded-xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600">
-              <HeartPulse size={16} />
+        <div className={`${card3dClass} space-y-3`}>
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+            <div className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/20 flex items-center justify-center text-rose-550 dark:text-rose-400">
+              <HeartPulse size={13.5} />
             </div>
-            <h3 className="text-xs font-bold text-navy uppercase tracking-wider">Emergency Contact</h3>
+            <h3 className="text-xs font-semibold text-slate-650 dark:text-slate-250">Emergency Contact</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Contact Name</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Contact Name</label>
               <input
                 type="text"
                 value={formData.emergencyName}
                 onChange={e => setFormData({ ...formData, emergencyName: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Relationship</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Relationship</label>
               <input
                 type="text"
                 value={formData.emergencyRel}
                 onChange={e => setFormData({ ...formData, emergencyRel: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-navy uppercase tracking-wider mb-1.5">Contact Phone</label>
+              <label className="block text-[9.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">Contact Phone</label>
               <input
                 type="tel"
                 value={formData.emergencyPhone}
                 onChange={e => setFormData({ ...formData, emergencyPhone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-medium focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-xs font-medium text-slate-700 dark:text-slate-150 focus:outline-none focus:border-primary"
               />
             </div>
           </div>
         </div>
 
         {/* Connected Wearables */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-            <Smartphone size={16} className="text-primary" />
-            <h3 className="text-xs font-bold text-navy uppercase tracking-wider">Connected Health Wearables</h3>
+        <div className={`${card3dClass} space-y-3`}>
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/60">
+            <Smartphone size={13.5} className="text-primary" />
+            <h3 className="text-xs font-semibold text-slate-650 dark:text-slate-250">Connected Health Wearables</h3>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {wearables.map((w, idx) => (
-              <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+              <div key={idx} className="p-3 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 border border-slate-100/60 dark:border-slate-800/40 flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-navy">{w.name}</h4>
-                  <p className="text-[11px] text-slate-500">{w.type}</p>
+                  <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-200">{w.name}</h4>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{w.type}</p>
                 </div>
                 <button
                   type="button"
@@ -237,25 +239,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     setWearables(prev => prev.map((item, i) => i === idx ? { ...item, connected: !item.connected } : item));
                     showToast(w.connected ? `Disconnected ${w.name}` : `Paired ${w.name}`, "info");
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer border ${
                     w.connected
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border-emerald-200/50 dark:border-emerald-900/20'
+                      : 'bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-slate-300 dark:hover:bg-slate-750 border-slate-300/40 dark:border-slate-700'
                   }`}
                 >
-                  {w.connected ? 'Active & Synced' : 'Connect Device'}
+                  {w.connected ? 'Synced' : 'Connect'}
                 </button>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-1">
           <button
             type="submit"
-            className="px-8 py-3.5 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold uppercase tracking-wider shadow-md transition-all flex items-center gap-2 cursor-pointer"
+            className="px-6 py-2 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-[11px] font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-primary/20"
           >
-            <Save size={14} />
+            <Save size={13} />
             <span>Save Preferences</span>
           </button>
         </div>
