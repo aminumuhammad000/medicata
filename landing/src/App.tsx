@@ -48,7 +48,7 @@ import {
 import doctorBookingImg from './assets/doctor_booking_elite.png';
 import pharmacyDeliveryImg from './assets/pharmacy_delivery_elite.png';
 import heroMotionVideo from './assets/video/video.mp4';
-import mediMascotImg from './assets/medi.png';
+import { MediMascot, type MediEmotion } from './components/MediMascot';
 
 
 // Elite UI: Magnetic Hook
@@ -604,6 +604,7 @@ const MediChatWidget = ({ onOpenApp, showToast }: { onOpenApp: () => void; showT
   const [isOpen, setIsOpen] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const [showPrompts, setShowPrompts] = useState(true);
+  const [mediEmotion, setMediEmotion] = useState<MediEmotion>('idle');
   const [messages, setMessages] = useState<Array<{ sender: 'medi' | 'user'; text: string; actionText?: string }>>([
     {
       sender: 'medi',
@@ -627,9 +628,11 @@ const MediChatWidget = ({ onOpenApp, showToast }: { onOpenApp: () => void; showT
     
     setMessages(prev => [...prev, { sender: 'user', text: userQuery }]);
     setIsTyping(true);
+    setMediEmotion('thinking');
 
     setTimeout(() => {
       setIsTyping(false);
+      setMediEmotion('happy');
       let reply = "I have analyzed your inquiry across 40M+ clinical pathways. Connect with our board-certified specialists for real-time consultation on the Medicata app.";
       let actionText = "Open Medicata App";
       
@@ -650,7 +653,12 @@ const MediChatWidget = ({ onOpenApp, showToast }: { onOpenApp: () => void; showT
 
       setMessages(prev => [...prev, { sender: 'medi', text: reply, actionText }]);
       showToast("Medi responded to your inquiry", "info");
-    }, 600);
+      
+      // Return to idle state after a short delay
+      setTimeout(() => {
+        setMediEmotion('idle');
+      }, 2000);
+    }, 1200);
   };
 
   return (
@@ -671,24 +679,28 @@ const MediChatWidget = ({ onOpenApp, showToast }: { onOpenApp: () => void; showT
           </motion.button>
         )}
 
-        {/* Mascot Avatar Button - Head Only */}
+        {/* Mascot Avatar Button - Transparent & Direct Mascot */}
         <motion.button
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            setIsOpen(!isOpen);
+            if (!isOpen) {
+              setMediEmotion('wink');
+              setTimeout(() => setMediEmotion('idle'), 1500);
+            }
+          }}
           aria-label="Open Medi AI Assistant"
-          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#0c182c] border border-white/15 p-[2px] shadow-2xl shadow-navy/50 cursor-pointer group"
+          className="relative w-11 h-11 cursor-pointer flex items-center justify-center overflow-visible"
         >
-          <div className="w-full h-full rounded-full bg-[#071324] flex items-center justify-center overflow-hidden border border-white/10 group-hover:border-primary/60 transition-all relative">
-            <img 
-              src={mediMascotImg} 
-              alt="Medi Head" 
-              className="w-[210%] h-[210%] max-w-none object-cover object-top translate-y-[22%] group-hover:scale-105 transition-transform duration-300"
-            />
+          <div className="w-11 h-11 flex items-center justify-center relative overflow-visible">
+            <div className="scale-[0.38] origin-center absolute">
+              <MediMascot emotion={mediEmotion} size="sm" />
+            </div>
           </div>
 
           {/* Active Online Dot */}
-          <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#071324]" />
+          <span className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border border-[#071324] z-20" />
         </motion.button>
       </div>
 
@@ -705,12 +717,18 @@ const MediChatWidget = ({ onOpenApp, showToast }: { onOpenApp: () => void; showT
             {/* Header */}
             <div className="p-3 bg-white/[0.03] border-b border-white/10 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center overflow-hidden shrink-0">
-                  <img 
-                    src={mediMascotImg} 
-                    alt="Medi Head" 
-                    className="w-[210%] h-[210%] max-w-none object-cover object-top translate-y-[22%]" 
-                  />
+                <div
+                  onClick={() => {
+                    const reactEmotions: MediEmotion[] = ['shy', 'blush', 'wink', 'laugh', 'wing_happy', 'belly_poke'];
+                    const rand = reactEmotions[Math.floor(Math.random() * reactEmotions.length)];
+                    setMediEmotion(rand);
+                    setTimeout(() => setMediEmotion('idle'), 1500);
+                  }}
+                  className="w-7 h-7 flex items-center justify-center shrink-0 cursor-pointer overflow-visible relative"
+                >
+                  <div className="scale-[0.25] origin-center absolute">
+                    <MediMascot emotion={mediEmotion} size="sm" />
+                  </div>
                 </div>
                 <div>
                   <h4 className="text-xs font-semibold text-white flex items-center gap-1.5 leading-tight">

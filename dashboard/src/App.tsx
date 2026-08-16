@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar, type DashboardTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { OnboardingFlow } from './components/OnboardingFlow';
+import { MedicalWallpaper } from './components/MedicalWallpaper';
 import { OverviewView } from './views/OverviewView';
 import { TriageView } from './views/TriageView';
 import { AppointmentsView } from './views/AppointmentsView';
@@ -46,11 +47,27 @@ export const App: React.FC = () => {
   });
 
   const [isOpenMobile, setIsOpenMobile] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(initialPrescriptions);
   const [records, setRecords] = useState<HealthRecord[]>(initialHealthRecords);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [toast, setToast] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
+  const [isDark, setIsDark] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const handleToggleDark = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return next;
+    });
+  };
 
   // Synchronize browser history / URL path
   useEffect(() => {
@@ -137,7 +154,8 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-x-hidden">
+      <MedicalWallpaper isDark={isDark} />
       
       {/* Sidebar Navigation */}
       <Sidebar
@@ -146,11 +164,12 @@ export const App: React.FC = () => {
         profile={profile}
         isOpenMobile={isOpenMobile}
         setIsOpenMobile={setIsOpenMobile}
-        onResetOnboarding={handleResetOnboarding}
+        isDark={isDark}
+        isSidebarCollapsed={isSidebarCollapsed}
       />
 
       {/* Main Content Area (offset by sidebar on desktop) */}
-      <div className="lg:pl-64 flex flex-col flex-1 min-h-screen">
+      <div className={`${isSidebarCollapsed ? 'lg:pl-[88px]' : 'lg:pl-[232px]'} flex flex-col flex-1 min-h-screen transition-all duration-300`}>
         
         {/* Top Header */}
         <Header
@@ -161,6 +180,10 @@ export const App: React.FC = () => {
           onOpenTriage={() => handleTabChange('triage')}
           onClearNotification={handleClearNotification}
           showToast={showToast}
+          onResetOnboarding={handleResetOnboarding}
+          isDark={isDark}
+          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onToggleDark={handleToggleDark}
         />
 
         {/* Dynamic Views */}
@@ -240,16 +263,14 @@ export const App: React.FC = () => {
         </main>
 
         {/* Subtle Footer */}
-        <footer className="py-4 px-8 border-t border-slate-200/80 bg-white/50 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>&copy; 2026 Medicata Health Inc. Hardware-Isolated Patient Portal.</span>
-          <div className="flex items-center gap-4">
-            <button onClick={() => handleTabChange('security')} className="hover:text-primary transition-colors cursor-pointer">
+        <footer className="py-2.5 px-8 bg-transparent text-[10px] text-slate-400/40 flex flex-col sm:flex-row items-center justify-between gap-1.5 hover:text-slate-400/70 transition-colors duration-500">
+          <span className="tracking-wide">Medicata Health © 2026 &nbsp;•&nbsp; Zero-Knowledge Encrypted Clinical Telemetry</span>
+          <div className="flex items-center gap-3.5">
+            <button onClick={() => handleTabChange('security')} className="hover:text-primary/80 transition-colors cursor-pointer">
               Enclave Specs
             </button>
-            <button onClick={() => handleTabChange('404')} className="hover:text-primary transition-colors cursor-pointer">
-              404 Preview
-            </button>
-            <a href="mailto:support@medicata.ai" className="hover:text-primary transition-colors">
+            <span className="opacity-30">·</span>
+            <a href="mailto:support@medicata.ai" className="hover:text-primary/80 transition-colors">
               Support
             </a>
           </div>

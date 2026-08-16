@@ -18,12 +18,22 @@ export interface PatientProfile {
   enclaveKey: string;
   isEnclaveVerified: boolean;
   isOnboarded: boolean;
+  whatsapp?: string;
+  genotype?: string;
+  height?: number;
+  weight?: number;
+  bodyType?: string;
   licenseNumber?: string;
   specialty?: string;
   hospitalAffiliation?: string;
   consultationFee?: string;
+  experience?: number;
+  languages?: string[];
   pharmacyName?: string;
   address?: string;
+  openingHours?: string;
+  verificationDocs?: string[];
+  acceptedTerms?: boolean;
 }
 
 export interface VitalSign {

@@ -2,94 +2,116 @@ import React from 'react';
 
 interface MedicalWallpaperProps {
   isDark?: boolean;
+  opacity?: number;
 }
 
-export const MedicalWallpaper: React.FC<MedicalWallpaperProps> = ({ isDark = false }) => {
-  const strokeColor = isDark ? '%23ffffff' : '%232875d8';
-  const opacity = isDark ? '0.045' : '0.055';
+export const MedicalWallpaper: React.FC<MedicalWallpaperProps> = ({ 
+  isDark = false,
+  opacity: customOpacity
+}) => {
+  // Rich, visible medical colors
+  const strokeColor = isDark ? '%2360A5FA' : '%232563EB';
+  const accentColor = isDark ? '%2338BDF8' : '%230284C7';
+  const fillDotColor = isDark ? '%2393C5FD' : '%233B82F6';
+  
+  // High-visibility opacity (clearly visible yet elegant background)
+  const defaultOpacity = isDark ? '0.42' : '0.48';
+  const opacity = customOpacity !== undefined ? customOpacity.toString() : defaultOpacity;
 
-  // Crisp SVG pattern with WhatsApp-style health icons (stethoscope, pills, heartbeat, DNA, medical cross, thermometer, syringe, bandage, shield, sparkles)
-  const patternSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280' fill='none' stroke='${strokeColor}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' opacity='${opacity}'>
+  // Crisp SVG pattern with healthcare & medical telemetry icons
+  const patternSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='${strokeColor}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='${opacity}'>
     <!-- 1. Stethoscope (top left) -->
-    <g transform='translate(25, 25) rotate(-12)'>
-      <path d='M4 3v4a4 4 0 0 0 8 0V3'/>
-      <path d='M8 11v6a5 5 0 0 0 10 0v-2'/>
-      <circle cx='18' cy='13' r='2'/>
-      <circle cx='4' cy='3' r='1.5'/>
-      <circle cx='12' cy='3' r='1.5'/>
+    <g transform='translate(30, 25) rotate(-10)'>
+      <path d='M4 3v5a4 4 0 0 0 8 0V3'/>
+      <path d='M8 12v6a5 5 0 0 0 10 0v-3'/>
+      <circle cx='18' cy='15' r='3' fill='${fillDotColor}' fill-opacity='0.25'/>
+      <circle cx='4' cy='3' r='1.8' fill='${fillDotColor}'/>
+      <circle cx='12' cy='3' r='1.8' fill='${fillDotColor}'/>
     </g>
 
     <!-- 2. Heart with EKG pulse (top center) -->
-    <g transform='translate(120, 20) rotate(8)'>
-      <path d='M16 4.5c-2.5-3-7-3-9.5 0-2.5 3-2.5 8 0 11l9.5 9.5 9.5-9.5c2.5-3 2.5-8 0-11-2.5-3-7-3-9.5 0z'/>
-      <path d='M7 13h4l2-4 3 8 2-4h4'/>
+    <g transform='translate(145, 20) rotate(6)'>
+      <path d='M16 4.5c-2.5-3-7-3-9.5 0-2.5 3-2.5 8 0 11l9.5 9.5 9.5-9.5c2.5-3 2.5-8 0-11-2.5-3-7-3-9.5 0z' fill='${fillDotColor}' fill-opacity='0.15'/>
+      <path d='M6 13h4l2-5 3 9 2-4h5' stroke='${accentColor}' stroke-width='2'/>
     </g>
 
     <!-- 3. Pill Capsule (top right) -->
-    <g transform='translate(220, 30) rotate(35)'>
-      <rect x='2' y='2' width='10' height='20' rx='5'/>
-      <line x1='2' y1='12' x2='12' y2='12'/>
-      <circle cx='7' cy='7' r='1' fill='${strokeColor}'/>
+    <g transform='translate(250, 28) rotate(35)'>
+      <rect x='2' y='2' width='12' height='24' rx='6' fill='${fillDotColor}' fill-opacity='0.2'/>
+      <line x1='2' y1='14' x2='14' y2='14' stroke='${accentColor}' stroke-width='2'/>
+      <circle cx='8' cy='8' r='1.5' fill='${strokeColor}'/>
     </g>
 
-    <!-- 4. Medical Cross / First Aid (mid left) -->
-    <g transform='translate(35, 110) rotate(5)'>
-      <rect x='2' y='2' width='20' height='20' rx='4'/>
-      <path d='M12 7v10M7 12h10'/>
+    <!-- 4. Medical Cross in Rounded Box (mid left) -->
+    <g transform='translate(35, 120) rotate(4)'>
+      <rect x='2' y='2' width='24' height='24' rx='6' fill='${fillDotColor}' fill-opacity='0.15'/>
+      <path d='M14 7v14M7 14h14' stroke='${accentColor}' stroke-width='2.2'/>
     </g>
 
     <!-- 5. DNA Helix (center) -->
-    <g transform='translate(130, 105) rotate(-20)'>
-      <path d='M3 3c4 4 4 10 0 14s-4 10 0 14'/>
-      <path d='M13 3c-4 4-4 10 0 14s4 10 0 14'/>
-      <line x1='4' y1='7' x2='12' y2='7'/>
-      <line x1='3' y1='17' x2='13' y2='17'/>
-      <line x1='4' y1='27' x2='12' y2='27'/>
+    <g transform='translate(150, 115) rotate(-15)'>
+      <path d='M4 4c5 5 5 12 0 17s-5 12 0 17' stroke='${accentColor}' stroke-width='2'/>
+      <path d='M16 4c-5 5-5 12 0 17s5 12 0 17'/>
+      <line x1='5' y1='8' x2='15' y2='8'/>
+      <line x1='4' y1='21' x2='16' y2='21'/>
+      <line x1='5' y1='34' x2='15' y2='34'/>
+      <circle cx='10' cy='14' r='1.5' fill='${fillDotColor}'/>
+      <circle cx='10' cy='28' r='1.5' fill='${fillDotColor}'/>
     </g>
 
     <!-- 6. Syringe (mid right) -->
-    <g transform='translate(225, 115) rotate(-40)'>
-      <path d='m14 4 4 4-9 9-4-4z'/>
-      <line x1='13' y1='1' x2='17' y2='5'/>
-      <line x1='5' y1='17' x2='1' y2='21'/>
-      <line x1='8' y1='10' x2='10' y2='12'/>
+    <g transform='translate(255, 125) rotate(-40)'>
+      <path d='m15 4 5 5-10 10-5-5z' fill='${fillDotColor}' fill-opacity='0.15'/>
+      <line x1='14' y1='1' x2='19' y2='6' stroke-width='2'/>
+      <line x1='5' y1='19' x2='1' y2='23' stroke-width='2'/>
+      <line x1='8' y1='11' x2='11' y2='14'/>
+      <line x1='10' y1='9' x2='13' y2='12'/>
     </g>
 
-    <!-- 7. Shield Check (bottom left) -->
-    <g transform='translate(25, 195) rotate(10)'>
-      <path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/>
-      <path d='m9 12 2 2 4-4'/>
+    <!-- 7. Shield Security Check (bottom left) -->
+    <g transform='translate(35, 215) rotate(8)'>
+      <path d='M14 26s10-5 10-12V6l-10-4-10 4v8c0 7 10 12 10 12z' fill='${fillDotColor}' fill-opacity='0.15'/>
+      <path d='m10 14 3 3 5-5' stroke='${accentColor}' stroke-width='2.2'/>
     </g>
 
     <!-- 8. Thermometer (bottom center) -->
-    <g transform='translate(125, 205) rotate(45)'>
-      <path d='M10 13.5V4a2 2 0 0 0-4 0v9.5a4 4 0 1 0 4 0z'/>
-      <circle cx='8' cy='17' r='1.5' fill='${strokeColor}'/>
+    <g transform='translate(150, 225) rotate(40)'>
+      <path d='M12 15V4a3 3 0 0 0-6 0v11a5 5 0 1 0 6 0z' fill='${fillDotColor}' fill-opacity='0.2'/>
+      <circle cx='9' cy='19' r='2.5' fill='${strokeColor}'/>
+      <line x1='9' y1='8' x2='9' y2='14' stroke-width='2'/>
     </g>
 
     <!-- 9. Bandage / Plaster (bottom right) -->
-    <g transform='translate(220, 200) rotate(-15)'>
-      <rect x='2' y='6' width='22' height='10' rx='5'/>
-      <circle cx='10' cy='11' r='0.8' fill='${strokeColor}'/>
-      <circle cx='13' cy='11' r='0.8' fill='${strokeColor}'/>
-      <circle cx='16' cy='11' r='0.8' fill='${strokeColor}'/>
+    <g transform='translate(250, 220) rotate(-15)'>
+      <rect x='2' y='6' width='26' height='12' rx='6' fill='${fillDotColor}' fill-opacity='0.2'/>
+      <rect x='10' y='6' width='10' height='12' fill='${fillDotColor}' fill-opacity='0.3'/>
+      <circle cx='12' cy='12' r='1' fill='${strokeColor}'/>
+      <circle cx='15' cy='12' r='1' fill='${strokeColor}'/>
+      <circle cx='18' cy='12' r='1' fill='${strokeColor}'/>
     </g>
 
-    <!-- 10. Little Sparkles & Drops (faint accents) -->
-    <g transform='translate(80, 70)'>
-      <path d='M4 0v8M0 4h8'/>
+    <!-- 10. Microscope / Lab Flask (interstitial) -->
+    <g transform='translate(95, 75) rotate(-5)'>
+      <path d='M6 2v6l-4 8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2l-4-8V2' fill='${fillDotColor}' fill-opacity='0.15'/>
+      <line x1='5' y1='2' x2='13' y2='2' stroke-width='2'/>
+      <circle cx='9' cy='13' r='1.5' fill='${fillDotColor}'/>
     </g>
-    <g transform='translate(190, 75)'>
-      <circle cx='3' cy='3' r='2'/>
+
+    <!-- 11. Pulse Wave & Sparkles (accents) -->
+    <g transform='translate(205, 80)'>
+      <path d='M0 6h4l2-4 3 8 2-4h5' stroke='${accentColor}' stroke-width='1.8'/>
     </g>
-    <g transform='translate(80, 160)'>
-      <circle cx='2' cy='2' r='1.5'/>
+    <g transform='translate(95, 175)'>
+      <path d='M4 0v8M0 4h8' stroke='${accentColor}' stroke-width='1.8'/>
     </g>
-    <g transform='translate(180, 165)'>
-      <path d='M3 0v6M0 3h6'/>
+    <g transform='translate(205, 180)'>
+      <circle cx='3' cy='3' r='2.5' fill='${fillDotColor}' fill-opacity='0.6'/>
     </g>
-    <g transform='translate(85, 245)'>
-      <path d='M12 2a4 4 0 0 0-4 4c0 3 4 7 4 7s4-4 4-7a4 4 0 0 0-4-4z' transform='scale(0.7)'/>
+    <g transform='translate(100, 275)'>
+      <path d='M10 2a3 3 0 0 0-3 3c0 2 3 5 3 5s3-3 3-5a3 3 0 0 0-3-3z' fill='${fillDotColor}' fill-opacity='0.3'/>
+    </g>
+    <g transform='translate(205, 275)'>
+      <path d='M3 0v6M0 3h6' stroke='${accentColor}' stroke-width='1.8'/>
     </g>
   </svg>`;
 
@@ -97,11 +119,11 @@ export const MedicalWallpaper: React.FC<MedicalWallpaperProps> = ({ isDark = fal
 
   return (
     <div
-      className="absolute inset-0 pointer-events-none transition-opacity duration-700"
+      className="fixed inset-0 pointer-events-none transition-all duration-700 z-[-1]"
       style={{
         backgroundImage: bgDataUri,
         backgroundRepeat: 'repeat',
-        backgroundSize: '280px 280px'
+        backgroundSize: '320px 320px'
       }}
     />
   );

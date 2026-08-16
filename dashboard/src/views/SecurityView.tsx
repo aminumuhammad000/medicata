@@ -37,16 +37,21 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
       
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-navy">Security & Biometric Enclave</h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Hardware Isolated
-            </span>
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
+            <ShieldCheck size={22} />
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Manage your hardware enclave credentials, zero-knowledge cryptographic keys, and active device authorizations.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-navy">Security & Biometric Enclave</h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Hardware Isolated
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Manage your hardware enclave credentials, zero-knowledge cryptographic keys, and active device authorizations.
+            </p>
+          </div>
         </div>
 
         <button
@@ -54,7 +59,9 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
           disabled={isRotating}
           className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-primary text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
         >
-          <RotateCcw size={14} className={isRotating ? 'animate-spin' : ''} />
+          <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
+            <RotateCcw size={12} className={isRotating ? 'animate-spin' : ''} />
+          </div>
           <span>{isRotating ? 'Rotating Shards...' : 'Rotate Key Pair'}</span>
         </button>
       </div>
@@ -62,7 +69,7 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
       {/* Security Status Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 text-primary flex items-center justify-center">
+          <div className="w-11 h-11 rounded-2xl bg-blue-100 border border-blue-200 text-blue-700 flex items-center justify-center shadow-xs">
             <Smartphone size={20} />
           </div>
           <h4 className="text-sm font-bold text-navy">Client Enclave</h4>
@@ -71,12 +78,12 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>CIPHER</span>
-            <span className="text-emerald-700 font-bold">AES-256-GCM</span>
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">AES-256-GCM</span>
           </div>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-100 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-xs">
             <Lock size={20} />
           </div>
           <h4 className="text-sm font-bold text-navy">Medicata HSM Sharding</h4>
@@ -85,12 +92,12 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>STANDARDS</span>
-            <span className="text-indigo-700 font-bold">FIPS 140-2 L3</span>
+            <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200/60">FIPS 140-2 L3</span>
           </div>
         </div>
 
         <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-3">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-100 border border-emerald-200 text-emerald-700 flex items-center justify-center shadow-xs">
             <ShieldCheck size={20} />
           </div>
           <h4 className="text-sm font-bold text-navy">Compliance & Audit</h4>
@@ -99,7 +106,7 @@ export const SecurityView: React.FC<SecurityViewProps> = ({
           </p>
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-400">
             <span>AUDIT STATUS</span>
-            <span className="text-emerald-700 font-bold">100% Certified</span>
+            <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">100% Certified</span>
           </div>
         </div>
       </div>

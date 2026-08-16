@@ -63,21 +63,28 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
       
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-navy">Specialist Teleconsultations</h2>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-              Top 1% Physicians
-            </span>
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/25 flex items-center justify-center text-primary shrink-0 mt-0.5">
+            <Video size={22} />
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Direct encrypted HD video consults with verified attending physicians from leading academic institutions.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-navy">Specialist Teleconsultations</h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                Top 1% Physicians
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Direct encrypted HD video consults with verified attending physicians from leading academic institutions.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-emerald-600" />
+          <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700">
+              <ShieldCheck size={13} />
+            </div>
             <span>End-to-End Encrypted WebRTC</span>
           </div>
         </div>
@@ -85,10 +92,14 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
 
       {/* Confirmed Appointments Section */}
       <div>
-        <h3 className="text-xs font-bold text-navy uppercase tracking-wider mb-4 flex items-center gap-2">
-          <Calendar size={14} className="text-primary" />
-          <span>Scheduled Consultations</span>
-        </h3>
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center text-primary">
+            <Calendar size={14} />
+          </div>
+          <h3 className="text-xs font-bold text-navy uppercase tracking-wider">
+            Scheduled Consultations
+          </h3>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {appointments.map((apt) => (
@@ -119,7 +130,9 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
 
                 <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs space-y-1.5 mb-4">
                   <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                    <Clock size={13} className="text-slate-400" />
+                    <div className="w-5 h-5 rounded bg-slate-200/80 flex items-center justify-center text-slate-600">
+                      <Clock size={12} />
+                    </div>
                     <span>{apt.date} &bull; {apt.time}</span>
                   </div>
                   {apt.triageSummary && (
@@ -137,9 +150,11 @@ export const AppointmentsView: React.FC<AppointmentsViewProps> = ({
                     setActiveVideoCall(apt);
                     showToast(`Entering consultation room with ${apt.doctor.name}...`, "success");
                   }}
-                  className="px-4 py-2 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-[#1f60b5] text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer border border-primary/30"
                 >
-                  <Video size={14} />
+                  <div className="w-5 h-5 rounded-md bg-white/20 flex items-center justify-center">
+                    <Video size={13} />
+                  </div>
                   <span>Join HD Video Room</span>
                 </button>
               </div>

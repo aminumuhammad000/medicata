@@ -38,21 +38,28 @@ export const PrescriptionsView: React.FC<PrescriptionsViewProps> = ({
       
       {/* Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-navy">Cryptographic E-Prescriptions</h2>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              ZK-Signed
-            </span>
+        <div className="flex items-start gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 shrink-0 mt-0.5">
+            <Pill size={22} />
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Biometrically authorized by board physicians with instant pharmacy verification and courier routing.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-navy">Cryptographic E-Prescriptions</h2>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                ZK-Signed
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Biometrically authorized by board physicians with instant pharmacy verification and courier routing.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Lock size={13} className="text-indigo-600" />
+          <div className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700">
+              <Lock size={12} />
+            </div>
             <span>Hardware HSM Sealed</span>
           </div>
         </div>
@@ -63,9 +70,14 @@ export const PrescriptionsView: React.FC<PrescriptionsViewProps> = ({
         
         {/* Left Column: Active Prescription Cards (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
-          <h3 className="text-xs font-bold text-navy uppercase tracking-wider mb-2">
-            Active Medications & Regimens
-          </h3>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700">
+              <Pill size={13} />
+            </div>
+            <h3 className="text-xs font-bold text-navy uppercase tracking-wider">
+              Active Medications & Regimens
+            </h3>
+          </div>
 
           {prescriptions.map((rx) => {
             const isSelected = selectedRx?.id === rx.id;
@@ -82,10 +94,15 @@ export const PrescriptionsView: React.FC<PrescriptionsViewProps> = ({
                 }`}
               >
                 <div className="flex items-start justify-between gap-4 mb-3">
-                  <div>
-                    <span className="font-mono text-[10px] text-slate-400 font-bold">{rx.token}</span>
-                    <h4 className="text-base font-bold text-navy leading-tight mt-0.5">{rx.medication}</h4>
-                    <p className="text-xs text-primary font-semibold">{rx.genericName}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-100 border border-indigo-200 flex items-center justify-center text-indigo-700 shrink-0 mt-0.5">
+                      <Pill size={18} />
+                    </div>
+                    <div>
+                      <span className="font-mono text-[10px] text-slate-400 font-bold">{rx.token}</span>
+                      <h4 className="text-base font-bold text-navy leading-tight mt-0.5">{rx.medication}</h4>
+                      <p className="text-xs text-primary font-semibold">{rx.genericName}</p>
+                    </div>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
                     {rx.status}

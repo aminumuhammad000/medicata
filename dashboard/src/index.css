@@ -34,7 +34,7 @@
 }
 
 html, body {
-  @apply text-slate-800 bg-[#F8FAFC] leading-relaxed antialiased overflow-x-hidden;
+  @apply text-slate-800 dark:text-slate-100 bg-[#F8FAFC] dark:bg-slate-950 leading-relaxed antialiased overflow-x-hidden;
   font-family: 'Plus Jakarta Sans', 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
