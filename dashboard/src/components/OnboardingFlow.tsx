@@ -201,10 +201,10 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, init
     setOtpError('');
     setTimeout(() => {
       setIsOtpVerifying(false);
-      if (currentOtp === '123456' || currentOtp === '000000' || currentOtp.length === 6) {
+      if (currentOtp.length === 6) {
         setOtpVerified(true);
       } else {
-        setOtpError('Invalid code. Use 123456 to verify.');
+        setOtpError('Invalid code. Please try again.');
       }
     }, 600);
   };
@@ -1331,11 +1331,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, init
                       <p className="text-xs text-rose-500 font-medium pl-1">{otpError}</p>
                     )}
 
-                    {!isOtpVerifying && (
-                      <p className="text-[10.5px] text-slate-400 dark:text-slate-500 pl-1">
-                        Use demo code <span className="font-semibold text-slate-600 dark:text-slate-350">123456</span> to instantly verify
-                      </p>
-                    )}
+
                   </motion.div>
                 )}
 
