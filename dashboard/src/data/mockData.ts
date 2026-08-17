@@ -1,4 +1,4 @@
-import type { PatientProfile, VitalSign, Doctor, Appointment, Prescription, HealthRecord, NotificationItem } from '../types';
+import type { PatientProfile, VitalSign, Doctor, Appointment, Prescription, HealthRecord, NotificationItem, WalletTransaction, PharmacyOrder, DrugStockItem } from '../types';
 
 export const initialPatientProfile: PatientProfile = {
   id: 'PT-9821-ENCLAVE',
@@ -226,5 +226,108 @@ export const initialNotifications: NotificationItem[] = [
     time: '1d ago',
     read: true,
     type: 'security'
+  }
+];
+
+export const initialWalletBalance = 2450000; // 24,500.00 Naira (in kobo)
+
+export const initialWalletTransactions: WalletTransaction[] = [
+  {
+    id: 'tx-1',
+    transaction_type: 'deposit',
+    amount: 1500000,
+    description: 'Wallet Funding via Sterling Bank Virtual Account',
+    created_at: '2026-08-16T14:30:00Z'
+  },
+  {
+    id: 'tx-2',
+    transaction_type: 'withdrawal',
+    amount: 500000,
+    description: 'Prescription Refill Payment (Sumatriptan)',
+    created_at: '2026-08-15T09:12:00Z'
+  },
+  {
+    id: 'tx-3',
+    transaction_type: 'earnings',
+    amount: 1450000,
+    description: 'Enclave Data Sharing Reward - Genomic Study #209',
+    created_at: '2026-08-12T16:45:00Z'
+  }
+];
+
+export const initialPharmacyOrders: PharmacyOrder[] = [
+  {
+    id: 'ord-8831',
+    patient_name: 'Alex Rivera',
+    status: 'pending',
+    total_amount: 500000, // ₦5,000.00
+    created_at: '2026-08-17T09:12:00Z',
+    items: [
+      { name: 'Sumatriptan Succinate 50mg', quantity: 1, price: 500000 }
+    ]
+  },
+  {
+    id: 'ord-6612',
+    patient_name: 'Chioma Adebayo',
+    status: 'processing',
+    total_amount: 850000, // ₦8,500.00
+    created_at: '2026-08-16T15:30:00Z',
+    items: [
+      { name: 'Amoxicillin 500mg', quantity: 2, price: 300000 },
+      { name: 'Vitamin C 1000mg chewable', quantity: 1, price: 250000 }
+    ]
+  },
+  {
+    id: 'ord-5590',
+    patient_name: 'Babajide Cole',
+    status: 'completed',
+    total_amount: 320000, // ₦3,200.00
+    created_at: '2026-08-14T11:00:00Z',
+    items: [
+      { name: 'Paracetamol 500mg', quantity: 4, price: 80000 }
+    ]
+  }
+];
+
+export const initialPharmacyStock: DrugStockItem[] = [
+  {
+    id: 'st-1',
+    drug_name: 'Sumatriptan Succinate',
+    drug_category: 'Analgesics (Pain Relief)',
+    drug_brand: 'Pfizer',
+    price: 500000,
+    quantity: 120,
+    expiry_date: '2027-12-31',
+    is_available: true
+  },
+  {
+    id: 'st-2',
+    drug_name: 'Amoxicillin',
+    drug_category: 'Antibiotics',
+    drug_brand: 'GSK',
+    price: 300000,
+    quantity: 80,
+    expiry_date: '2026-11-30',
+    is_available: true
+  },
+  {
+    id: 'st-3',
+    drug_name: 'Paracetamol',
+    drug_category: 'Analgesics (Pain Relief)',
+    drug_brand: 'Emzor',
+    price: 80000,
+    quantity: 450,
+    expiry_date: '2028-06-15',
+    is_available: true
+  },
+  {
+    id: 'st-4',
+    drug_name: 'Vitamin C 1000mg',
+    drug_category: 'Vitamins',
+    drug_brand: 'Vitabiotics',
+    price: 250000,
+    quantity: 200,
+    expiry_date: '2027-04-10',
+    is_available: true
   }
 ];

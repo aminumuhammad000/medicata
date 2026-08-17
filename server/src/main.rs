@@ -230,6 +230,10 @@ async fn main() -> anyhow::Result<()> {
                     "https://app.medicata.ng".parse().unwrap(),
                     "https://admin.medicata.ng".parse().unwrap(),
                     "https://medicata.ng".parse().unwrap(),
+                    "http://localhost:5173".parse().unwrap(),
+                    "http://127.0.0.1:5173".parse().unwrap(),
+                    "http://localhost:5174".parse().unwrap(),
+                    "http://localhost:3000".parse().unwrap(),
                 ])
                 .allow_methods([
                     Method::GET,

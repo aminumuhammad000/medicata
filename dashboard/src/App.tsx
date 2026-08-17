@@ -11,6 +11,18 @@ import { PrescriptionsView } from './views/PrescriptionsView';
 import { RecordsView } from './views/RecordsView';
 import { SecurityView } from './views/SecurityView';
 import { SettingsView } from './views/SettingsView';
+import { WalletView } from './views/WalletView';
+import { DoctorDashboardView } from './views/DoctorDashboardView';
+import { PharmacyDashboardView } from './views/PharmacyDashboardView';
+import {
+  PharmaciesView,
+  RemindersView,
+  ChatsView,
+  DoctorLabsView,
+  DoctorHistoryView,
+  PharmacyDispenseView,
+  PharmacySettlementView
+} from './views/ExtraViews';
 import { NotFoundView } from './views/NotFoundView';
 
 import {
@@ -20,10 +32,15 @@ import {
   initialAppointments,
   initialPrescriptions,
   initialHealthRecords,
-  initialNotifications
+  initialNotifications,
+  initialWalletBalance,
+  initialWalletTransactions,
+  initialPharmacyOrders,
+  initialPharmacyStock
 } from './data/mockData';
-import type { PatientProfile, Appointment, Prescription, HealthRecord, NotificationItem } from './types';
+import type { PatientProfile, Appointment, Prescription, HealthRecord, NotificationItem, WalletTransaction, PharmacyOrder, DrugStockItem } from './types';
 import { CheckCircle2, Info, X } from 'lucide-react';
+import { api } from './services/api';
 
 export const App: React.FC = () => {
   // Persistent or state-driven Profile
@@ -37,7 +54,7 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
     const path = window.location.pathname.replace('/', '').toLowerCase();
-    if (['overview', 'triage', 'appointments', 'prescriptions', 'records', 'security', 'settings'].includes(path)) {
+    if (['overview', 'triage', 'appointments', 'prescriptions', 'records', 'security', 'wallet', 'settings', 'schedule', 'prescribe', 'inventory', 'pharmacies', 'reminders', 'chats', 'labs', 'history', 'dispense', 'settlement'].includes(path)) {
       return path as DashboardTab;
     }
     if (path && path !== 'index.html') {
@@ -56,6 +73,360 @@ export const App: React.FC = () => {
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark');
   });
+  const [walletBalance, setWalletBalance] = useState<number>(initialWalletBalance);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>(initialWalletTransactions);
+  const [pharmacyOrders, setPharmacyOrders] = useState<PharmacyOrder[]>(initialPharmacyOrders);
+  const [pharmacyStock, setPharmacyStock] = useState<DrugStockItem[]>(initialPharmacyStock);
+
+  // Load data from server
+  useEffect(() => {
+    if (!profile.isOnboarded) return;
+
+    const loadData = async () => {
+      // First verify profile/token
+      const meRes = await api.getMe();
+      if (meRes.error) {
+        api.logout();
+        setProfile(prev => ({ ...prev, isOnboarded: false }));
+        return;
+      }
+
+      if (meRes.data) {
+        const user = meRes.data;
+        setProfile(prev => ({
+          ...prev,
+          id: user.id,
+          role: user.role.toLowerCase(),
+          email: user.email,
+          name: user.full_name,
+          phone: user.phone_number || '',
+          whatsapp: user.whatsapp_number || '',
+          isOnboarded: true
+        }));
+      }
+
+      // Load general/role-specific data
+      if (profile.role === 'patient') {
+        const [aptRes, rxRes, notifRes, walletBalRes, walletTxRes] = await Promise.all([
+          api.getMyConsultations(),
+          api.getMyPrescriptions(),
+          api.getMyNotifications(),
+          api.getWalletBalance(),
+          api.getWalletTransactions()
+        ]);
+
+        if (aptRes.data) {
+          setAppointments(aptRes.data.map((c: any) => ({
+            id: c.id,
+            doctor: c.doctor || { name: 'Dr. Sarah Jenkins', specialty: 'Cardiology', rating: 5.0, experience: 12, image: '' },
+            date: new Date(c.scheduled_at).toLocaleDateString(),
+            time: new Date(c.scheduled_at).toLocaleTimeString(),
+            type: c.mode === 'video' ? 'Video Consult' : 'AI Follow-up',
+            status: c.status,
+            roomUrl: c.room_url || '',
+            triageSummary: c.reason
+          })));
+        }
+        if (rxRes.data) {
+          setPrescriptions(rxRes.data.map((p: any) => ({
+            id: p.id,
+            token: p.prescription_token || `RX-${p.id.slice(0,4)}`,
+            medication: p.medication,
+            genericName: p.generic_name || p.medication,
+            dosage: p.dosage,
+            instructions: p.instructions || '',
+            quantity: p.quantity || '1 unit',
+            refillsRemaining: p.refills_remaining || 0,
+            prescribedBy: p.doctor_name || 'Dr. Sarah Jenkins',
+            dateIssued: new Date(p.created_at).toLocaleDateString(),
+            validUntil: p.valid_until ? new Date(p.valid_until).toLocaleDateString() : '',
+            status: p.refills_remaining > 0 ? 'Active' : 'Expired',
+            qrHash: p.qr_hash || '0x_verified',
+            pharmacyRouting: p.pharmacy_routing || 'None'
+          })));
+        }
+        if (notifRes.data) {
+          setNotifications(notifRes.data.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString(),
+            read: n.read,
+            type: n.notification_type || 'system'
+          })));
+        }
+        if (walletBalRes.data) {
+          setWalletBalance(walletBalRes.data.balance || 0);
+        }
+        if (walletTxRes.data) {
+          setWalletTransactions(walletTxRes.data);
+        }
+      } else if (profile.role === 'doctor') {
+        const [aptRes, rxRes, notifRes] = await Promise.all([
+          api.getMyConsultations(),
+          api.getMyPrescriptions(),
+          api.getMyNotifications()
+        ]);
+
+        if (aptRes.data) {
+          setAppointments(aptRes.data.map((c: any) => ({
+            id: c.id,
+            doctor: c.doctor || { name: 'Dr. Sarah Jenkins', specialty: 'Cardiology', rating: 5.0, experience: 12, image: '' },
+            date: new Date(c.scheduled_at).toLocaleDateString(),
+            time: new Date(c.scheduled_at).toLocaleTimeString(),
+            type: c.mode === 'video' ? 'Video Consult' : 'AI Follow-up',
+            status: c.status,
+            roomUrl: c.room_url || '',
+            triageSummary: c.reason
+          })));
+        }
+        if (rxRes.data) {
+          setPrescriptions(rxRes.data.map((p: any) => ({
+            id: p.id,
+            token: p.prescription_token || `RX-${p.id.slice(0,4)}`,
+            medication: p.medication,
+            genericName: p.generic_name || p.medication,
+            dosage: p.dosage,
+            instructions: p.instructions || '',
+            quantity: p.quantity || '1 unit',
+            refillsRemaining: p.refills_remaining || 0,
+            prescribedBy: p.doctor_name || 'Dr. Sarah Jenkins',
+            dateIssued: new Date(p.created_at).toLocaleDateString(),
+            validUntil: p.valid_until ? new Date(p.valid_until).toLocaleDateString() : '',
+            status: p.refills_remaining > 0 ? 'Active' : 'Expired',
+            qrHash: p.qr_hash || '0x_verified',
+            pharmacyRouting: p.pharmacy_routing || 'None'
+          })));
+        }
+        if (notifRes.data) {
+          setNotifications(notifRes.data.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString(),
+            read: n.read,
+            type: n.notification_type || 'system'
+          })));
+        }
+      } else if (profile.role === 'pharmacy') {
+        const [ordersRes, stockRes, notifRes] = await Promise.all([
+          api.getMyOrders(),
+          api.getPharmacyStock(),
+          api.getMyNotifications()
+        ]);
+
+        if (ordersRes.data) {
+          setPharmacyOrders(ordersRes.data.map((o: any) => ({
+            id: o.id,
+            patient_name: o.patient_name || 'Patient',
+            status: o.status,
+            total_amount: o.total_amount || 0,
+            created_at: o.created_at,
+            items: o.items || []
+          })));
+        }
+        if (stockRes.data) {
+          setPharmacyStock(stockRes.data.map((s: any) => ({
+            id: s.id,
+            drug_name: s.drug_name || 'Drug',
+            drug_category: s.drug_category || 'General',
+            drug_brand: s.drug_brand || 'Generic',
+            price: s.price || 0,
+            quantity: s.quantity || 0,
+            expiry_date: s.expiry_date || '',
+            is_available: s.is_available !== false
+          })));
+        }
+        if (notifRes.data) {
+          setNotifications(notifRes.data.map((n: any) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            time: new Date(n.created_at).toLocaleTimeString(),
+            read: n.read,
+            type: n.notification_type || 'system'
+          })));
+        }
+      }
+    };
+
+    loadData();
+  }, [profile.isOnboarded]);
+
+  const handleAddFunds = async (amountKobo: number) => {
+    const res = await api.addMoneyToWallet(amountKobo, 'virtual_account');
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+    setWalletBalance(prev => prev + amountKobo);
+    const txRes = await api.getWalletTransactions();
+    if (txRes.data) {
+      setWalletTransactions(txRes.data);
+    }
+  };
+
+  const handleWithdrawFunds = (amountKobo: number): boolean => {
+    if (walletBalance < amountKobo) return false;
+    
+    api.withdrawMoney(amountKobo, 'Sterling Bank').then(res => {
+      if (res.error) {
+        showToast(res.error, 'info');
+      } else {
+        api.getWalletTransactions().then(txRes => {
+          if (txRes.data) {
+            setWalletTransactions(txRes.data);
+          }
+        });
+      }
+    });
+
+    setWalletBalance(prev => prev - amountKobo);
+    return true;
+  };
+
+  const handleAddPrescription = async (rx: Omit<Prescription, 'id' | 'token' | 'qrHash'>) => {
+    const res = await api.createPrescription({
+      medication: rx.medication,
+      dosage: rx.dosage,
+      instructions: rx.instructions,
+      refills_remaining: rx.refillsRemaining
+    });
+
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+
+    const rxRes = await api.getMyPrescriptions();
+    if (rxRes.data) {
+      setPrescriptions(rxRes.data.map((p: any) => ({
+        id: p.id,
+        token: p.prescription_token || `RX-${p.id.slice(0,4)}`,
+        medication: p.medication,
+        genericName: p.generic_name || p.medication,
+        dosage: p.dosage,
+        instructions: p.instructions || '',
+        quantity: p.quantity || '1 unit',
+        refillsRemaining: p.refills_remaining || 0,
+        prescribedBy: p.doctor_name || 'Dr. Sarah Jenkins',
+        dateIssued: new Date(p.created_at).toLocaleDateString(),
+        validUntil: p.valid_until ? new Date(p.valid_until).toLocaleDateString() : '',
+        status: p.refills_remaining > 0 ? 'Active' : 'Expired',
+        qrHash: p.qr_hash || '0x_verified',
+        pharmacyRouting: p.pharmacy_routing || 'None'
+      })));
+    }
+  };
+
+  const handleUpdateAppointmentStatus = async (id: string, status: Appointment['status']) => {
+    const res = await api.updateConsultationStatus(id, status);
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+  };
+
+  const handleUpdateOrderStatus = async (id: string, status: PharmacyOrder['status']) => {
+    const res = await api.updateOrderStatus(id, status);
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+    setPharmacyOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+  };
+
+  const handleRegisterDrug = async (drug: Omit<DrugStockItem, 'id'>) => {
+    const drugRes = await api.createDrug({
+      name: drug.drug_name,
+      category: drug.drug_category
+    });
+
+    if (drugRes.error) {
+      showToast(drugRes.error, 'info');
+      return;
+    }
+
+    const drugId = drugRes.data?.id;
+    if (drugId) {
+      await api.updatePharmacyStock({
+        drug_id: drugId,
+        price: drug.price,
+        quantity: drug.quantity,
+        is_available: drug.is_available,
+        expiry_date: drug.expiry_date
+      });
+
+      const stockRes = await api.getPharmacyStock();
+      if (stockRes.data) {
+        setPharmacyStock(stockRes.data.map((s: any) => ({
+          id: s.id,
+          drug_name: s.drug_name || 'Drug',
+          drug_category: s.drug_category || 'General',
+          drug_brand: s.drug_brand || 'Generic',
+          price: s.price || 0,
+          quantity: s.quantity || 0,
+          expiry_date: s.expiry_date || '',
+          is_available: s.is_available !== false
+        })));
+      }
+    }
+  };
+
+  const handlePlaceOrder = async (_order: Omit<PharmacyOrder, 'id' | 'created_at'>) => {
+    const res = await api.createOrder({
+      prescription_id: undefined,
+      delivery_address: 'Home Address',
+      contact_info: profile.phone,
+      is_delivery: true
+    });
+
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+
+    const ordersRes = await api.getMyOrders();
+    if (ordersRes.data) {
+      setPharmacyOrders(ordersRes.data.map((o: any) => ({
+        id: o.id,
+        patient_name: o.patient_name || 'Patient',
+        status: o.status,
+        total_amount: o.total_amount || 0,
+        created_at: o.created_at,
+        items: o.items || []
+      })));
+    }
+  };
+
+  const handleDispensePrescription = async (id: string) => {
+    const res = await api.dispensePrescription(id);
+    if (res.error) {
+      showToast(res.error, 'info');
+      return;
+    }
+    
+    const rxRes = await api.getMyPrescriptions();
+    if (rxRes.data) {
+      setPrescriptions(rxRes.data.map((p: any) => ({
+        id: p.id,
+        token: p.prescription_token || `RX-${p.id.slice(0,4)}`,
+        medication: p.medication,
+        genericName: p.generic_name || p.medication,
+        dosage: p.dosage,
+        instructions: p.instructions || '',
+        quantity: p.quantity || '1 unit',
+        refillsRemaining: p.refills_remaining || 0,
+        prescribedBy: p.doctor_name || 'Dr. Sarah Jenkins',
+        dateIssued: new Date(p.created_at).toLocaleDateString(),
+        validUntil: p.valid_until ? new Date(p.valid_until).toLocaleDateString() : '',
+        status: p.refills_remaining > 0 ? 'Active' : 'Expired',
+        qrHash: p.qr_hash || '0x_verified',
+        pharmacyRouting: p.pharmacy_routing || 'None'
+      })));
+    }
+  };
 
   const handleToggleDark = () => {
     setIsDark(prev => {
@@ -73,7 +444,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.replace('/', '').toLowerCase();
-      if (['overview', 'triage', 'appointments', 'prescriptions', 'records', 'security', 'settings'].includes(path)) {
+      if (['overview', 'triage', 'appointments', 'prescriptions', 'records', 'security', 'wallet', 'settings', 'schedule', 'prescribe', 'inventory', 'pharmacies', 'reminders', 'chats', 'labs', 'history', 'dispense', 'settlement'].includes(path)) {
         setActiveTab(path as DashboardTab);
       } else if (!path || path === 'index.html') {
         setActiveTab('overview');
@@ -154,7 +525,7 @@ export const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#EBEFF5] dark:bg-[#070C16] text-slate-800 dark:text-slate-100 flex flex-col font-sans relative overflow-x-hidden">
       <MedicalWallpaper isDark={isDark} />
       
       {/* Sidebar Navigation */}
@@ -188,76 +559,190 @@ export const App: React.FC = () => {
 
         {/* Dynamic Views */}
         <main className="flex-1 p-4 sm:p-6 md:p-8">
-          {activeTab === 'overview' && (
-            <OverviewView
-              vitals={initialVitals}
-              appointments={appointments}
-              prescriptions={prescriptions}
-              records={records}
-              onNavigateTab={handleTabChange}
-              showToast={showToast}
-            />
-          )}
+          {profile.role === 'doctor' ? (
+            <>
+              {(activeTab === 'overview' || activeTab === 'schedule' || activeTab === 'prescribe') && (
+                <DoctorDashboardView
+                  activeSection={activeTab === 'schedule' ? 'schedule' : activeTab === 'prescribe' ? 'prescribe' : 'overview'}
+                  appointments={appointments}
+                  prescriptions={prescriptions}
+                  onAddPrescription={handleAddPrescription}
+                  onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+                  showToast={showToast}
+                />
+              )}
 
-          {activeTab === 'triage' && (
-            <TriageView
-              profile={profile}
-              onBookSpecialist={(_spec) => {
-                handleTabChange('appointments');
-              }}
-              showToast={showToast}
-            />
-          )}
+              {activeTab === 'labs' && (
+                <DoctorLabsView showToast={showToast} />
+              )}
 
-          {activeTab === 'appointments' && (
-            <AppointmentsView
-              doctors={doctorsList}
-              appointments={appointments}
-              onAddAppointment={handleAddAppointment}
-              showToast={showToast}
-            />
-          )}
+              {activeTab === 'history' && (
+                <DoctorHistoryView />
+              )}
 
-          {activeTab === 'prescriptions' && (
-            <PrescriptionsView
-              prescriptions={prescriptions}
-              onRefillRequest={handleRefillRequest}
-              showToast={showToast}
-            />
-          )}
+              {activeTab === 'settings' && (
+                <SettingsView
+                  profile={profile}
+                  onUpdateProfile={(up) => {
+                    setProfile(up);
+                    localStorage.setItem('medicata_patient_profile', JSON.stringify(up));
+                  }}
+                  showToast={showToast}
+                />
+              )}
 
-          {activeTab === 'records' && (
-            <RecordsView
-              records={records}
-              onUploadRecord={handleUploadRecord}
-              showToast={showToast}
-            />
-          )}
+              {!['overview', 'schedule', 'prescribe', 'labs', 'history', 'settings'].includes(activeTab) && (
+                <NotFoundView
+                  onNavigateHome={() => handleTabChange('overview')}
+                  onNavigateTriage={() => handleTabChange('overview')}
+                  onNavigateAppointments={() => handleTabChange('overview')}
+                />
+              )}
+            </>
+          ) : profile.role === 'pharmacy' ? (
+            <>
+              {(activeTab === 'overview' || activeTab === 'inventory') && (
+                <PharmacyDashboardView
+                  activeSection={activeTab === 'inventory' ? 'inventory' : 'overview'}
+                  orders={pharmacyOrders}
+                  stock={pharmacyStock}
+                  onAddDrug={handleRegisterDrug}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                  showToast={showToast}
+                />
+              )}
 
-          {activeTab === 'security' && (
-            <SecurityView
-              profile={profile}
-              showToast={showToast}
-            />
-          )}
+              {activeTab === 'dispense' && (
+                <PharmacyDispenseView
+                  prescriptions={prescriptions}
+                  onDispense={handleDispensePrescription}
+                  showToast={showToast}
+                />
+              )}
 
-          {activeTab === 'settings' && (
-            <SettingsView
-              profile={profile}
-              onUpdateProfile={(up) => {
-                setProfile(up);
-                localStorage.setItem('medicata_patient_profile', JSON.stringify(up));
-              }}
-              showToast={showToast}
-            />
-          )}
+              {activeTab === 'settlement' && (
+                <PharmacySettlementView showToast={showToast} />
+              )}
 
-          {activeTab === '404' && (
-            <NotFoundView
-              onNavigateHome={() => handleTabChange('overview')}
-              onNavigateTriage={() => handleTabChange('triage')}
-              onNavigateAppointments={() => handleTabChange('appointments')}
-            />
+              {activeTab === 'settings' && (
+                <SettingsView
+                  profile={profile}
+                  onUpdateProfile={(up) => {
+                    setProfile(up);
+                    localStorage.setItem('medicata_patient_profile', JSON.stringify(up));
+                  }}
+                  showToast={showToast}
+                />
+              )}
+
+              {!['overview', 'inventory', 'dispense', 'settlement', 'settings'].includes(activeTab) && (
+                <NotFoundView
+                  onNavigateHome={() => handleTabChange('overview')}
+                  onNavigateTriage={() => handleTabChange('overview')}
+                  onNavigateAppointments={() => handleTabChange('overview')}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {activeTab === 'overview' && (
+                <OverviewView
+                  vitals={initialVitals}
+                  appointments={appointments}
+                  prescriptions={prescriptions}
+                  records={records}
+                  onNavigateTab={handleTabChange}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'triage' && (
+                <TriageView
+                  profile={profile}
+                  onBookSpecialist={(_spec) => {
+                    handleTabChange('appointments');
+                  }}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'appointments' && (
+                <AppointmentsView
+                  doctors={doctorsList}
+                  appointments={appointments}
+                  onAddAppointment={handleAddAppointment}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'prescriptions' && (
+                <PrescriptionsView
+                  prescriptions={prescriptions}
+                  onRefillRequest={handleRefillRequest}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'records' && (
+                <RecordsView
+                  records={records}
+                  onUploadRecord={handleUploadRecord}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'wallet' && (
+                <WalletView
+                  balance={walletBalance}
+                  transactions={walletTransactions}
+                  onAddFunds={handleAddFunds}
+                  onWithdrawFunds={handleWithdrawFunds}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'pharmacies' && (
+                <PharmaciesView
+                  prescriptions={prescriptions}
+                  onPlaceOrder={handlePlaceOrder}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'reminders' && (
+                <RemindersView showToast={showToast} />
+              )}
+
+              {activeTab === 'chats' && (
+                <ChatsView />
+              )}
+
+              {activeTab === 'security' && (
+                <SecurityView
+                  profile={profile}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === 'settings' && (
+                <SettingsView
+                  profile={profile}
+                  onUpdateProfile={(up) => {
+                    setProfile(up);
+                    localStorage.setItem('medicata_patient_profile', JSON.stringify(up));
+                  }}
+                  showToast={showToast}
+                />
+              )}
+
+              {activeTab === '404' && (
+                <NotFoundView
+                  onNavigateHome={() => handleTabChange('overview')}
+                  onNavigateTriage={() => handleTabChange('triage')}
+                  onNavigateAppointments={() => handleTabChange('appointments')}
+                />
+              )}
+            </>
           )}
         </main>
 

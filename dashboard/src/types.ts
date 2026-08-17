@@ -126,3 +126,35 @@ export interface NotificationItem {
   read: boolean;
   type: 'triage' | 'appointment' | 'prescription' | 'security';
 }
+
+export interface WalletTransaction {
+  id: string;
+  transaction_type: 'deposit' | 'withdrawal' | 'earnings';
+  amount: number;
+  description: string;
+  created_at: string;
+}
+
+export interface PharmacyOrder {
+  id: string;
+  patient_name: string;
+  status: 'pending' | 'processing' | 'ready_for_pickup' | 'picked_up' | 'completed' | 'delivered';
+  total_amount: number;
+  created_at: string;
+  items: {
+    name: string;
+    quantity: number;
+    price: number;
+  }[];
+}
+
+export interface DrugStockItem {
+  id: string;
+  drug_name: string;
+  drug_category: string;
+  drug_brand: string;
+  price: number;
+  quantity: number;
+  expiry_date: string;
+  is_available: boolean;
+}

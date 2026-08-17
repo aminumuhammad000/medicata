@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenTriage}
           title="Launch Medi AI Triage"
-          className="w-9 h-9 rounded-xl bg-white hover:bg-slate-50 text-slate-800 transition-all shadow-md flex items-center justify-center cursor-pointer border border-slate-200/90 overflow-visible relative"
+          className="w-9 h-9 transition-all flex items-center justify-center cursor-pointer overflow-visible relative bg-transparent border-none outline-none shadow-none hover:scale-110"
         >
           <div className="w-9 h-9 flex items-center justify-center relative overflow-visible shrink-0">
             <div className="scale-[0.22] origin-center absolute">

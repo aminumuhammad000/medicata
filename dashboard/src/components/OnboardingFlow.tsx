@@ -28,6 +28,7 @@ import {
 import { MediMascot, type MediEmotion } from './MediMascot';
 import { MedicalWallpaper } from './MedicalWallpaper';
 import type { PatientProfile } from '../types';
+import { api } from '../services/api';
 
 type UserRole = 'patient' | 'doctor' | 'pharmacy';
 
@@ -338,73 +339,172 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, init
 
   const mediStatus = getMediState();
 
-  const handleFinishOnboarding = () => {
-    let completedProfile: PatientProfile;
+  const handleFinishOnboarding = async () => {
+    setIsLoggingIn(true);
+    setErrorMsg('');
 
-    if (role === 'doctor') {
-      completedProfile = {
-        ...initialProfile,
-        role: 'doctor',
-        name: doctorData.name || 'Dr. Sarah Jenkins, MD',
-        email: doctorData.email || 'dr.jenkins@medicata.health',
-        phone: doctorData.phone || '+1 (555) 492-3810',
-        whatsapp: doctorData.sameAsPhone ? (doctorData.phone || '+1 (555) 492-3810') : (doctorData.whatsapp || doctorData.phone),
-        licenseNumber: doctorData.licenseNumber || 'MED-NY-89104',
-        specialty: doctorData.specialty,
-        hospitalAffiliation: doctorData.hospitalAffiliation,
-        consultationFee: doctorData.consultationFee,
-        experience: doctorData.experience,
-        enclaveKey: '0x8f2a...9b41-ZK-AES256',
-        isEnclaveVerified: true,
-        isOnboarded: true
-      };
-    } else if (role === 'pharmacy') {
-      completedProfile = {
-        ...initialProfile,
-        role: 'pharmacy',
-        name: pharmacyData.pharmacyName || 'Apex MediCare Hub',
-        pharmacyName: pharmacyData.pharmacyName || 'Apex MediCare Hub',
-        email: pharmacyData.email || 'rx.apex@medicata.health',
-        phone: pharmacyData.phone || '+1 (555) 782-9011',
-        whatsapp: pharmacyData.phone,
-        licenseNumber: pharmacyData.licenseNumber || 'RX-DE-99401',
-        address: pharmacyData.address || '742 Evergreen Blvd, New York, NY',
-        enclaveKey: '0x8f2a...9b41-ZK-AES256',
-        isEnclaveVerified: true,
-        isOnboarded: true
-      };
-    } else {
-      completedProfile = {
-        ...initialProfile,
-        role: 'patient',
-        name: patientData.name || 'Alex Rivera',
-        email: patientData.email || 'alex.rivera@medicata.health',
-        phone: patientData.phone || '+1 (555) 389-2049',
-        whatsapp: patientData.sameAsPhone ? (patientData.phone || '+1 (555) 389-2049') : (patientData.whatsapp || patientData.phone),
-        age: Number(patientData.age),
-        gender: patientData.gender,
-        bloodType: patientData.bloodType,
-        genotype: patientData.genotype,
-        height: Number(patientData.height),
-        weight: Number(patientData.weight),
-        bodyType: patientData.bodyType,
-        allergies: patientData.allergies,
-        chronicConditions: patientData.chronicConditions,
-        emergencyContact: {
-          name: patientData.emergencyName || 'Emergency Contact',
-          phone: patientData.emergencyPhone || '+1 (555) 891-2311',
-          relationship: 'Emergency Contact'
-        },
-        enclaveKey: '0x8f2a...9b41-ZK-AES256',
-        isEnclaveVerified: true,
-        isOnboarded: true
-      };
+    try {
+      let completedProfile: PatientProfile;
+      const defaultPassword = "Password123!";
+
+      if (role === 'doctor') {
+        const email = doctorData.email || 'dr.jenkins@medicata.health';
+        const name = doctorData.name || 'Dr. Sarah Jenkins, MD';
+        const phone = doctorData.phone || '+1 (555) 492-3810';
+        
+        const regRes = await api.register({
+          full_name: name,
+          email,
+          password: defaultPassword,
+          phone_number: phone,
+          role: 'doctor'
+        });
+
+        if (regRes.error) {
+          setErrorMsg(regRes.error);
+          setIsLoggingIn(false);
+          return;
+        }
+
+        // Update professional details
+        await api.updateDoctorProfessionalInfo({
+          license_number: doctorData.licenseNumber || 'MED-NY-89104',
+          specialty: doctorData.specialty,
+          hospital_affiliation: doctorData.hospitalAffiliation,
+          consultation_fee: doctorData.consultationFee || '$120',
+          experience_years: doctorData.experience || 5
+        });
+
+        await api.updateDoctorBio({ bio: doctorData.bio || 'Attending specialist.' });
+
+        completedProfile = {
+          ...initialProfile,
+          role: 'doctor',
+          name,
+          email,
+          phone,
+          whatsapp: doctorData.sameAsPhone ? phone : (doctorData.whatsapp || phone),
+          licenseNumber: doctorData.licenseNumber || 'MED-NY-89104',
+          specialty: doctorData.specialty,
+          hospitalAffiliation: doctorData.hospitalAffiliation,
+          consultationFee: doctorData.consultationFee,
+          experience: doctorData.experience,
+          enclaveKey: '0x8f2a...9b41-ZK-AES256',
+          isEnclaveVerified: true,
+          isOnboarded: true
+        };
+      } else if (role === 'pharmacy') {
+        const email = pharmacyData.email || 'rx.apex@medicata.health';
+        const name = pharmacyData.pharmacyName || 'Apex MediCare Hub';
+        const phone = pharmacyData.phone || '+1 (555) 782-9011';
+
+        const regRes = await api.register({
+          full_name: name,
+          email,
+          password: defaultPassword,
+          phone_number: phone,
+          role: 'pharmacy'
+        });
+
+        if (regRes.error) {
+          setErrorMsg(regRes.error);
+          setIsLoggingIn(false);
+          return;
+        }
+
+        // Update pharmacy details
+        await api.updatePharmacyProfile({
+          pharmacy_name: name,
+          pharmacy_address: pharmacyData.address || '742 Evergreen Blvd, New York, NY',
+          pharmacy_license: pharmacyData.licenseNumber || 'RX-DE-99401',
+          opening_hours: '8:00 AM - 10:00 PM'
+        });
+
+        completedProfile = {
+          ...initialProfile,
+          role: 'pharmacy',
+          name,
+          pharmacyName: name,
+          email,
+          phone,
+          whatsapp: phone,
+          licenseNumber: pharmacyData.licenseNumber || 'RX-DE-99401',
+          address: pharmacyData.address || '742 Evergreen Blvd, New York, NY',
+          enclaveKey: '0x8f2a...9b41-ZK-AES256',
+          isEnclaveVerified: true,
+          isOnboarded: true
+        };
+      } else {
+        const email = patientData.email || 'alex.rivera@medicata.health';
+        const name = patientData.name || 'Alex Rivera';
+        const phone = patientData.phone || '+1 (555) 389-2049';
+
+        const regRes = await api.register({
+          full_name: name,
+          email,
+          password: defaultPassword,
+          phone_number: phone,
+          role: 'patient'
+        });
+
+        if (regRes.error) {
+          setErrorMsg(regRes.error);
+          setIsLoggingIn(false);
+          return;
+        }
+
+        // Update patient details
+        await api.updatePatientHealthInfo({
+          age: Number(patientData.age),
+          gender: patientData.gender,
+          blood_type: patientData.bloodType,
+          genotype: patientData.genotype,
+          height: Number(patientData.height),
+          weight: Number(patientData.weight),
+          body_type: patientData.bodyType,
+          allergies: patientData.allergies,
+          chronic_conditions: patientData.chronicConditions,
+          emergency_contact_name: patientData.emergencyName || 'Emergency Contact',
+          emergency_contact_phone: patientData.emergencyPhone || '+1 (555) 891-2311',
+          emergency_contact_relationship: 'Emergency Contact'
+        });
+
+        completedProfile = {
+          ...initialProfile,
+          role: 'patient',
+          name,
+          email,
+          phone,
+          whatsapp: patientData.sameAsPhone ? phone : (patientData.whatsapp || phone),
+          age: Number(patientData.age),
+          gender: patientData.gender,
+          bloodType: patientData.bloodType,
+          genotype: patientData.genotype,
+          height: Number(patientData.height),
+          weight: Number(patientData.weight),
+          bodyType: patientData.bodyType,
+          allergies: patientData.allergies,
+          chronicConditions: patientData.chronicConditions,
+          emergencyContact: {
+            name: patientData.emergencyName || 'Emergency Contact',
+            phone: patientData.emergencyPhone || '+1 (555) 891-2311',
+            relationship: 'Emergency Contact'
+          },
+          enclaveKey: '0x8f2a...9b41-ZK-AES256',
+          isEnclaveVerified: true,
+          isOnboarded: true
+        };
+      }
+
+      setIsLoggingIn(false);
+      onComplete(completedProfile);
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Verification / Registration failed.');
+      setIsLoggingIn(false);
     }
-
-    onComplete(completedProfile);
   };
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setErrorMsg('');
 
@@ -414,43 +514,126 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, init
     }
 
     setIsLoggingIn(true);
-    setTimeout(() => {
+    const passwordToUse = (loginPassword === '••••••••••••' || !loginPassword) ? 'Password123!' : loginPassword;
+    
+    try {
+      const res = await api.login(loginEmail, passwordToUse);
       setIsLoggingIn(false);
-      onComplete({
-        ...initialProfile,
-        role,
-        email: loginEmail,
-        name: role === 'doctor' ? 'Dr. Sarah Jenkins, MD' : role === 'pharmacy' ? 'Apex MediCare Hub' : (initialProfile.name || 'Alex Rivera'),
-        isOnboarded: true,
-        isEnclaveVerified: true
-      });
-    }, 600);
+
+      if (res.error) {
+        setErrorMsg(res.error);
+        return;
+      }
+
+      if (res.data?.user) {
+        const user = res.data.user;
+        
+        onComplete({
+          ...initialProfile,
+          id: user.id,
+          role: user.role.toLowerCase(),
+          email: user.email,
+          name: user.full_name,
+          phone: user.phone_number || '',
+          whatsapp: user.whatsapp_number || '',
+          isOnboarded: true,
+          isEnclaveVerified: true
+        });
+      } else {
+        setErrorMsg('Invalid response from server.');
+      }
+    } catch (e: any) {
+      setErrorMsg(e?.message || 'Login failed.');
+      setIsLoggingIn(false);
+    }
   };
 
-  const handleBiometricAuth = () => {
+  const handleBiometricAuth = async () => {
     setErrorMsg('');
     setIsBiometricScanning(true);
-    setTimeout(() => {
+    
+    const emailToUse = role === 'doctor' 
+      ? 'dr.jenkins@medicata.health' 
+      : role === 'pharmacy' 
+        ? 'rx.apex@medicata.health' 
+        : (patientData.email || 'alex.rivera@medicata.health');
+
+    try {
+      const res = await api.login(emailToUse, 'Password123!');
       setIsBiometricScanning(false);
-      onComplete({
-        ...initialProfile,
-        role,
-        isOnboarded: true,
-        isEnclaveVerified: true
-      });
-    }, 850);
+
+      if (res.error) {
+        const nameToUse = role === 'doctor' 
+          ? 'Dr. Sarah Jenkins, MD' 
+          : role === 'pharmacy' 
+            ? 'Apex Medicare Hub' 
+            : 'Alex Rivera';
+
+        const regRes = await api.register({
+          full_name: nameToUse,
+          email: emailToUse,
+          password: 'Password123!',
+          phone_number: '+1 (555) 000-0000',
+          role: role
+        });
+
+        if (regRes.error) {
+          setErrorMsg(`Biometric scan failed: ${regRes.error}`);
+          return;
+        }
+
+        if (regRes.data?.user) {
+          const user = regRes.data.user;
+          onComplete({
+            ...initialProfile,
+            id: user.id,
+            role: user.role.toLowerCase(),
+            email: user.email,
+            name: user.full_name,
+            phone: user.phone_number || '',
+            whatsapp: user.whatsapp_number || '',
+            isOnboarded: true,
+            isEnclaveVerified: true
+          });
+        }
+        return;
+      }
+
+      if (res.data?.user) {
+        const user = res.data.user;
+        onComplete({
+          ...initialProfile,
+          id: user.id,
+          role: user.role.toLowerCase(),
+          email: user.email,
+          name: user.full_name,
+          phone: user.phone_number || '',
+          whatsapp: user.whatsapp_number || '',
+          isOnboarded: true,
+          isEnclaveVerified: true
+        });
+      }
+    } catch (err: any) {
+      setErrorMsg('Biometric authentication failed.');
+      setIsBiometricScanning(false);
+    }
   };
 
   const handleQuickDemo = (demoRole: UserRole) => {
     setRole(demoRole);
+    let email = 'alex.rivera@medicata.health';
     if (demoRole === 'doctor') {
-      setLoginEmail('dr.jenkins@medicata.health');
+      email = 'dr.jenkins@medicata.health';
     } else if (demoRole === 'pharmacy') {
-      setLoginEmail('rx.apex@medicata.health');
-    } else {
-      setLoginEmail('alex.rivera@medicata.health');
+      email = 'rx.apex@medicata.health';
     }
-    handleLogin();
+    setLoginEmail(email);
+    setLoginPassword('Password123!');
+    
+    setTimeout(() => {
+      const loginButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (loginButton) loginButton.click();
+    }, 100);
   };
 
   // Swapping page animation variants (slow, smooth swiped card effect)
@@ -482,7 +665,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, init
 
   return (
     <div className={`min-h-screen flex flex-col justify-between font-sans antialiased transition-colors duration-500 relative overflow-hidden ${
-      isDark ? 'bg-[#0B1120] text-slate-100' : 'bg-[#F8FAFC] text-slate-800'
+      isDark ? 'bg-[#070C16] text-slate-100' : 'bg-[#EBEFF5] text-slate-800'
     }`}>
       
       {/* Calm Modern Layered Ambient Background */}

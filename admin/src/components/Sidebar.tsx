@@ -45,7 +45,7 @@ export default function Sidebar() {
   const { logout } = useAuth();
 
   return (
-    <aside className="w-64 h-screen glass fixed left-0 top-0 flex flex-col border-r border-slate-200">
+    <aside className="w-60 fixed left-3 top-3 bottom-3 z-50 flex flex-col glass border-y border-r border-slate-200/60 rounded-tr-3xl rounded-br-3xl overflow-hidden shadow-[5px_0_25px_rgba(0,0,0,0.02),0_8px_32px_rgba(31,38,135,0.04)]">
       <div className="p-8 pb-4">
         <div className="flex items-center gap-3 mb-6">
           <img src="/icon.png" alt="Medicata Icon" className="w-8 h-8 object-contain" />

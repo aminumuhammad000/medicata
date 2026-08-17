@@ -7,11 +7,41 @@ import {
   Pill,
   FileText,
   ShieldCheck,
-  Settings
+  Settings,
+  Wallet,
+  Stethoscope,
+  Clock,
+  Package,
+  Store,
+  BellRing,
+  MessageSquare,
+  FlaskConical,
+  ClipboardList,
+  QrCode,
+  Coins
 } from 'lucide-react';
 import type { PatientProfile } from '../types';
 
-export type DashboardTab = 'overview' | 'triage' | 'appointments' | 'prescriptions' | 'records' | 'security' | 'settings' | '404';
+export type DashboardTab =
+  | 'overview'
+  | 'triage'
+  | 'appointments'
+  | 'prescriptions'
+  | 'records'
+  | 'security'
+  | 'wallet'
+  | 'pharmacies'
+  | 'reminders'
+  | 'chats'
+  | 'labs'
+  | 'history'
+  | 'dispense'
+  | 'settlement'
+  | 'settings'
+  | 'schedule'
+  | 'prescribe'
+  | 'inventory'
+  | '404';
 
 interface SidebarProps {
   activeTab: DashboardTab;
@@ -32,15 +62,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDark,
   isSidebarCollapsed
 }) => {
-  const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'triage', label: 'Medi AI Triage', icon: Bot, badge: 'Active' },
-    { id: 'appointments', label: 'Video Consult', icon: Calendar },
-    { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
-    { id: 'records', label: 'Health Vault', icon: FileText },
-    { id: 'security', label: 'Enclave Lock', icon: ShieldCheck },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ];
+  const getNavItems = () => {
+    if (profile.role === 'doctor') {
+      return [
+        { id: 'overview', label: 'Consultations', icon: LayoutDashboard },
+        { id: 'schedule', label: 'Availability', icon: Clock },
+        { id: 'prescribe', label: 'E-Prescribe', icon: Stethoscope },
+        { id: 'labs', label: 'Lab Orders', icon: FlaskConical },
+        { id: 'history', label: 'Patient Charts', icon: ClipboardList },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ];
+    }
+    if (profile.role === 'pharmacy') {
+      return [
+        { id: 'overview', label: 'Orders Feed', icon: LayoutDashboard },
+        { id: 'inventory', label: 'Drug Inventory', icon: Package },
+        { id: 'dispense', label: 'Dispenser', icon: QrCode },
+        { id: 'settlement', label: 'Settlement', icon: Coins },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ];
+    }
+    // Default / Patient Tab list
+    return [
+      { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+      { id: 'triage', label: 'Medi AI Triage', icon: Bot, badge: 'Active' },
+      { id: 'appointments', label: 'Video Consult', icon: Calendar },
+      { id: 'prescriptions', label: 'Prescriptions', icon: Pill },
+      { id: 'records', label: 'Health Vault', icon: FileText },
+      { id: 'wallet', label: 'My Wallet', icon: Wallet },
+      { id: 'pharmacies', label: 'Pharmacies', icon: Store },
+      { id: 'reminders', label: 'Reminders', icon: BellRing },
+      { id: 'chats', label: 'Doctor Chats', icon: MessageSquare },
+      { id: 'security', label: 'Enclave Lock', icon: ShieldCheck },
+      { id: 'settings', label: 'Settings', icon: Settings },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <>
@@ -54,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Main Sidebar Panel - Collapsible to 16 (4rem) on desktop */}
       <aside
-        className={`fixed top-3 bottom-3 left-3 z-50 flex flex-col justify-between transition-all duration-300 rounded-tr-3xl rounded-br-3xl shadow-[5px_0_25px_rgba(0,0,0,0.02),0_8px_32px_rgba(31,38,135,0.04)] ${
+        className={`fixed top-3 bottom-3 left-3 z-50 flex flex-col justify-between transition-all duration-300 rounded-tr-3xl rounded-br-3xl overflow-hidden shadow-[5px_0_25px_rgba(0,0,0,0.02),0_8px_32px_rgba(31,38,135,0.04)] ${
           isOpenMobile ? 'translate-x-0 w-52' : '-translate-x-full lg:translate-x-0'
         } ${
           isSidebarCollapsed ? 'lg:w-16 w-16' : 'lg:w-52 w-52'
@@ -64,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : 'bg-white/95 border-y border-r border-slate-200/60 text-slate-800 backdrop-blur-md'
         }`}
       >
-        <div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
           {/* Brand Header */}
           <div className={`h-16 px-4 flex items-center border-b ${
             isDark ? 'border-slate-800/30' : 'border-slate-100/50'

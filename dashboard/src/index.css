@@ -36,7 +36,7 @@
 }
 
 html, body {
-  @apply text-slate-800 dark:text-slate-100 bg-[#F8FAFC] dark:bg-slate-950 leading-relaxed antialiased overflow-x-hidden;
+  @apply text-slate-800 dark:text-slate-100 bg-[#EBEFF5] dark:bg-[#070C16] leading-relaxed antialiased overflow-x-hidden;
   font-family: 'Plus Jakarta Sans', 'Poppins', system-ui, -apple-system, sans-serif;
 }
 
@@ -60,3 +60,70 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Global input styling matching Onboarding Flow recessed look */
+input[type="text"], 
+input[type="email"], 
+input[type="password"], 
+input[type="number"], 
+input[type="tel"], 
+input[type="search"], 
+select, 
+textarea {
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  background-color: rgba(241, 245, 249, 0.9) !important;
+  color: #0f172a !important;
+  border-radius: 1rem !important; /* rounded-2xl */
+  box-shadow: inset 0 3px 5px rgba(15, 23, 42, 0.11), inset 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 -1px 1px rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Dark mode overrides */
+.dark input[type="text"], 
+.dark input[type="email"], 
+.dark input[type="password"], 
+.dark input[type="number"], 
+.dark input[type="tel"], 
+.dark input[type="search"], 
+.dark select, 
+.dark textarea {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,0.7), inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 1px rgba(255,255,255,0.03) !important;
+}
+
+/* Focus states */
+input[type="text"]:focus, 
+input[type="email"]:focus, 
+input[type="password"]:focus, 
+input[type="number"]:focus, 
+input[type="tel"]:focus, 
+input[type="search"]:focus, 
+select:focus, 
+textarea:focus {
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+  box-shadow: inset 0 3px 5px rgba(15, 23, 42, 0.11), inset 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 -1px 1px rgba(255, 255, 255, 0.85), 0 0 0 2px rgba(40, 117, 216, 0.3) !important;
+}
+
+.dark input[type="text"]:focus, 
+.dark input[type="email"]:focus, 
+.dark input[type="password"]:focus, 
+.dark input[type="number"]:focus, 
+.dark input[type="tel"]:focus, 
+.dark input[type="search"]:focus, 
+.dark select:focus, 
+.dark textarea:focus {
+  box-shadow: inset 0 3px 6px rgba(0,0,0,0.7), inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 1px rgba(255,255,255,0.03), 0 0 0 2px rgba(40, 117, 216, 0.4) !important;
+}
+
+/* Placeholder styling */
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important;
+}
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #64748b !important;
+}
+

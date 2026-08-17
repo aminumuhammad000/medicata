@@ -9,17 +9,17 @@ export const MedicalWallpaper: React.FC<MedicalWallpaperProps> = ({
   isDark = false,
   opacity: customOpacity
 }) => {
-  // Rich, visible medical colors
-  const strokeColor = isDark ? '%2360A5FA' : '%232563EB';
-  const accentColor = isDark ? '%2338BDF8' : '%230284C7';
-  const fillDotColor = isDark ? '%2393C5FD' : '%233B82F6';
+  // Subtle WhatsApp-style doodle colors
+  const strokeColor = isDark ? '%23ffffff' : '%230f172a';
+  const accentColor = isDark ? '%2338bdf8' : '%232563eb';
+  const fillDotColor = isDark ? '%2338bdf8' : '%232563eb';
   
-  // High-visibility opacity (clearly visible yet elegant background)
-  const defaultOpacity = isDark ? '0.42' : '0.48';
+  // Very low watermark-style opacity to feel like a subtle textured wallpaper
+  const defaultOpacity = isDark ? '0.04' : '0.065';
   const opacity = customOpacity !== undefined ? customOpacity.toString() : defaultOpacity;
 
   // Crisp SVG pattern with healthcare & medical telemetry icons
-  const patternSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='${strokeColor}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' opacity='${opacity}'>
+  const patternSvg = `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320' fill='none' stroke='${strokeColor}' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round' opacity='${opacity}'>
     <!-- 1. Stethoscope (top left) -->
     <g transform='translate(30, 25) rotate(-10)'>
       <path d='M4 3v5a4 4 0 0 0 8 0V3'/>

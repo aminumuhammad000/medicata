@@ -66,8 +66,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
     };
   };
 
-  // Shared 3D Physical Card Classes
-  const card3dClass = `bg-white dark:bg-slate-900/95 border-b-4 border-r-1.5 border-slate-200 dark:border-slate-800 border-slate-200/80 dark:border-b-slate-950/80 dark:border-r-slate-950/80 rounded-2xl p-4 shadow-sm hover:border-b-2 hover:border-r-1 hover:translate-y-[1.5px] transition-all duration-200 cursor-pointer text-left`;
+  // Shared 3D Recessed Card Classes
+  const card3dClass = `bg-white/80 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800/40 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] rounded-2xl p-4 transition-all duration-200 text-left`;
   
   return (
     <div className="space-y-5 max-w-6xl mx-auto">

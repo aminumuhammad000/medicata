@@ -57,7 +57,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     showToast("Profile and clinical preferences updated.", "success");
   };
 
-  const card3dClass = `bg-white dark:bg-slate-900/95 border-b-4 border-r-1.5 border-slate-200 dark:border-slate-800 border-slate-200/80 dark:border-b-slate-950/80 dark:border-r-slate-950/80 rounded-2xl p-4 shadow-sm transition-all duration-200 text-left`;
+  const card3dClass = `bg-white/80 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800/40 shadow-[inset_0_2px_4px_rgba(0,0,0,0.04),0_1px_1.5px_rgba(255,255,255,0.9)] dark:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)] rounded-2xl p-4 transition-all duration-200 text-left`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 text-left">
